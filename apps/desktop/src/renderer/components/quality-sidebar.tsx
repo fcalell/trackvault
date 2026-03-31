@@ -2,10 +2,10 @@ import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { createMemo, For } from "solid-js";
 
 const tools = [
-	{ label: "Duplicates", to: "/quality/duplicates" },
-	{ label: "Genre Normalization", to: "/quality/genre-normalization" },
-	{ label: "File Organizer", to: "/quality/file-organizer" },
-] as const;
+	{ label: "Duplicates", to: "/quality/duplicates" as const },
+	{ label: "Genre Normalization", to: "/quality/genre-normalization" as const },
+	{ label: "File Organizer", to: "/quality/file-organizer" as const },
+];
 
 export default function QualitySidebar() {
 	const location = useLocation();
@@ -16,7 +16,7 @@ export default function QualitySidebar() {
 		for (const tool of tools) {
 			if (path === tool.to) return tool.to;
 		}
-		return tools[0].to;
+		return tools[0]?.to;
 	});
 
 	return (
@@ -36,7 +36,7 @@ export default function QualitySidebar() {
 									isActive(),
 								"text-muted-foreground": !isActive(),
 							}}
-							onClick={() => navigate({ to: tool.to } as never)}
+							onClick={() => navigate({ to: tool.to })}
 						>
 							{tool.label}
 						</button>

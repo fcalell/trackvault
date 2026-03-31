@@ -4,6 +4,8 @@ import * as schema from "./schema";
 
 export function getSqliteClient(dbPath: string) {
 	const sqlite = new Database(dbPath);
+	sqlite.pragma("journal_mode = WAL");
+	sqlite.pragma("foreign_keys = ON");
 	return drizzle({ client: sqlite, schema });
 }
 

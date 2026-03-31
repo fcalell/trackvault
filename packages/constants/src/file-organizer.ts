@@ -3,5 +3,3 @@ export const FILE_ORGANIZER_PRESETS = [
 	{ label: "Genre / Artist / Title", pattern: "{genre}/{artist}/{title}" },
 	{ label: "Artist / Title", pattern: "{artist}/{title}" },
 ] as const;
-
-export type FileOrganizerPreset = (typeof FILE_ORGANIZER_PRESETS)[number];

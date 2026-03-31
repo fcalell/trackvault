@@ -42,11 +42,11 @@ export default function LibrarySidebar() {
 		for (const [k, v] of Object.entries(params)) {
 			if (v) searchObj[k] = v;
 		}
-		navigate({ to: "/library", search: searchObj } as never);
+		navigate({ to: "/library", search: searchObj });
 	}
 
 	function clearFilter() {
-		navigate({ to: "/library", search: {} } as never);
+		navigate({ to: "/library", search: {} });
 	}
 
 	function toggleFacet(key: string) {

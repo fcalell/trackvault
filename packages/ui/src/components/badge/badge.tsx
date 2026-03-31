@@ -38,4 +38,4 @@ const Badge: Component<BadgeProps> = (props) => {
 };
 
 export type { BadgeProps };
-export { Badge, badgeVariants };
+export { Badge };

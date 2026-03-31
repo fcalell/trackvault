@@ -40,4 +40,3 @@ const client: RouterClient<AppRouter> = createORPCClient(
 );
 
 export const orpc = createTanstackQueryUtils(client);
-export type OrpcClient = typeof orpc;

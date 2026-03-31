@@ -7,8 +7,6 @@ import { cn } from "#lib/cn";
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
-const DropdownMenuGroup = DropdownMenuPrimitive.Group;
-const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 
 const DropdownMenuContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, DropdownMenuPrimitive.DropdownMenuContentProps<T>>,
@@ -50,53 +48,9 @@ const DropdownMenuItem = <T extends ValidComponent = "div">(
 	);
 };
 
-const DropdownMenuSeparator = <T extends ValidComponent = "hr">(
-	props: PolymorphicProps<
-		T,
-		DropdownMenuPrimitive.DropdownMenuSeparatorProps<T>
-	>,
-) => {
-	const [local, others] = splitProps(
-		props as DropdownMenuPrimitive.DropdownMenuSeparatorProps & {
-			class?: string;
-		},
-		["class"],
-	);
-	return (
-		<DropdownMenuPrimitive.Separator
-			class={cn("-mx-1 my-1 h-px bg-muted", local.class)}
-			{...others}
-		/>
-	);
-};
-
-const DropdownMenuLabel = <T extends ValidComponent = "span">(
-	props: PolymorphicProps<
-		T,
-		DropdownMenuPrimitive.DropdownMenuGroupLabelProps<T>
-	>,
-) => {
-	const [local, others] = splitProps(
-		props as DropdownMenuPrimitive.DropdownMenuGroupLabelProps & {
-			class?: string;
-		},
-		["class"],
-	);
-	return (
-		<DropdownMenuPrimitive.GroupLabel
-			class={cn("px-2 py-1.5 text-sm font-semibold", local.class)}
-			{...others}
-		/>
-	);
-};
-
 export {
 	DropdownMenu,
 	DropdownMenuContent,
-	DropdownMenuGroup,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuSeparator,
-	DropdownMenuSub,
 	DropdownMenuTrigger,
 };

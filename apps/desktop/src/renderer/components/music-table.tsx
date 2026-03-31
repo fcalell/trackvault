@@ -31,14 +31,16 @@ import {
 	getCoreRowModel,
 	getFilteredRowModel,
 	getSortedRowModel,
+	type OnChangeFn,
 	type RowSelectionState,
 	type SortingState,
 	type VisibilityState,
 } from "@tanstack/solid-table";
 import { ArrowUpDown, Check, Columns3, Play } from "lucide-solid";
-import { type Accessor, createSignal, For, Show } from "solid-js";
+import { type Accessor, createSignal, For, onCleanup, Show } from "solid-js";
 import EditableCell, { type EditingCell } from "#components/editable-cell";
 import { orpc } from "#lib/api";
+import { formatDuration } from "#lib/format";
 import { playerStore } from "#lib/player";
 import { useMutation, useQueryClient } from "#lib/query";
 
@@ -50,12 +52,6 @@ function GenreBadges(props: { genre: string }) {
 			</For>
 		</div>
 	);
-}
-
-function formatDuration(seconds: number) {
-	const m = Math.floor(seconds / 60);
-	const s = Math.floor(seconds % 60);
-	return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
 function SortableHeader(props: {
@@ -295,9 +291,9 @@ function createColumns(
 							onClick={(e: MouseEvent) => {
 								e.stopPropagation();
 								playerStore.play({
-									title: file.title ?? "",
-									artist: file.artist ?? "",
-									audioSrc: file.filepath ?? "",
+									title: file.title,
+									artist: file.artist,
+									filepath: file.filepath ?? "",
 								});
 							}}
 							aria-label={`Play ${file.title ?? file.filename}`}
@@ -348,11 +344,7 @@ export default function MusicTable(props: {
 		createSignal<RowSelectionState>({});
 	const rowSelection = () =>
 		props.selectedRowIds ? props.selectedRowIds() : internalRowSelection();
-	const setRowSelection = (
-		updater:
-			| RowSelectionState
-			| ((old: RowSelectionState) => RowSelectionState),
-	) => {
+	const setRowSelection: OnChangeFn<RowSelectionState> = (updater) => {
 		const newState =
 			typeof updater === "function" ? updater(rowSelection()) : updater;
 		if (props.onRowSelectionChange) {
@@ -376,21 +368,17 @@ export default function MusicTable(props: {
 		}
 
 		queryClient.setQueryData(
-			orpc.library.scan.queryOptions({}).queryKey,
-			(old: { fileList: TrackWithFile[] } | undefined) => {
+			orpc.library.list.queryOptions({}).queryKey,
+			(old: TrackWithFile[] | undefined) => {
 				if (!old) return old;
-				return {
-					...old,
-					fileList: old.fileList.map((t) =>
-						t.id === trackId
-							? {
-									...t,
-									[field]:
-										field === "year" ? (fieldValue[field] ?? null) : value,
-								}
-							: t,
-					),
-				};
+				return old.map((t) =>
+					t.id === trackId
+						? {
+								...t,
+								[field]: field === "year" ? (fieldValue[field] ?? null) : value,
+							}
+						: t,
+				);
 			},
 		);
 
@@ -401,7 +389,7 @@ export default function MusicTable(props: {
 				onError: () => {
 					toast.error("Failed to update");
 					queryClient.invalidateQueries({
-						queryKey: orpc.library.scan.queryOptions({}).queryKey,
+						queryKey: orpc.library.list.queryOptions({}).queryKey,
 					});
 				},
 			},
@@ -434,13 +422,14 @@ export default function MusicTable(props: {
 		onSortingChange: setSorting,
 		onGlobalFilterChange: setGlobalFilter,
 		onColumnVisibilityChange: setColumnVisibility,
-		onRowSelectionChange: setRowSelection as never,
+		onRowSelectionChange: setRowSelection,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
 	});
 
 	let debounceTimer: ReturnType<typeof setTimeout>;
+	onCleanup(() => clearTimeout(debounceTimer));
 	function handleSearch(value: string) {
 		clearTimeout(debounceTimer);
 		debounceTimer = setTimeout(() => setGlobalFilter(value), 300);
@@ -448,7 +437,7 @@ export default function MusicTable(props: {
 
 	function isCurrentlyPlaying(track: TrackWithFile) {
 		const current = playerStore.currentTrack();
-		return current?.audioSrc === track.filepath;
+		return current?.filepath === track.filepath;
 	}
 
 	return (

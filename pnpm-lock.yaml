@@ -26,9 +26,6 @@ importers:
       typescript-language-server:
         specifier: ^5.1.3
         version: 5.1.3
-      vite-plugin-electron-renderer:
-        specifier: ^0.14.6
-        version: 0.14.6
 
   apps/desktop:
     dependencies:
@@ -41,9 +38,9 @@ importers:
       '@orpc/server':
         specifier: ^1.13.13
         version: 1.13.13
-      '@orpc/solid-query':
+      '@orpc/tanstack-query':
         specifier: ^1.13.13
-        version: 1.13.13(@orpc/client@1.13.13)(@tanstack/query-core@5.95.2)(@tanstack/solid-query@5.95.2(solid-js@1.9.12))(solid-js@1.9.12)
+        version: 1.13.13(@orpc/client@1.13.13)(@tanstack/query-core@5.95.2)
       '@repo/api':
         specifier: workspace:*
         version: link:../../packages/api
@@ -1000,13 +997,6 @@ packages:
     peerDependenciesMeta:
       '@opentelemetry/api':
         optional: true
-
-  '@orpc/solid-query@1.13.13':
-    resolution: {integrity: sha512-CAurLhOSxn8tOxbWSFuvHT27A/vy+c47PT6awbknDCB6F9spVOzJFeBaeYfJh8y1noI54qsnKq1UwaBZ91KHZA==}
-    peerDependencies:
-      '@orpc/client': 1.13.13
-      '@tanstack/solid-query': '>=5.80.2'
-      solid-js: '>=1.9.0'
 
   '@orpc/standard-server-aws-lambda@1.13.13':
     resolution: {integrity: sha512-e7310DnN6FSpRgR5gQpwvwg2B3uR+NoT7qlnyQWsjxQGr95L4GST3hRNSsQdQyXmFx1jvCCp0i3kAE9SJyvU6A==}
@@ -3530,17 +3520,6 @@ snapshots:
     dependencies:
       radash: 12.1.1
       type-fest: 5.5.0
-
-  '@orpc/solid-query@1.13.13(@orpc/client@1.13.13)(@tanstack/query-core@5.95.2)(@tanstack/solid-query@5.95.2(solid-js@1.9.12))(solid-js@1.9.12)':
-    dependencies:
-      '@orpc/client': 1.13.13
-      '@orpc/shared': 1.13.13
-      '@orpc/tanstack-query': 1.13.13(@orpc/client@1.13.13)(@tanstack/query-core@5.95.2)
-      '@tanstack/solid-query': 5.95.2(solid-js@1.9.12)
-      solid-js: 1.9.12
-    transitivePeerDependencies:
-      - '@opentelemetry/api'
-      - '@tanstack/query-core'
 
   '@orpc/standard-server-aws-lambda@1.13.13':
     dependencies:

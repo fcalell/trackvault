@@ -28,14 +28,10 @@ export const Route = createFileRoute("/quality/duplicates")({
 	component: DuplicatesPage,
 });
 
-type DuplicateTrack = {
-	id: string;
-	title: string | null;
-	artist: string | null;
-	bitrate: number | null;
-	filepath: string | null;
-	filename: string | null;
-};
+type FindDuplicatesResult = Awaited<
+	ReturnType<typeof orpc.library.findDuplicates.call>
+>;
+type DuplicateTrack = FindDuplicatesResult["duplicateGroups"][number][number];
 
 function DuplicatesPage() {
 	const [probability, setProbability] = createSignal(0.8);

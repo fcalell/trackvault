@@ -6,6 +6,3 @@ export const localFiles = sqliteTable("local_files", {
 	filename: text("filename").notNull(),
 	indexedAt: integer("indexedAt"),
 });
-
-export type LocalFileRow = typeof localFiles.$inferSelect;
-export type InsertLocalFileRow = typeof localFiles.$inferInsert;

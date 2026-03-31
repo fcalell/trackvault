@@ -1,9 +1,8 @@
+import type { TrackWithFile } from "@repo/schema/library";
 import { createRoot, createSignal } from "solid-js";
 
-export type Track = {
-	title: string;
-	artist: string;
-	audioSrc: string;
+export type Track = Pick<TrackWithFile, "title" | "artist"> & {
+	filepath: string;
 };
 
 function createPlayerStore() {
@@ -15,7 +14,7 @@ function createPlayerStore() {
 
 	function play(track: Track) {
 		const current = currentTrack();
-		if (current?.audioSrc === track.audioSrc) {
+		if (current?.filepath === track.filepath) {
 			setIsPlaying(true);
 			return;
 		}

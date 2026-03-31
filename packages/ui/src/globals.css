@@ -52,15 +52,6 @@
 	--duration-fast: 100ms;
 	--duration-base: 150ms;
 	--ease: cubic-bezier(0.16, 1, 0.3, 1);
-
-	/* --- Shadows (disabled) --- */
-	--shadow-sm: none;
-	--shadow-md: none;
-	--shadow-lg: none;
-	--shadow-xl: none;
-
-	/* --- Radius (zero) --- */
-	--radius: 0;
 }
 
 @theme inline {

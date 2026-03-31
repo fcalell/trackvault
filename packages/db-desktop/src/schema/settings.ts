@@ -5,6 +5,3 @@ export const settings = sqliteTable("settings", {
 	libraryPath: text("libraryPath").notNull(),
 	lowBitrateThreshold: integer("lowBitrateThreshold").default(320),
 });
-
-export type SettingsRow = typeof settings.$inferSelect;
-export type InsertSettingsRow = typeof settings.$inferInsert;

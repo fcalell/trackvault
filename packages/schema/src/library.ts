@@ -10,11 +10,9 @@ export const trackSchema = z.object({
 	comment: z.string().nullable(),
 	bitrate: z.number().int().nullable(),
 	duration: z.number().nullable(),
-	createdAt: z.number().int().nullable(),
-	updatedAt: z.number().int().nullable(),
+	createdAt: z.number().int(),
+	updatedAt: z.number().int(),
 });
-
-export type Track = z.infer<typeof trackSchema>;
 
 export const localFileSchema = z.object({
 	id: z.uuid(),
@@ -22,8 +20,6 @@ export const localFileSchema = z.object({
 	filename: z.string(),
 	indexedAt: z.number().int().nullable(),
 });
-
-export type LocalFile = z.infer<typeof localFileSchema>;
 
 export const trackWithFileSchema = trackSchema.extend({
 	filepath: z.string().nullable(),
@@ -36,15 +32,11 @@ export const deleteFileInputSchema = z.object({
 	id: z.uuid(),
 });
 
-export type DeleteFileInput = z.infer<typeof deleteFileInputSchema>;
-
 export const findDuplicatesInputSchema = z.object({
 	probability: z.number().min(0.1).max(1),
 	matchTags: z.boolean(),
 	matchFilename: z.boolean(),
 });
-
-export type FindDuplicatesInput = z.infer<typeof findDuplicatesInputSchema>;
 
 export const updateTrackInputSchema = z.object({
 	id: z.uuid(),
@@ -56,10 +48,8 @@ export const updateTrackInputSchema = z.object({
 	comment: z.string().optional(),
 });
 
-export type UpdateTrackInput = z.infer<typeof updateTrackInputSchema>;
-
 export const batchUpdateInputSchema = z.object({
-	ids: z.array(z.uuid()),
+	ids: z.array(z.uuid()).max(500),
 	fields: z.object({
 		artist: z.string().optional(),
 		album: z.string().optional(),
@@ -69,10 +59,6 @@ export const batchUpdateInputSchema = z.object({
 	}),
 });
 
-export type BatchUpdateInput = z.infer<typeof batchUpdateInputSchema>;
-
 export const batchDeleteInputSchema = z.object({
-	ids: z.array(z.uuid()),
+	ids: z.array(z.uuid()).max(500),
 });
-
-export type BatchDeleteInput = z.infer<typeof batchDeleteInputSchema>;

@@ -22,7 +22,7 @@ function PlayerInner(props: { track: Accessor<Track> }) {
 
 	createEffect(() => {
 		const track = props.track();
-		audioRef.src = `local-file://${track.audioSrc}`;
+		audioRef.src = `local-file://${track.filepath}`;
 		audioRef.load();
 		audioRef.play();
 	});

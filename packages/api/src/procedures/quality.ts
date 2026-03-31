@@ -1,6 +1,5 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
-import { ORPCError } from "@orpc/server";
 import { STANDARD_GENRES } from "@repo/constants/genres";
 import { tracks } from "@repo/db/schema";
 import { localFiles } from "@repo/db-desktop/schema";
@@ -8,39 +7,36 @@ import {
 	fileOrganizerInputSchema,
 	genreNormalizationApplyInputSchema,
 } from "@repo/schema/quality";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import NodeID3 from "node-id3";
+import { getLibraryPath, requireDesktopDb } from "#lib/context";
 import type { BaseOrpcContext } from "#lib/orpc";
 import { baseProcedure } from "#lib/orpc";
 import { requirePlatform } from "#middleware/platform";
+import { isUnderDirectory } from "#utils/path";
 import { compareTwoStrings } from "#utils/similarity";
-
-function requireDesktopDb(context: BaseOrpcContext) {
-	if (!context.desktopDb) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Desktop database not available",
-		});
-	}
-	return context.desktopDb;
-}
-
-async function getLibraryPath(
-	desktopDb: NonNullable<BaseOrpcContext["desktopDb"]>,
-) {
-	const config = await desktopDb.query.settings.findFirst();
-	if (!config?.libraryPath) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Library path not configured",
-		});
-	}
-	return config.libraryPath;
-}
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: needed to strip control chars from filenames
 const UNSAFE_FILENAME_RE = /[<>:"/\\|?*\x00-\x1f]/g;
 
 function sanitizeFilename(name: string): string {
 	return name.replace(UNSAFE_FILENAME_RE, "_").trim();
+}
+
+function resolvePattern(
+	pattern: string,
+	track: {
+		title: string | null;
+		artist: string | null;
+		album: string | null;
+		genre: string | null;
+	},
+): string {
+	return pattern
+		.replace(/\{artist\}/g, sanitizeFilename(track.artist || "Unknown Artist"))
+		.replace(/\{album\}/g, sanitizeFilename(track.album || "Unknown Album"))
+		.replace(/\{title\}/g, sanitizeFilename(track.title || "Unknown Title"))
+		.replace(/\{genre\}/g, sanitizeFilename(track.genre || "Unknown Genre"));
 }
 
 // --- Genre Normalization ---
@@ -101,19 +97,20 @@ const genreNormalizationApply = baseProcedure
 				.set({ genre: mapping.to, updatedAt: Date.now() })
 				.where(eq(tracks.genre, mapping.from));
 
-			for (const track of matchingTracks) {
+			const trackIds = matchingTracks.map((t) => t.id);
+			if (trackIds.length > 0) {
 				const fileRows = await desktopDb
 					.select()
 					.from(localFiles)
-					.where(eq(localFiles.id, track.id))
-					.limit(1);
-				const file = fileRows[0];
+					.where(inArray(localFiles.id, trackIds));
 
-				if (file?.filepath) {
-					try {
-						NodeID3.update({ genre: mapping.to }, file.filepath);
-					} catch {
-						// best-effort tag write
+				for (const file of fileRows) {
+					if (file.filepath) {
+						try {
+							NodeID3.update({ genre: mapping.to }, file.filepath);
+						} catch {
+							// best-effort tag write
+						}
 					}
 				}
 			}
@@ -126,20 +123,49 @@ const genreNormalizationApply = baseProcedure
 
 // --- File Organizer ---
 
-function resolvePattern(
+function computeFileOrganizerMoves(
+	allTracks: (typeof tracks.$inferSelect)[],
+	fileMap: Map<string, typeof localFiles.$inferSelect>,
+	libraryPath: string,
 	pattern: string,
-	track: {
-		title: string | null;
-		artist: string | null;
-		album: string | null;
-		genre: string | null;
-	},
-): string {
-	return pattern
-		.replace(/\{artist\}/g, sanitizeFilename(track.artist || "Unknown Artist"))
-		.replace(/\{album\}/g, sanitizeFilename(track.album || "Unknown Album"))
-		.replace(/\{title\}/g, sanitizeFilename(track.title || "Unknown Title"))
-		.replace(/\{genre\}/g, sanitizeFilename(track.genre || "Unknown Genre"));
+) {
+	const moves: Array<{
+		trackId: string;
+		currentPath: string;
+		newPath: string;
+	}> = [];
+	let alreadyInPlace = 0;
+
+	for (const track of allTracks) {
+		const file = fileMap.get(track.id);
+		if (!file) continue;
+
+		const ext = path.extname(file.filepath);
+		const relativePath = `${resolvePattern(pattern, track)}${ext}`;
+		const newPath = path.join(libraryPath, relativePath);
+
+		if (path.resolve(file.filepath) === path.resolve(newPath)) {
+			alreadyInPlace++;
+		} else {
+			moves.push({
+				trackId: track.id,
+				currentPath: file.filepath,
+				newPath,
+			});
+		}
+	}
+
+	return { moves, alreadyInPlace };
+}
+
+async function loadFileOrganizerData(
+	db: BaseOrpcContext["db"],
+	desktopDb: NonNullable<BaseOrpcContext["desktopDb"]>,
+) {
+	const allTracks = await db.select().from(tracks);
+	const allFiles = await desktopDb.select().from(localFiles);
+	const fileMap = new Map(allFiles.map((f) => [f.id, f]));
+	return { allTracks, fileMap };
 }
 
 const fileOrganizerPreview = baseProcedure
@@ -150,37 +176,13 @@ const fileOrganizerPreview = baseProcedure
 		const desktopDb = requireDesktopDb(context);
 		const libraryPath = await getLibraryPath(desktopDb);
 
-		const allTracks = await db.select().from(tracks);
-		const allFiles = await desktopDb.select().from(localFiles);
-		const fileMap = new Map(allFiles.map((f) => [f.id, f]));
-
-		const moves: Array<{
-			trackId: string;
-			currentPath: string;
-			newPath: string;
-		}> = [];
-		let alreadyInPlace = 0;
-
-		for (const track of allTracks) {
-			const file = fileMap.get(track.id);
-			if (!file) continue;
-
-			const ext = path.extname(file.filepath);
-			const relativePath = `${resolvePattern(input.pattern, track)}${ext}`;
-			const newPath = path.join(libraryPath, relativePath);
-
-			if (path.resolve(file.filepath) === path.resolve(newPath)) {
-				alreadyInPlace++;
-			} else {
-				moves.push({
-					trackId: track.id,
-					currentPath: file.filepath,
-					newPath,
-				});
-			}
-		}
-
-		return { moves, alreadyInPlace };
+		const { allTracks, fileMap } = await loadFileOrganizerData(db, desktopDb);
+		return computeFileOrganizerMoves(
+			allTracks,
+			fileMap,
+			libraryPath,
+			input.pattern,
+		);
 	});
 
 const fileOrganizerExecute = baseProcedure
@@ -191,37 +193,40 @@ const fileOrganizerExecute = baseProcedure
 		const desktopDb = requireDesktopDb(context);
 		const libraryPath = await getLibraryPath(desktopDb);
 
-		const allTracks = await db.select().from(tracks);
-		const allFiles = await desktopDb.select().from(localFiles);
-		const fileMap = new Map(allFiles.map((f) => [f.id, f]));
+		const { allTracks, fileMap } = await loadFileOrganizerData(db, desktopDb);
+		const { moves } = computeFileOrganizerMoves(
+			allTracks,
+			fileMap,
+			libraryPath,
+			input.pattern,
+		);
 
 		const errors: Array<{ trackId: string; message: string }> = [];
 		let moved = 0;
 
-		for (const track of allTracks) {
-			const file = fileMap.get(track.id);
-			if (!file) continue;
-
-			const ext = path.extname(file.filepath);
-			const relativePath = `${resolvePattern(input.pattern, track)}${ext}`;
-			const newPath = path.join(libraryPath, relativePath);
-
-			if (path.resolve(file.filepath) === path.resolve(newPath)) continue;
+		for (const move of moves) {
+			if (!isUnderDirectory(move.newPath, libraryPath)) {
+				errors.push({
+					trackId: move.trackId,
+					message: "Resolved path is outside the library directory",
+				});
+				continue;
+			}
 
 			try {
-				await fs.mkdir(path.dirname(newPath), { recursive: true });
-				await fs.rename(file.filepath, newPath);
+				await fs.mkdir(path.dirname(move.newPath), { recursive: true });
+				await fs.rename(move.currentPath, move.newPath);
 				await desktopDb
 					.update(localFiles)
 					.set({
-						filepath: newPath,
-						filename: path.basename(newPath),
+						filepath: move.newPath,
+						filename: path.basename(move.newPath),
 					})
-					.where(eq(localFiles.id, track.id));
+					.where(eq(localFiles.id, move.trackId));
 				moved++;
 			} catch (err) {
 				errors.push({
-					trackId: track.id,
+					trackId: move.trackId,
 					message: err instanceof Error ? err.message : "Unknown error",
 				});
 			}

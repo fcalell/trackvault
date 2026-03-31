@@ -7,7 +7,6 @@
 		"#*": "./src/*.ts"
 	},
 	"exports": {
-		".": "./src/index.ts",
 		"./library": "./src/library.ts",
 		"./quality": "./src/quality.ts",
 		"./settings": "./src/settings.ts",

@@ -20,8 +20,7 @@
 		"check-dependency-version-consistency": "^5.0.1",
 		"npm-check-updates": "^19.6.6",
 		"turbo": "^2.8.21",
-		"typescript-language-server": "^5.1.3",
-		"vite-plugin-electron-renderer": "^0.14.6"
+		"typescript-language-server": "^5.1.3"
 	},
 	"packageManager": "pnpm@10.33.0",
 	"engines": {

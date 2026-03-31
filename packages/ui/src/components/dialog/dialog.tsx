@@ -7,7 +7,6 @@ import { splitProps } from "solid-js";
 import { cn } from "#lib/cn";
 
 const Dialog = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
 
 const DialogPortal = DialogPrimitive.Portal;
 
@@ -126,5 +125,4 @@ export {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 };

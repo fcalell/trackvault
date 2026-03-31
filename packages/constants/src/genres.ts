@@ -53,5 +53,3 @@ export const STANDARD_GENRES = [
 	"Trip-Hop",
 	"World",
 ] as const;
-
-export type StandardGenre = (typeof STANDARD_GENRES)[number];

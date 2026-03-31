@@ -15,40 +15,16 @@ import {
 	findDuplicatesInputSchema,
 	updateTrackInputSchema,
 } from "@repo/schema/library";
-import { eq, inArray, isNull, lt, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { parseFile } from "music-metadata";
 import NodeID3 from "node-id3";
+import { getLibraryPath, requireDesktopDb } from "#lib/context";
 import type { BaseOrpcContext } from "#lib/orpc";
 import { baseProcedure } from "#lib/orpc";
+import { joinTracksWithFiles } from "#lib/tracks";
 import { requirePlatform } from "#middleware/platform";
+import { isUnderDirectory } from "#utils/path";
 import { compareTwoStrings } from "#utils/similarity";
-
-function isUnderDirectory(filePath: string, directory: string): boolean {
-	const resolved = path.resolve(filePath);
-	const resolvedDir = path.resolve(directory);
-	return resolved.startsWith(`${resolvedDir}${path.sep}`);
-}
-
-function requireDesktopDb(context: BaseOrpcContext) {
-	if (!context.desktopDb) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Desktop database not available",
-		});
-	}
-	return context.desktopDb;
-}
-
-async function getLibraryPath(
-	desktopDb: NonNullable<BaseOrpcContext["desktopDb"]>,
-) {
-	const config = await desktopDb.query.settings.findFirst();
-	if (!config?.libraryPath) {
-		throw new ORPCError("PRECONDITION_FAILED", {
-			message: "Library path not configured",
-		});
-	}
-	return config.libraryPath;
-}
 
 async function readAudioFiles(libraryPath: string) {
 	const entries = await fs.readdir(libraryPath, { recursive: true });
@@ -74,6 +50,59 @@ async function parseTrackMetadata(filepath: string) {
 	};
 }
 
+function buildID3TagUpdate(fields: {
+	title?: string | null;
+	artist?: string | null;
+	album?: string | null;
+	genre?: string | null;
+	year?: number | null;
+	comment?: string | null;
+}): Record<string, unknown> {
+	const tagUpdate: Record<string, unknown> = {};
+	if (fields.title !== undefined) tagUpdate.title = fields.title;
+	if (fields.artist !== undefined) tagUpdate.artist = fields.artist;
+	if (fields.album !== undefined) tagUpdate.album = fields.album;
+	if (fields.genre !== undefined) tagUpdate.genre = fields.genre;
+	if (fields.year !== undefined) tagUpdate.year = String(fields.year);
+	if (fields.comment !== undefined)
+		tagUpdate.comment = { language: "eng", text: fields.comment };
+	return tagUpdate;
+}
+
+async function syncNewFiles(
+	db: BaseOrpcContext["db"],
+	desktopDb: NonNullable<BaseOrpcContext["desktopDb"]>,
+	filePaths: string[],
+) {
+	const existingFiles = await desktopDb.select().from(localFiles);
+	const existingPaths = new Set(existingFiles.map((f) => f.filepath));
+
+	const now = Date.now();
+	const newTracks: (typeof tracks.$inferInsert)[] = [];
+	const newLocalFiles: (typeof localFiles.$inferInsert)[] = [];
+
+	for (const filepath of filePaths) {
+		if (existingPaths.has(filepath)) continue;
+
+		const meta = await parseTrackMetadata(filepath);
+		const id = randomUUID();
+		newTracks.push({ id, ...meta, createdAt: now, updatedAt: now });
+		newLocalFiles.push({
+			id,
+			filepath,
+			filename: path.basename(filepath),
+			indexedAt: now,
+		});
+	}
+
+	if (newTracks.length > 0) {
+		await db.insert(tracks).values(newTracks);
+		await desktopDb.insert(localFiles).values(newLocalFiles);
+	}
+
+	return { added: newTracks.length, existingFiles };
+}
+
 const scan = baseProcedure
 	.use(requirePlatform("electron", "node"))
 	.handler(async ({ context }) => {
@@ -82,63 +111,14 @@ const scan = baseProcedure
 		const libraryPath = await getLibraryPath(desktopDb);
 
 		const audioFiles = await readAudioFiles(libraryPath);
-		const existingFiles = await desktopDb.select().from(localFiles);
-		const existingPaths = new Set(existingFiles.map((f) => f.filepath));
+		const filePaths = audioFiles.map((file) => path.join(libraryPath, file));
 
-		const now = Date.now();
-		const newTracks: (typeof tracks.$inferInsert)[] = [];
-		const newLocalFiles: (typeof localFiles.$inferInsert)[] = [];
-
-		for (const file of audioFiles) {
-			const filepath = path.join(libraryPath, file);
-			if (existingPaths.has(filepath)) continue;
-
-			const meta = await parseTrackMetadata(filepath);
-			const id = randomUUID();
-			newTracks.push({
-				id,
-				...meta,
-				createdAt: now,
-				updatedAt: now,
-			});
-			newLocalFiles.push({
-				id,
-				filepath,
-				filename: path.basename(file),
-				indexedAt: now,
-			});
-		}
-
-		if (newTracks.length > 0) {
-			await db.insert(tracks).values(newTracks);
-			await desktopDb.insert(localFiles).values(newLocalFiles);
-		}
-
-		const allTracks = await db.select().from(tracks);
-		const allFiles = await desktopDb.select().from(localFiles);
-		const fileMap = new Map(allFiles.map((f) => [f.id, f]));
-
-		return {
-			fileList: allTracks.map((t) => ({
-				...t,
-				filepath: fileMap.get(t.id)?.filepath ?? null,
-				filename: fileMap.get(t.id)?.filename ?? null,
-			})),
-		};
+		const { added } = await syncNewFiles(db, desktopDb, filePaths);
+		return { added };
 	});
 
 const list = baseProcedure.handler(async ({ context }) => {
-	const allTracks = await context.db.select().from(tracks);
-	if (context.desktopDb) {
-		const allFiles = await context.desktopDb.select().from(localFiles);
-		const fileMap = new Map(allFiles.map((f) => [f.id, f]));
-		return allTracks.map((t) => ({
-			...t,
-			filepath: fileMap.get(t.id)?.filepath ?? null,
-			filename: fileMap.get(t.id)?.filename ?? null,
-		}));
-	}
-	return allTracks.map((t) => ({ ...t, filepath: null, filename: null }));
+	return joinTracksWithFiles(context.db, context.desktopDb);
 });
 
 const facets = baseProcedure.handler(async ({ context }) => {
@@ -176,30 +156,15 @@ const facets = baseProcedure.handler(async ({ context }) => {
 		.where(sql`${tracks.genre} is not null`)
 		.groupBy(tracks.genre);
 
-	const [noArtistResult] = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(tracks)
-		.where(isNull(tracks.artist));
-
-	const [noGenreResult] = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(tracks)
-		.where(isNull(tracks.genre));
-
-	const [noAlbumResult] = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(tracks)
-		.where(isNull(tracks.album));
-
-	const [noYearResult] = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(tracks)
-		.where(isNull(tracks.year));
-
-	const [lowBitrateResult] = await db
-		.select({ count: sql<number>`count(*)` })
-		.from(tracks)
-		.where(lt(tracks.bitrate, LOW_BITRATE_THRESHOLD));
+	const [issuesResult] = await db
+		.select({
+			noArtist: sql<number>`sum(case when ${tracks.artist} is null then 1 else 0 end)`,
+			noGenre: sql<number>`sum(case when ${tracks.genre} is null then 1 else 0 end)`,
+			noAlbum: sql<number>`sum(case when ${tracks.album} is null then 1 else 0 end)`,
+			noYear: sql<number>`sum(case when ${tracks.year} is null then 1 else 0 end)`,
+			lowBitrate: sql<number>`sum(case when ${tracks.bitrate} < ${LOW_BITRATE_THRESHOLD} then 1 else 0 end)`,
+		})
+		.from(tracks);
 
 	return {
 		totalCount,
@@ -210,11 +175,11 @@ const facets = baseProcedure.handler(async ({ context }) => {
 		albums: albumRows.map((r) => ({ name: r.name as string, count: r.count })),
 		genres: genreRows.map((r) => ({ name: r.name as string, count: r.count })),
 		issues: {
-			noArtist: noArtistResult?.count ?? 0,
-			noGenre: noGenreResult?.count ?? 0,
-			noAlbum: noAlbumResult?.count ?? 0,
-			noYear: noYearResult?.count ?? 0,
-			lowBitrate: lowBitrateResult?.count ?? 0,
+			noArtist: issuesResult?.noArtist ?? 0,
+			noGenre: issuesResult?.noGenre ?? 0,
+			noAlbum: issuesResult?.noAlbum ?? 0,
+			noYear: issuesResult?.noYear ?? 0,
+			lowBitrate: issuesResult?.lowBitrate ?? 0,
 		},
 	};
 });
@@ -242,14 +207,7 @@ const update = baseProcedure
 		const file = fileRows[0];
 
 		if (file?.filepath) {
-			const tagUpdate: Record<string, unknown> = {};
-			if (fields.title !== undefined) tagUpdate.title = fields.title;
-			if (fields.artist !== undefined) tagUpdate.artist = fields.artist;
-			if (fields.album !== undefined) tagUpdate.album = fields.album;
-			if (fields.genre !== undefined) tagUpdate.genre = fields.genre;
-			if (fields.year !== undefined) tagUpdate.year = String(fields.year);
-			if (fields.comment !== undefined)
-				tagUpdate.comment = { language: "eng", text: fields.comment };
+			const tagUpdate = buildID3TagUpdate(fields);
 			NodeID3.update(tagUpdate, file.filepath);
 		}
 
@@ -291,30 +249,17 @@ const batchUpdate = baseProcedure
 			}
 		});
 
+		const fileRows = await desktopDb
+			.select()
+			.from(localFiles)
+			.where(inArray(localFiles.id, input.ids));
+		const fileMap = new Map(fileRows.map((f) => [f.id, f]));
+		const tagUpdate = buildID3TagUpdate(input.fields);
+
 		for (const id of input.ids) {
 			try {
-				const fileRows = await desktopDb
-					.select()
-					.from(localFiles)
-					.where(eq(localFiles.id, id))
-					.limit(1);
-				const file = fileRows[0];
-
+				const file = fileMap.get(id);
 				if (file?.filepath) {
-					const tagUpdate: Record<string, unknown> = {};
-					if (input.fields.artist !== undefined)
-						tagUpdate.artist = input.fields.artist;
-					if (input.fields.album !== undefined)
-						tagUpdate.album = input.fields.album;
-					if (input.fields.genre !== undefined)
-						tagUpdate.genre = input.fields.genre;
-					if (input.fields.year !== undefined)
-						tagUpdate.year = String(input.fields.year);
-					if (input.fields.comment !== undefined)
-						tagUpdate.comment = {
-							language: "eng",
-							text: input.fields.comment,
-						};
 					NodeID3.update(tagUpdate, file.filepath);
 				}
 				updated++;
@@ -421,38 +366,15 @@ const rescan = baseProcedure
 		const libraryPath = await getLibraryPath(desktopDb);
 
 		const audioFiles = await readAudioFiles(libraryPath);
-		const diskPaths = new Set(
-			audioFiles.map((file) => path.join(libraryPath, file)),
+		const filePaths = audioFiles.map((file) => path.join(libraryPath, file));
+		const diskPaths = new Set(filePaths);
+
+		const { added, existingFiles } = await syncNewFiles(
+			db,
+			desktopDb,
+			filePaths,
 		);
 
-		const existingFiles = await desktopDb.select().from(localFiles);
-		const existingPaths = new Set(existingFiles.map((f) => f.filepath));
-
-		// New files: on disk but not in DB
-		const now = Date.now();
-		const newTracks: (typeof tracks.$inferInsert)[] = [];
-		const newLocalFiles: (typeof localFiles.$inferInsert)[] = [];
-
-		for (const diskPath of diskPaths) {
-			if (existingPaths.has(diskPath)) continue;
-
-			const meta = await parseTrackMetadata(diskPath);
-			const id = randomUUID();
-			newTracks.push({ id, ...meta, createdAt: now, updatedAt: now });
-			newLocalFiles.push({
-				id,
-				filepath: diskPath,
-				filename: path.basename(diskPath),
-				indexedAt: now,
-			});
-		}
-
-		if (newTracks.length > 0) {
-			await db.insert(tracks).values(newTracks);
-			await desktopDb.insert(localFiles).values(newLocalFiles);
-		}
-
-		// Deleted files: in DB but not on disk
 		const removedIds: string[] = [];
 		for (const file of existingFiles) {
 			if (!diskPaths.has(file.filepath)) {
@@ -467,27 +389,13 @@ const rescan = baseProcedure
 				.where(inArray(localFiles.id, removedIds));
 		}
 
-		return { added: newTracks.length, removed: removedIds.length };
+		return { added, removed: removedIds.length };
 	});
 
 const findDuplicates = baseProcedure
 	.input(findDuplicatesInputSchema)
 	.handler(async ({ input, context }) => {
-		const allTracks = await context.db.select().from(tracks);
-
-		let fileMap:
-			| Map<string, { filepath: string; filename: string }>
-			| undefined;
-		if (context.desktopDb) {
-			const allFiles = await context.desktopDb.select().from(localFiles);
-			fileMap = new Map(allFiles.map((f) => [f.id, f]));
-		}
-
-		const files = allTracks.map((t) => ({
-			...t,
-			filepath: fileMap?.get(t.id)?.filepath ?? null,
-			filename: fileMap?.get(t.id)?.filename ?? null,
-		}));
+		const files = await joinTracksWithFiles(context.db, context.desktopDb);
 
 		type FileEntry = (typeof files)[number];
 		const calculateSimilarity = (file1: FileEntry, file2: FileEntry) => {

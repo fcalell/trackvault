@@ -1,5 +1,5 @@
 {
-	"name": "trackvault",
+	"name": "@repo/desktop",
 	"productName": "TrackVault",
 	"version": "0.1.0",
 	"private": true,
@@ -21,7 +21,7 @@
 		"@fontsource-variable/jetbrains-mono": "^5.2.8",
 		"@orpc/client": "^1.13.13",
 		"@orpc/server": "^1.13.13",
-		"@orpc/solid-query": "^1.13.13",
+		"@orpc/tanstack-query": "^1.13.13",
 		"@repo/api": "workspace:*",
 		"@repo/constants": "workspace:*",
 		"@repo/db": "workspace:*",

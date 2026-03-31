@@ -7,13 +7,8 @@ import { toast } from "@repo/ui/components/toast";
 import { X } from "lucide-solid";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { orpc } from "#lib/api";
+import { formatDuration } from "#lib/format";
 import { useMutation, useQueryClient } from "#lib/query";
-
-function formatDuration(seconds: number) {
-	const m = Math.floor(seconds / 60);
-	const s = Math.floor(seconds % 60);
-	return `${m}:${s.toString().padStart(2, "0")}`;
-}
 
 export default function TrackDetailPanel(props: {
 	track: TrackWithFile | null;

@@ -1,20 +1,16 @@
 import { z } from "zod/v4";
 
 export const genreNormalizationApplyInputSchema = z.object({
-	mappings: z.array(
-		z.object({
-			from: z.string(),
-			to: z.string(),
-		}),
-	),
+	mappings: z
+		.array(
+			z.object({
+				from: z.string().min(1),
+				to: z.string().min(1),
+			}),
+		)
+		.max(500),
 });
-
-export type GenreNormalizationApplyInput = z.infer<
-	typeof genreNormalizationApplyInputSchema
->;
 
 export const fileOrganizerInputSchema = z.object({
-	pattern: z.string(),
+	pattern: z.string().min(1),
 });
-
-export type FileOrganizerInput = z.infer<typeof fileOrganizerInputSchema>;

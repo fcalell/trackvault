@@ -65,4 +65,4 @@ const Button = <T extends ValidComponent = "button">(
 };
 
 export type { ButtonProps };
-export { Button, buttonVariants };
+export { Button };

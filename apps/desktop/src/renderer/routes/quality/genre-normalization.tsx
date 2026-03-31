@@ -27,12 +27,6 @@ export const Route = createFileRoute("/quality/genre-normalization")({
 	component: GenreNormalizationPage,
 });
 
-type ScanResult = {
-	current: string;
-	suggested: string;
-	trackCount: number;
-};
-
 function GenreNormalizationPage() {
 	const [mappings, setMappings] = createSignal<Map<string, string>>(new Map());
 
@@ -45,8 +39,8 @@ function GenreNormalizationPage() {
 	);
 
 	function handleScan() {
-		scan.mutate(undefined as never, {
-			onSuccess(data: ScanResult[]) {
+		scan.mutate(undefined, {
+			onSuccess(data) {
 				const initial = new Map<string, string>();
 				for (const row of data) {
 					initial.set(row.current, row.suggested);
@@ -99,7 +93,7 @@ function GenreNormalizationPage() {
 	}
 
 	const nonStandardResults = () => {
-		const data = scan.data as ScanResult[] | undefined;
+		const data = scan.data;
 		if (!data) return [];
 		return data.filter(
 			(r) =>

@@ -1,7 +1,7 @@
 import { LOW_BITRATE_THRESHOLD } from "@repo/constants/audio";
 import type { TrackWithFile } from "@repo/schema/library";
 import { QueryBoundary } from "@repo/ui/components/query-boundary";
-import { createFileRoute, useLocation } from "@tanstack/solid-router";
+import { createFileRoute } from "@tanstack/solid-router";
 import type { RowSelectionState } from "@tanstack/solid-table";
 import { createMemo, createSignal } from "solid-js";
 import BulkEditDialog from "#components/bulk-edit-dialog";
@@ -11,8 +11,19 @@ import TrackDetailPanel from "#components/track-detail-panel";
 import { orpc } from "#lib/api";
 import { useQuery } from "#lib/query";
 
+type LibrarySearch = {
+	facet?: string;
+	value?: string;
+	issue?: string;
+};
+
 export const Route = createFileRoute("/library/")({
 	component: LibraryPage,
+	validateSearch: (search: Record<string, unknown>): LibrarySearch => ({
+		facet: typeof search.facet === "string" ? search.facet : undefined,
+		value: typeof search.value === "string" ? search.value : undefined,
+		issue: typeof search.issue === "string" ? search.issue : undefined,
+	}),
 });
 
 function applyFilter(
@@ -52,8 +63,8 @@ function applyFilter(
 }
 
 function LibraryPage() {
-	const library = useQuery(() => orpc.library.scan.queryOptions({}));
-	const location = useLocation();
+	const library = useQuery(() => orpc.library.list.queryOptions({}));
+	const search = Route.useSearch();
 
 	const [rowSelection, setRowSelection] = createSignal<RowSelectionState>({});
 	const [detailTrack, setDetailTrack] = createSignal<TrackWithFile | null>(
@@ -66,12 +77,11 @@ function LibraryPage() {
 	const filteredData = createMemo(() => {
 		const data = library.data;
 		if (!data) return [];
-		const params = new URLSearchParams(location().search);
 		return applyFilter(
-			data.fileList,
-			params.get("facet"),
-			params.get("value"),
-			params.get("issue"),
+			data,
+			search().facet ?? null,
+			search().value ?? null,
+			search().issue ?? null,
 		);
 	});
 
@@ -88,7 +98,7 @@ function LibraryPage() {
 	}
 
 	return (
-		<QueryBoundary query={library} loadingText="scanning library...">
+		<QueryBoundary query={library} loadingText="loading library...">
 			{() => (
 				<div class="relative flex h-full">
 					<div class="flex-1 overflow-hidden p-4">
