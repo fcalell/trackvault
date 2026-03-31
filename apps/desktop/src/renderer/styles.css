@@ -1,0 +1,3 @@
+@import "@repo/ui/globals.css";
+@import "@fontsource-variable/jetbrains-mono";
+@source "../../../packages/ui/src/components";

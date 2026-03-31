@@ -1,0 +1,26 @@
+{
+	"name": "@repo/constants",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"imports": {
+		"#*": "./src/*.ts"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./genres": "./src/genres.ts",
+		"./audio": "./src/audio.ts",
+		"./file-organizer": "./src/file-organizer.ts",
+		"./platforms": "./src/platforms.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit --pretty || true",
+		"lint": "biome check --write --unsafe",
+		"check": "pnpm check-types && pnpm lint",
+		"clear": "rm -rf node_modules .turbo"
+	},
+	"devDependencies": {
+		"@repo/typescript-config": "workspace:*",
+		"typescript": "^6.0.2"
+	}
+}

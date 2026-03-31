@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@claude-plugins-official": true,
+    "impeccable@impeccable": true,
+    "skill-creator@claude-plugins-official": true
+  }
+}

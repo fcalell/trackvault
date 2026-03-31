@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TrackVault — Layout + Library Wireframe v2</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-0: oklch(0.13 0 0);
+    --bg-1: oklch(0.16 0 0);
+    --bg-2: oklch(0.20 0 0);
+    --bg-3: oklch(0.24 0 0);
+    --border: oklch(0.30 0 0);
+    --input: oklch(0.25 0 0);
+    --fg: oklch(0.93 0 0);
+    --fg-muted: oklch(0.55 0 0);
+    --brand: oklch(0.65 0.25 260);
+    --error: oklch(0.65 0.25 25);
+    --warning: oklch(0.80 0.15 85);
+    --success: oklch(0.80 0.25 145);
+  }
+
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg-0);
+    color: var(--fg);
+    font-size: 13px;
+    line-height: 1.5;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    grid-template-columns: 240px 1fr;
+    grid-template-areas:
+      "header  header"
+      "sidebar main"
+      "player  player";
+    height: 100vh;
+  }
+
+  /* ========== HEADER ========== */
+  .header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    border-bottom: 3px solid var(--border);
+    background: var(--bg-1);
+    height: 48px;
+  }
+
+  .header-logo {
+    padding: 0 20px;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--brand);
+    border-right: 3px solid var(--border);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    min-width: 240px;
+  }
+
+  .header-nav {
+    display: flex;
+    height: 100%;
+  }
+
+  .header-nav a {
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--fg-muted);
+    text-decoration: none;
+    border-right: 1px solid var(--input);
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .header-nav a:hover { background: var(--bg-2); color: var(--fg); }
+
+  .header-nav a.active {
+    color: var(--fg);
+    background: var(--bg-0);
+    box-shadow: inset 0 -2px 0 var(--brand);
+  }
+
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    height: 100%;
+  }
+
+  .header-actions button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 100%;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--input);
+    color: var(--fg-muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 16px;
+  }
+
+  .header-actions button:hover { background: var(--bg-2); color: var(--fg); }
+
+  /* ========== SIDEBAR ========== */
+  .sidebar {
+    grid-area: sidebar;
+    background: var(--bg-1);
+    border-right: 3px solid var(--border);
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    border-bottom: 1px solid var(--input);
+  }
+
+  .sidebar-section-title {
+    padding: 14px 16px 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--fg-muted);
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 12px;
+    color: var(--fg-muted);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .sidebar-item:hover { background: var(--bg-2); color: var(--fg); }
+
+  .sidebar-item.active {
+    color: var(--fg);
+    background: var(--bg-0);
+    box-shadow: inset 2px 0 0 var(--brand);
+  }
+
+  .sidebar-item .count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--fg-muted);
+    background: var(--bg-3);
+    padding: 1px 6px;
+    font-weight: 700;
+  }
+
+  .sidebar-item .icon {
+    width: 14px;
+    text-align: center;
+    font-size: 11px;
+  }
+
+  .sidebar-item .chevron {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--fg-muted);
+    transition: transform 0.15s;
+  }
+
+  .sidebar-item.expanded .chevron {
+    transform: rotate(90deg);
+  }
+
+  /* Nested items (expanded facet) */
+  .sidebar-nested {
+    background: var(--bg-0);
+    border-top: 1px solid var(--input);
+    border-bottom: 1px solid var(--input);
+  }
+
+  .sidebar-nested .sidebar-item {
+    padding-left: 32px;
+    font-size: 11px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .sidebar-search {
+    padding: 6px 16px 6px 32px;
+    background: var(--bg-0);
+  }
+
+  .sidebar-search input {
+    width: 100%;
+    padding: 4px 8px;
+    background: var(--bg-3);
+    border: 1px solid var(--input);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 11px;
+    outline: none;
+  }
+
+  .sidebar-search input:focus { border-color: var(--brand); }
+  .sidebar-search input::placeholder { color: var(--fg-muted); }
+
+  /* Issue dots */
+  .dot {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+
+  .dot-error { background: var(--error); }
+  .dot-warning { background: var(--warning); }
+
+  /* ========== MAIN ========== */
+  .main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg-0);
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--input);
+    background: var(--bg-1);
+  }
+
+  .search-input {
+    flex: 1;
+    max-width: 360px;
+    padding: 7px 12px;
+    background: var(--bg-3);
+    border: 1px solid var(--input);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 12px;
+    outline: none;
+  }
+
+  .search-input::placeholder { color: var(--fg-muted); }
+  .search-input:focus { border-color: var(--brand); }
+
+  .toolbar-stats {
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--fg-muted);
+  }
+
+  .btn {
+    padding: 7px 14px;
+    background: var(--bg-3);
+    border: 1px solid var(--input);
+    color: var(--fg);
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+  }
+
+  .btn:hover { background: var(--bg-2); }
+  .btn-brand { background: var(--brand); border-color: var(--brand); color: oklch(0.13 0 0); }
+  .btn-brand:hover { opacity: 0.9; }
+
+  /* ========== TABLE ========== */
+  .table-wrap { flex: 1; overflow-y: auto; }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead { position: sticky; top: 0; z-index: 2; }
+
+  th {
+    padding: 10px 14px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--fg-muted);
+    text-align: left;
+    background: var(--bg-1);
+    border-bottom: 2px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  th:hover { color: var(--fg); }
+  th .sort-arrow { font-size: 9px; margin-left: 4px; opacity: 0.5; }
+  th.sorted .sort-arrow { opacity: 1; color: var(--brand); }
+
+  tr { border-bottom: 1px solid var(--input); transition: background 0.08s; }
+  tr:hover { background: var(--bg-1); }
+
+  tr.selected {
+    background: oklch(0.18 0.05 260);
+    box-shadow: inset 2px 0 0 var(--brand);
+  }
+
+  tr.playing { background: oklch(0.17 0.03 260); }
+
+  td {
+    padding: 12px 14px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 220px;
+  }
+
+  td.title-col { font-weight: 700; max-width: 280px; }
+  td.cell-missing { color: var(--fg-muted); font-style: italic; }
+
+  /* Quality indicators — colored dots */
+  .qi-dots {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+  }
+
+  .qi-dot {
+    width: 10px;
+    height: 10px;
+    display: block;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .qi-dot[data-tooltip]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bg-3);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    padding: 3px 8px;
+    font-size: 10px;
+    white-space: nowrap;
+    z-index: 10;
+  }
+
+  .qi-dot-error { background: var(--error); }
+  .qi-dot-warning { background: var(--warning); }
+
+  /* Genre badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: var(--bg-3);
+    border: 1px solid var(--input);
+    margin-right: 4px;
+  }
+
+  .bitrate-low { color: var(--error); }
+  .bitrate-mid { color: var(--warning); }
+  .bitrate-good { color: var(--fg); }
+
+  /* Checkbox */
+  .row-checkbox {
+    width: 14px;
+    height: 14px;
+    appearance: none;
+    background: var(--bg-3);
+    border: 1px solid var(--input);
+    cursor: pointer;
+    position: relative;
+    vertical-align: middle;
+  }
+
+  .row-checkbox:checked { background: var(--brand); border-color: var(--brand); }
+
+  .row-checkbox:checked::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px; right: 2px; bottom: 2px;
+    background: oklch(0.13 0 0);
+  }
+
+  /* ========== FLOATING ACTION BAR ========== */
+  .action-bar {
+    position: fixed;
+    bottom: 84px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--bg-1);
+    border: 2px solid var(--border);
+    box-shadow: 0 8px 32px oklch(0 0 0 / 0.6);
+    z-index: 10;
+  }
+
+  .action-bar .selection-count {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--brand);
+    padding-right: 16px;
+    border-right: 1px solid var(--input);
+    margin-right: 4px;
+  }
+
+  .action-bar .btn { font-size: 10px; padding: 6px 14px; }
+
+  /* ========== PLAYER BAR ========== */
+  .player {
+    grid-area: player;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 0 20px;
+    height: 56px;
+    background: var(--bg-1);
+    border-top: 3px solid var(--border);
+  }
+
+  .player-track {
+    display: flex;
+    flex-direction: column;
+    min-width: 180px;
+    max-width: 220px;
+    overflow: hidden;
+  }
+
+  .player-title {
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-artist {
+    font-size: 11px;
+    color: var(--fg-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .player-controls { display: flex; align-items: center; gap: 12px; }
+
+  .player-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-3);
+    border: 1px solid var(--input);
+    color: var(--fg);
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+  }
+
+  .player-btn:hover { background: var(--bg-2); }
+
+  .player-progress {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .player-time {
+    font-size: 10px;
+    color: var(--fg-muted);
+    min-width: 40px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .progress-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--bg-3);
+    cursor: pointer;
+  }
+
+  .progress-fill { height: 100%; background: var(--brand); width: 35%; }
+
+  .player-volume {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 120px;
+  }
+
+  .volume-bar { width: 80px; height: 3px; background: var(--bg-3); }
+  .volume-fill { height: 100%; background: var(--fg-muted); width: 70%; }
+
+  /* ========== WIREFRAME LABEL ========== */
+  .wf-label {
+    position: fixed;
+    top: 6px;
+    right: 12px;
+    font-size: 9px;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    z-index: 100;
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+
+<div class="wf-label">wireframe v2 — layout + library</div>
+
+<div class="shell">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-logo">TrackVault</div>
+    <nav class="header-nav">
+      <a href="#" class="active">Library</a>
+      <a href="#">Quality</a>
+      <a href="#">Settings</a>
+    </nav>
+    <div class="header-actions">
+      <button title="Rescan Library">&#8635;</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Browse</div>
+      <div class="sidebar-item active">
+        <span class="icon">*</span> All Tracks <span class="count">2,847</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="icon">#</span> By Artist <span class="chevron">&#9656;</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="icon">#</span> By Album <span class="chevron">&#9656;</span>
+      </div>
+      <div class="sidebar-item expanded">
+        <span class="icon">#</span> By Genre <span class="chevron">&#9662;</span>
+      </div>
+      <!-- Expanded genre list -->
+      <div class="sidebar-nested">
+        <div class="sidebar-search">
+          <input type="text" placeholder="Filter genres..." />
+        </div>
+        <div class="sidebar-item">
+          Electronic <span class="count">412</span>
+        </div>
+        <div class="sidebar-item">
+          House <span class="count">328</span>
+        </div>
+        <div class="sidebar-item">
+          Techno <span class="count">291</span>
+        </div>
+        <div class="sidebar-item">
+          Progressive House <span class="count">186</span>
+        </div>
+        <div class="sidebar-item">
+          Trance <span class="count">142</span>
+        </div>
+        <div class="sidebar-item">
+          Rock <span class="count">134</span>
+        </div>
+        <div class="sidebar-item">
+          Dubstep <span class="count">89</span>
+        </div>
+        <div class="sidebar-item">
+          EDM <span class="count">76</span>
+        </div>
+        <div class="sidebar-item" style="color: var(--fg-muted); font-size:10px;">
+          + 14 more
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Issues</div>
+      <div class="sidebar-item">
+        <span class="dot dot-error"></span> No Artist <span class="count">56</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="dot dot-error"></span> No Genre <span class="count">203</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="dot dot-warning"></span> No Album <span class="count">312</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="dot dot-warning"></span> No Year <span class="count">1,204</span>
+      </div>
+      <div class="sidebar-item">
+        <span class="dot dot-warning"></span> Low Bitrate <span class="count">89</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="toolbar">
+      <input class="search-input" type="text" placeholder="Search tracks..." />
+      <button class="btn">Columns</button>
+      <span class="toolbar-stats">2,847 tracks</span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px; padding-left:14px;"><input type="checkbox" class="row-checkbox" /></th>
+            <th style="width:28px;"></th>
+            <th class="sorted">Title <span class="sort-arrow">&#9650;</span></th>
+            <th>Artist</th>
+            <th>Album</th>
+            <th>Genre</th>
+            <th style="width:50px;">Year</th>
+            <th style="width:50px;">Time</th>
+            <th style="width:50px;">Kbps</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Playing track — no issues -->
+          <tr class="playing">
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--brand); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Midnight City</td>
+            <td>M83</td>
+            <td>Hurry Up, We're Dreaming</td>
+            <td><span class="badge">Electronic</span></td>
+            <td>2011</td>
+            <td>4:03</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Normal — no issues -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Strobe</td>
+            <td>Deadmau5</td>
+            <td>For Lack of a Better Name</td>
+            <td><span class="badge">Prog House</span></td>
+            <td>2009</td>
+            <td>10:33</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Selected — no issues -->
+          <tr class="selected">
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" checked /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Bohemian Rhapsody</td>
+            <td>Queen</td>
+            <td>A Night at the Opera</td>
+            <td><span class="badge">Rock</span></td>
+            <td>1975</td>
+            <td>5:55</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Severe: missing artist, genre, album + low bitrate -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">track_03_final_v2</td>
+            <td class="cell-missing">--</td>
+            <td class="cell-missing">--</td>
+            <td class="cell-missing">--</td>
+            <td class="cell-missing">--</td>
+            <td>3:22</td>
+            <td class="bitrate-low">128</td>
+          </tr>
+
+          <!-- Partial: missing album + low bitrate -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Levels</td>
+            <td>Avicii</td>
+            <td class="cell-missing">--</td>
+            <td><span class="badge">EDM</span></td>
+            <td class="cell-missing">--</td>
+            <td>3:19</td>
+            <td class="bitrate-mid">192</td>
+          </tr>
+
+          <!-- Normal — no issues -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">One More Time</td>
+            <td>Daft Punk</td>
+            <td>Discovery</td>
+            <td><span class="badge">House</span> <span class="badge">Electronic</span></td>
+            <td>2001</td>
+            <td>5:20</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Severe: 4 issues -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">mix_saturday_night</td>
+            <td class="cell-missing">--</td>
+            <td class="cell-missing">--</td>
+            <td class="cell-missing">--</td>
+            <td class="cell-missing">--</td>
+            <td>58:12</td>
+            <td class="bitrate-low">96</td>
+          </tr>
+
+          <!-- Selected — no issues -->
+          <tr class="selected">
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" checked /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Around the World</td>
+            <td>Daft Punk</td>
+            <td>Homework</td>
+            <td><span class="badge">House</span></td>
+            <td>1997</td>
+            <td>7:09</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Normal -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Scary Monsters and Nice Sprites</td>
+            <td>Skrillex</td>
+            <td>Scary Monsters EP</td>
+            <td><span class="badge">Dubstep</span></td>
+            <td>2010</td>
+            <td>4:03</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Sandstorm</td>
+            <td>Darude</td>
+            <td>Before the Storm</td>
+            <td><span class="badge">Trance</span></td>
+            <td>1999</td>
+            <td>3:45</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Single issue: low bitrate -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Insomnia</td>
+            <td>Faithless</td>
+            <td>Reverence</td>
+            <td><span class="badge">Prog House</span></td>
+            <td>1996</td>
+            <td>8:42</td>
+            <td class="bitrate-mid">256</td>
+          </tr>
+
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Titanium</td>
+            <td>David Guetta ft. Sia</td>
+            <td>Nothing but the Beat</td>
+            <td><span class="badge">EDM</span> <span class="badge">Pop</span></td>
+            <td>2011</td>
+            <td>4:05</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <!-- Single issue: no genre -->
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Fade Into Darkness</td>
+            <td>Avicii</td>
+            <td>Fade Into Darkness</td>
+            <td class="cell-missing">--</td>
+            <td>2011</td>
+            <td>3:32</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+
+          <tr>
+            <td style="padding-left:14px;"><input type="checkbox" class="row-checkbox" /></td>
+            <td style="color: var(--fg-muted); font-size: 12px;">&#9654;</td>
+            <td class="title-col">Ghosts 'n' Stuff</td>
+            <td>Deadmau5</td>
+            <td>For Lack of a Better Name</td>
+            <td><span class="badge">Prog House</span></td>
+            <td>2009</td>
+            <td>3:46</td>
+            <td class="bitrate-good">320</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- FLOATING ACTION BAR -->
+  <div class="action-bar">
+    <span class="selection-count">2 selected</span>
+    <button class="btn">Edit Tags</button>
+    <button class="btn">Delete</button>
+    <button class="btn">Organize</button>
+    <button class="btn" style="color: var(--fg-muted);">Deselect</button>
+  </div>
+
+  <!-- PLAYER BAR -->
+  <div class="player">
+    <div class="player-track">
+      <span class="player-title">Midnight City</span>
+      <span class="player-artist">M83</span>
+    </div>
+    <div class="player-controls">
+      <button class="player-btn">||</button>
+    </div>
+    <div class="player-progress">
+      <span class="player-time">1:24</span>
+      <div class="progress-bar"><div class="progress-fill"></div></div>
+      <span class="player-time">4:03</span>
+    </div>
+    <div class="player-volume">
+      <button class="player-btn" style="width:28px; height:28px; font-size:11px;">&#9835;</button>
+      <div class="volume-bar"><div class="volume-fill"></div></div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

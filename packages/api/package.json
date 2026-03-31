@@ -1,0 +1,35 @@
+{
+	"name": "@repo/api",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"imports": {
+		"#*": "./src/*.ts"
+	},
+	"exports": {
+		".": "./src/index.ts",
+		"./orpc": "./src/router.ts"
+	},
+	"scripts": {
+		"check-types": "tsc --noEmit --pretty || true",
+		"lint": "biome check --write --unsafe",
+		"check": "pnpm check-types && pnpm lint",
+		"clear": "rm -rf node_modules .turbo"
+	},
+	"dependencies": {
+		"@orpc/server": "^1.13.13",
+		"@repo/constants": "workspace:*",
+		"@repo/db": "workspace:*",
+		"@repo/db-desktop": "workspace:*",
+		"@repo/schema": "workspace:*",
+		"drizzle-orm": "^0.45.2",
+		"hono": "^4.12.9",
+		"music-metadata": "^11.12.3",
+		"node-id3": "^0.2.9"
+	},
+	"devDependencies": {
+		"@repo/typescript-config": "workspace:*",
+		"@types/node": "^25.5.0",
+		"typescript": "^6.0.2"
+	}
+}
