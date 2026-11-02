@@ -26,11 +26,11 @@ Legend: **M** = must (your list), **S** = suggested by me. The phase is in `reva
 - Browse, search, filter and sort 50k+ tracks instantly. Facets: artist, album, label, genre, BPM range, key, year, rating, format, custom tags, issues.
 - Track record: all facts, waveform, cues (from Rekordbox), playlists it's in, duplicates/versions, change history.
 - Preview player with waveform and keyboard-first navigation (arrows plus space to play).
-- Formats: MP3, AIFF, WAV, FLAC, M4A (whatever Rekordbox plays).
+- Formats: MP3 first. AIFF, WAV, FLAC and M4A follow (R3).
 
 ### 2. Sync server (M)
-- **Hub** on the homelab (Docker): canonical DB and files, serves the web UI. Any PC uses it through a browser, no install.
-- **Agent** (a small daemon) on the DJ Mac: keeps a local replica of the files (content-addressed, delta, resumable), so DJing works offline.
+- **Hub** on the homelab: canonical DB and files, serves the web UI. Any PC uses it through a browser, no install.
+- **Agent** (a small daemon) on each Rekordbox machine (macOS or Windows): keeps a local replica of the files (content-addressed, delta, resumable), so DJing works offline.
 - Agent on any PC (optional): uploads a local folder to the hub's inbox.
 - Device status: what's synced, pending, failed, and free disk space.
 - Later: an S3/R2 backend for the file store.
@@ -39,6 +39,7 @@ Legend: **M** = must (your list), **S** = suggested by me. The phase is in `reva
 - **Read:** collection, playlists and folders, cues/hot cues/memory cues, beatgrids, BPM/key, colours, ratings, My Tags, play history.
 - **Write:** playlists (create, rename, reorder, folders), tags/rating/colour/My Tags, file relinks after the organiser moves files.
 - Build playlists in TrackVault, then they appear in Rekordbox.
+- Several Rekordbox installs stay consistent: the hub merges what each one changed (playlists, tags, cues) and writes it to the others. Each install keeps its own paths and history.
 - Missing-file and broken-link detection on both sides.
 
 ### 4. Reorganise, dedupe, clean up (M)
