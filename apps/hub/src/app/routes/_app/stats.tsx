@@ -3,28 +3,37 @@ import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { Stats } from "@fcalell/plugin-react-ui/components/stats";
 import { createFileRoute } from "@tanstack/react-router";
+import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import { count } from "../../ui/figures.ts";
+import { trackRow } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/stats")({
 	component: LibraryStats,
 });
 
-type Played = {
-	id: string;
-	title: string | null;
-	artist: string | null;
-	playCount: number;
-	lastPlayedAt: number | null;
+type Played = AppRouter["stats"]["played"]["__output"]["most"][number];
+
+const MINOR = "Minor (A)";
+const MAJOR = "Major (B)";
+
+// The wheel's 24 keys as its 12 numbers, each with its minor and major track counts.
+const camelotBuckets = (rows: { key: string; count: number }[]) => {
+	const counts = new Map(rows.map((row) => [row.key, row.count]));
+	return Array.from({ length: 12 }, (_, at) => ({
+		number: at + 1,
+		minor: counts.get(`${at + 1}A`) ?? 0,
+		major: counts.get(`${at + 1}B`) ?? 0,
+	}));
 };
 
-const playedRow = (each: Played): Row => ({
-	key: each.id,
-	leading: { icon: "Music" },
-	title: each.title ?? "Untitled",
-	facts: [each.artist ?? "Unknown artist"],
-	trailing: { count: each.playCount },
-	href: `/library/${each.id}`,
-});
+const playedRow = (each: Played): Row =>
+	trackRow(each, {
+		key: each.id,
+		leading: { icon: "Music" },
+		trailing: { value: count(each.playCount) },
+		href: `/library/${each.id}`,
+	});
 
 // The library at a glance: each panel is one aggregate on the hub, kept by library
 // version.
@@ -62,24 +71,26 @@ function LibraryStats() {
 			/>
 			<Section title="Tempo">
 				<BarChart
-					label="Tracks by tempo, bins of 5 BPM"
+					label="Tracks by tempo in BPM, bins of 5"
 					items={bpm}
 					bar={{
 						key: (row) => String(row.bin),
 						value: (row) => row.count,
-						at: (row) => `${row.bin} BPM`,
+						label: (row) => String(row.bin),
 					}}
 					unit={{ one: "track", other: "tracks" }}
 				/>
 			</Section>
 			<Section title="Keys">
 				<BarChart
-					label="Tracks by Camelot key"
-					items={keys}
+					label="Tracks by Camelot key, minor (A) and major (B)"
+					items={keys.at(camelotBuckets)}
+					keys={[MINOR, MAJOR]}
 					bar={{
-						key: (row) => row.key,
-						value: (row) => row.count,
-						label: (row) => row.key,
+						key: (row) => String(row.number),
+						value: (row) => row.minor + row.major,
+						parts: (row) => ({ [MINOR]: row.minor, [MAJOR]: row.major }),
+						label: (row) => String(row.number),
 					}}
 					unit={{ one: "track", other: "tracks" }}
 				/>
@@ -116,7 +127,7 @@ function LibraryStats() {
 							key: row.genre,
 							leading: { icon: "Music" },
 							title: row.genre,
-							trailing: { count: row.count },
+							trailing: { value: count(row.count) },
 							href: `/library?genre=${encodeURIComponent(row.genre)}`,
 						}),
 					),
@@ -126,7 +137,7 @@ function LibraryStats() {
 									key: "untagged",
 									leading: { icon: "TriangleAlert" },
 									title: "No genre",
-									trailing: { count: each.untagged },
+									trailing: { value: count(each.untagged) },
 									href: "/library?issue=noGenre",
 								} satisfies Row,
 							]
@@ -143,7 +154,7 @@ function LibraryStats() {
 							leading: { icon: "FileAudio" },
 							title: row.format.toUpperCase(),
 							facts: [row.codec],
-							trailing: { count: row.count },
+							trailing: { value: count(row.count) },
 						}),
 					),
 				)}

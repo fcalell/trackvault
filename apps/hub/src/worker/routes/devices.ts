@@ -72,7 +72,10 @@ const conflictView = z.object({
 	device: z.string(),
 	entity: z.enum(["track", "playlist"]),
 	refId: z.string(),
-	label: z.string(),
+	// A track's title and mix name and its artist; a playlist's name is the title.
+	title: z.string(),
+	mixName: z.string().nullable(),
+	artist: z.string().nullable(),
 	field: z.string().nullable(),
 	deviceValue: z.string().nullable(),
 	hubValue: z.string().nullable(),
@@ -80,111 +83,204 @@ const conflictView = z.object({
 	at: z.date(),
 });
 
+const unmatchedView = z.object({
+	contentId: z.string(),
+	path: z.string(),
+	title: z.string().nullable(),
+	artist: z.string().nullable(),
+});
+
 const asDate = (value: number | null | undefined) =>
 	value ? new Date(value) : null;
 
-// A conflict value as a short phrase: a list is its items, a long list its count.
-function phrase(raw: string | null, field: string | null): string | null {
+// The tracks both orders hold in the same sequence (the longest increasing run of the
+// other order's places). The rest of the common tracks moved.
+function longestShared(
+	order: readonly string[],
+	other: readonly string[],
+): number {
+	const at = new Map(other.map((id, index) => [id, index]));
+	const tails: number[] = [];
+	for (const id of order) {
+		const index = at.get(id);
+		if (index === undefined) continue;
+		let low = 0;
+		let high = tails.length;
+		while (low < high) {
+			const mid = (low + high) >> 1;
+			if ((tails[mid] as number) < index) low = mid + 1;
+			else high = mid;
+		}
+		tails[low] = index;
+	}
+	return tails.length;
+}
+
+const tracksIn = (count: number) =>
+	`${count} ${count === 1 ? "track" : "tracks"}`;
+
+// Rekordbox's order against the hub's: what moved, was added and was removed.
+function orderChange(hub: readonly string[], device: readonly string[]) {
+	const hubHas = new Set(hub);
+	const deviceHas = new Set(device);
+	const added = device.filter((id) => !hubHas.has(id)).length;
+	const removed = hub.filter((id) => !deviceHas.has(id)).length;
+	const moved = hub.length - removed - longestShared(hub, device);
+	const parts = [
+		moved > 0 ? `${moved} moved` : null,
+		added > 0 ? `${added} added` : null,
+		removed > 0 ? `${removed} removed` : null,
+	].filter((part) => part !== null);
+	return {
+		hubValue: tracksIn(hub.length),
+		deviceValue: parts.join(", ") || tracksIn(device.length),
+	};
+}
+
+// A conflict value as a short phrase: a list is its items.
+function phrase(raw: string | null): string | null {
 	if (raw === null) return null;
 	const value = JSON.parse(raw) as unknown;
 	if (value === null || value === "") return null;
-	if (Array.isArray(value))
-		return field === "order"
-			? `${value.length} tracks in order`
-			: value.join(", ") || null;
+	if (Array.isArray(value)) return value.join(", ") || null;
 	return String(value);
 }
 
+function sides(row: {
+	field: string | null;
+	deviceValue: string | null;
+	hubValue: string | null;
+}) {
+	if (row.field === "order" && row.deviceValue && row.hubValue)
+		return orderChange(
+			JSON.parse(row.hubValue) as string[],
+			JSON.parse(row.deviceValue) as string[],
+		);
+	return {
+		hubValue: phrase(row.hubValue),
+		deviceValue: phrase(row.deviceValue),
+	};
+}
+
+// The machines that have a key or have said hello: their status, what they hold and
+// whether Rekordbox on them is ready to be written.
+function allDevices(): z.infer<typeof deviceView>[] {
+	const rows = statement(
+		`SELECT coalesce(d.id, k.id) AS id, d.name AS name, k.name AS keyName, k.start AS keyStart,
+			k.created_at AS createdAt, k.expires_at AS expiresAt, (k.id IS NOT NULL) AS hasKey,
+			d.platform AS platform, d.hostname AS hostname, d.local_root AS localRoot,
+			d.agent_version AS agentVersion, d.modes AS modes, d.free_disk_bytes AS freeDiskBytes,
+			d.total_disk_bytes AS totalDiskBytes, d.rekordbox AS rekordbox, d.activity AS activity,
+			d.last_seen_at AS lastSeenAt, d.export_cursor AS exportCursor
+		 FROM devices d LEFT JOIN apikey k ON k.id = d.id
+		 UNION ALL
+		 SELECT k.id, NULL, k.name, k.start, k.created_at, k.expires_at, 1, NULL, NULL, NULL, NULL, NULL,
+			NULL, NULL, NULL, NULL, NULL, NULL
+		 FROM apikey k WHERE k.id NOT IN (SELECT id FROM devices)
+		 ORDER BY 1`,
+	).all() as DeviceRow[];
+	const files = new Map<
+		string,
+		{ ok: number; pending: number; failed: number }
+	>();
+	for (const f of statement(
+		"SELECT device_id AS d, state, count(*) AS n FROM device_files GROUP BY device_id, state",
+	).all() as Array<{ d: string; state: string; n: number }>) {
+		const entry = files.get(f.d) ?? { ok: 0, pending: 0, failed: 0 };
+		if (f.state === "ok") entry.ok += f.n;
+		else if (f.state === "failed") entry.failed += f.n;
+		else if (
+			f.state === "pending" ||
+			f.state === "downloading" ||
+			f.state === "missing"
+		)
+			entry.pending += f.n;
+		files.set(f.d, entry);
+	}
+	const conflicts = new Map(
+		(
+			statement(
+				"SELECT device_id AS d, count(*) AS n FROM conflicts WHERE state = 'open' GROUP BY device_id",
+			).all() as Array<{ d: string; n: number }>
+		).map((row) => [row.d, row.n]),
+	);
+	const online = new Set(connectedDevices());
+	const now = Date.now();
+	return rows.map((row) => {
+		const activity = row.activity
+			? (JSON.parse(row.activity) as {
+					import?: { at?: number; unmatched?: number };
+					export?: { at?: number };
+				})
+			: {};
+		const state = !row.hasKey
+			? ("revoked" as const)
+			: row.lastSeenAt === null
+				? ("waiting" as const)
+				: online.has(row.id)
+					? ("online" as const)
+					: now - row.lastSeenAt < IDLE_MS
+						? ("idle" as const)
+						: ("offline" as const);
+		return {
+			id: row.id,
+			name: row.name ?? row.keyName ?? "Device",
+			state,
+			platform: row.platform,
+			hostname: row.hostname,
+			agentVersion: row.agentVersion,
+			modes: row.modes ? (JSON.parse(row.modes) as string[]) : [],
+			localRoot: row.localRoot,
+			keyStart: row.keyStart,
+			createdAt: asDate(row.createdAt),
+			expiresAt: asDate(row.expiresAt),
+			lastSeenAt: asDate(row.lastSeenAt),
+			freeDiskBytes: row.freeDiskBytes,
+			files: files.get(row.id) ?? { ok: 0, pending: 0, failed: 0 },
+			rekordbox: row.rekordbox
+				? (JSON.parse(row.rekordbox) as z.infer<typeof rekordboxStatus>)
+				: null,
+			openConflicts: conflicts.get(row.id) ?? 0,
+			unmatched: activity.import?.unmatched ?? null,
+			lastImportAt: asDate(activity.import?.at),
+			lastExportAt: asDate(activity.export?.at),
+		};
+	});
+}
+
 export const devices = {
-	// The machines that have a key or have said hello: their status, what they hold and
-	// whether Rekordbox on them is ready to be written.
 	list: procedure({
 		auth: true,
 		reads: ["devices", "deviceFiles", "conflicts", "apikey"],
 	})
 		.output(z.array(deviceView))
-		.query(() => {
-			const rows = statement(
-				`SELECT coalesce(d.id, k.id) AS id, d.name AS name, k.name AS keyName, k.start AS keyStart,
-					k.created_at AS createdAt, k.expires_at AS expiresAt, (k.id IS NOT NULL) AS hasKey,
-					d.platform AS platform, d.hostname AS hostname, d.local_root AS localRoot,
-					d.agent_version AS agentVersion, d.modes AS modes, d.free_disk_bytes AS freeDiskBytes,
-					d.total_disk_bytes AS totalDiskBytes, d.rekordbox AS rekordbox, d.activity AS activity,
-					d.last_seen_at AS lastSeenAt, d.export_cursor AS exportCursor
-				 FROM devices d LEFT JOIN apikey k ON k.id = d.id
-				 UNION ALL
-				 SELECT k.id, NULL, k.name, k.start, k.created_at, k.expires_at, 1, NULL, NULL, NULL, NULL, NULL,
-					NULL, NULL, NULL, NULL, NULL, NULL
-				 FROM apikey k WHERE k.id NOT IN (SELECT id FROM devices)
-				 ORDER BY 1`,
-			).all() as DeviceRow[];
-			const files = new Map<
-				string,
-				{ ok: number; pending: number; failed: number }
-			>();
-			for (const f of statement(
-				"SELECT device_id AS d, state, count(*) AS n FROM device_files GROUP BY device_id, state",
-			).all() as Array<{ d: string; state: string; n: number }>) {
-				const entry = files.get(f.d) ?? { ok: 0, pending: 0, failed: 0 };
-				if (f.state === "ok") entry.ok += f.n;
-				else if (f.state === "failed") entry.failed += f.n;
-				else if (
-					f.state === "pending" ||
-					f.state === "downloading" ||
-					f.state === "missing"
-				)
-					entry.pending += f.n;
-				files.set(f.d, entry);
-			}
-			const conflicts = new Map(
-				(
-					statement(
-						"SELECT device_id AS d, count(*) AS n FROM conflicts WHERE state = 'open' GROUP BY device_id",
-					).all() as Array<{ d: string; n: number }>
-				).map((row) => [row.d, row.n]),
-			);
-			const online = new Set(connectedDevices());
-			const now = Date.now();
-			return rows.map((row) => {
-				const activity = row.activity
-					? (JSON.parse(row.activity) as {
-							import?: { at?: number; unmatched?: number };
-							export?: { at?: number };
-						})
-					: {};
-				const state = !row.hasKey
-					? ("revoked" as const)
-					: row.lastSeenAt === null
-						? ("waiting" as const)
-						: online.has(row.id)
-							? ("online" as const)
-							: now - row.lastSeenAt < IDLE_MS
-								? ("idle" as const)
-								: ("offline" as const);
-				return {
-					id: row.id,
-					name: row.name ?? row.keyName ?? "Device",
-					state,
-					platform: row.platform,
-					hostname: row.hostname,
-					agentVersion: row.agentVersion,
-					modes: row.modes ? (JSON.parse(row.modes) as string[]) : [],
-					localRoot: row.localRoot,
-					keyStart: row.keyStart,
-					createdAt: asDate(row.createdAt),
-					expiresAt: asDate(row.expiresAt),
-					lastSeenAt: asDate(row.lastSeenAt),
-					freeDiskBytes: row.freeDiskBytes,
-					files: files.get(row.id) ?? { ok: 0, pending: 0, failed: 0 },
-					rekordbox: row.rekordbox
-						? (JSON.parse(row.rekordbox) as z.infer<typeof rekordboxStatus>)
-						: null,
-					openConflicts: conflicts.get(row.id) ?? 0,
-					unmatched: activity.import?.unmatched ?? null,
-					lastImportAt: asDate(activity.import?.at),
-					lastExportAt: asDate(activity.export?.at),
-				};
-			});
+		.query(allDevices),
+
+	// One device.
+	get: procedure({
+		auth: true,
+		reads: ["devices", "deviceFiles", "conflicts", "apikey"],
+	})
+		.input(z.object({ id: z.string() }))
+		.output(deviceView)
+		.query(({ input }) => {
+			const found = allDevices().find((device) => device.id === input.id);
+			if (!found) throw new ApiError("NOT_FOUND");
+			return found;
+		}),
+
+	// The Rekordbox tracks the hub found no match for, as the device's last import saw them.
+	unmatched: procedure({ auth: true, reads: ["devices"] })
+		.input(z.object({ id: z.string() }))
+		.output(z.array(unmatchedView))
+		.query(({ input }) => {
+			const row = statement("SELECT activity FROM devices WHERE id = @id").get({
+				id: input.id,
+			}) as { activity: string | null } | undefined;
+			if (!row) throw new ApiError("NOT_FOUND");
+			const activity: { unmatched?: z.infer<typeof unmatchedView>[] } =
+				row.activity ? JSON.parse(row.activity) : {};
+			return activity.unmatched ?? [];
 		}),
 
 	// Forgets a device that is revoked or retired: its row, its file states and its
@@ -242,8 +338,8 @@ export const devices = {
 			const rows = statement(
 				`SELECT c.id, c.device_id AS deviceId, coalesce(d.name, 'Device') AS device, c.entity, c.ref_id AS refId,
 					c.field, c.device_value AS deviceValue, c.hub_value AS hubValue, c.winner, c.at,
-					CASE c.entity WHEN 'track' THEN trim(coalesce(t.artist || ' - ', '') || coalesce(t.title, 'Untitled'))
-						ELSE coalesce(p.name, 'Playlist') END AS label
+					CASE c.entity WHEN 'track' THEN coalesce(t.title, 'Untitled') ELSE coalesce(p.name, 'Playlist') END AS title,
+					t.mix_name AS mixName, t.artist AS artist
 				 FROM conflicts c LEFT JOIN devices d ON d.id = c.device_id
 				 LEFT JOIN tracks t ON c.entity = 'track' AND t.id = c.ref_id
 				 LEFT JOIN playlists p ON c.entity = 'playlist' AND p.id = c.ref_id
@@ -263,7 +359,9 @@ export const devices = {
 				hubValue: string | null;
 				winner: "device" | "hub";
 				at: number;
-				label: string;
+				title: string;
+				mixName: string | null;
+				artist: string | null;
 			}>;
 			const total = (
 				statement(
@@ -277,10 +375,11 @@ export const devices = {
 					device: row.device,
 					entity: row.entity,
 					refId: row.refId,
-					label: row.label,
+					title: row.title,
+					mixName: row.mixName,
+					artist: row.artist,
 					field: row.field,
-					deviceValue: phrase(row.deviceValue, row.field),
-					hubValue: phrase(row.hubValue, row.field),
+					...sides(row),
 					winner: row.winner,
 					at: new Date(row.at),
 				})),
