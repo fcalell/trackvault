@@ -787,7 +787,9 @@ const PROPOSALS = [
 	{
 		id: "1",
 		trackId: "track-1",
-		label: "Kalomi - Midnight Echo (Extended Mix)",
+		title: "Midnight Echo",
+		mixName: "Extended Mix",
+		artist: "Kalomi",
 		field: "genre",
 		before: null,
 		after: "Tech House",
@@ -800,7 +802,9 @@ const PROPOSALS = [
 	{
 		id: "2",
 		trackId: "track-1",
-		label: "Kalomi - Midnight Echo (Extended Mix)",
+		title: "Midnight Echo",
+		mixName: "Extended Mix",
+		artist: "Kalomi",
 		field: "label",
 		before: "Cipher",
 		after: "Cipher Records",
@@ -813,7 +817,9 @@ const PROPOSALS = [
 	{
 		id: "3",
 		trackId: "track-2",
-		label: "Rendor - Velvet Signal (Original Mix)",
+		title: "Velvet Signal",
+		mixName: "Original Mix",
+		artist: "Rendor",
 		field: "year",
 		before: null,
 		after: "2022",

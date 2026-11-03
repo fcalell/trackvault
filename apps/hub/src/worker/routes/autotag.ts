@@ -2,7 +2,11 @@ import { procedure } from "virtual:stack-procedure";
 import { selectionWhere } from "@fcalell/plugin-api/lib/selection";
 import { selector, z } from "@fcalell/plugin-api/schema";
 import { and, asc, count, eq, gte, sql } from "@fcalell/plugin-db/orm";
-import { proposals, settings as settingsTable } from "../../schema/index.ts";
+import {
+	proposals,
+	settings as settingsTable,
+	tracks,
+} from "../../schema/index.ts";
 import autotagApply from "../../server/jobs/autotag-apply.ts";
 import { buildProviders, PROVIDER_LABELS } from "../../server/lib/autotag.ts";
 import { db } from "../../server/lib/db.ts";
@@ -177,17 +181,25 @@ export const autotag = {
 					? sql`${proposals.state} IN ('pending', 'accepted')`
 					: eq(proposals.state, input.state);
 			const data = database
-				.select()
+				.select({
+					row: proposals,
+					title: tracks.title,
+					mixName: tracks.mixName,
+					artist: tracks.artist,
+				})
 				.from(proposals)
+				.leftJoin(tracks, eq(tracks.id, proposals.trackId))
 				.where(where)
 				.orderBy(sql`${proposals.label} collate nocase`, asc(proposals.id))
 				.limit(input.limit)
 				.offset(input.offset)
 				.all()
-				.map((row) => ({
+				.map(({ row, title, mixName, artist }) => ({
 					id: String(row.id),
 					trackId: row.trackId,
-					label: row.label,
+					title,
+					mixName,
+					artist,
 					field: row.field,
 					before: row.before,
 					after: row.after,

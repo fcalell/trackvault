@@ -17,6 +17,7 @@ import {
 import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
 import { useChosen } from "../../lib/chosen.ts";
+import { trackTitle } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/review")({
 	loader: ({ context }) =>
@@ -33,7 +34,8 @@ export const Route = createFileRoute("/_app/review")({
 type Proposal = AppRouter["autotag"]["list"]["__output"]["data"][number];
 
 const COLUMNS: TableColumn<Proposal>[] = [
-	{ key: "label", label: "Track", cell: (row) => row.label },
+	{ key: "title", label: "Track", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (row) => row.artist },
 	{
 		key: "field",
 		label: "Field",
@@ -183,7 +185,7 @@ function Review() {
 						waiting
 							? {
 									icon: "Check",
-									label: `Accept ${fieldLabel(row.field)} of ${row.label}`,
+									label: `Accept ${fieldLabel(row.field)} of ${trackTitle(row)}`,
 									onAct: () =>
 										accept.mutateAsync({ proposals: { ids: [row.id] } }),
 									done: "Accepted",
