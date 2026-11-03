@@ -59,6 +59,7 @@ function Tags() {
 		<Pane
 			title="Custom tags"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "Plus",

@@ -45,7 +45,7 @@ function Issues() {
 		dim: issue.count === 0,
 	});
 	return (
-		<Pane title="Issues" back={false}>
+		<Pane title="Issues" back={false} wide>
 			<Banner
 				tone="attention"
 				sentence={summary.at((each) =>

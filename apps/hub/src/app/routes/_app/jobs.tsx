@@ -82,7 +82,7 @@ function Jobs() {
 				: undefined,
 	});
 	return (
-		<Pane title="Jobs" read={jobsLive} back={false}>
+		<Pane title="Jobs" read={jobsLive} back={false} wide>
 			<Section
 				items={jobsLive.at((jobs) => jobs.map(toRow))}
 				empty={{

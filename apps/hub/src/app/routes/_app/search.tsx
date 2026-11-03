@@ -36,7 +36,7 @@ function Search() {
 	const navigate = useNavigate();
 	const settings = orpc.soulseek.settings.read();
 	return (
-		<Pane title="Search" back={false}>
+		<Pane title="Search" back={false} wide>
 			<Banner
 				tone="attention"
 				sentence={settings.at((each) =>

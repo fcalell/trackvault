@@ -74,6 +74,7 @@ function Downloads() {
 			title="Downloads"
 			read={transfersLive}
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "BrushCleaning",

@@ -57,6 +57,7 @@ function SetBuilder() {
 		<Pane
 			title="Set builder"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "Save",

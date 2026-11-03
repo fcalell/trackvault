@@ -105,6 +105,7 @@ function Backups() {
 			title="Backups"
 			read={jobsLive}
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "DatabaseBackup",

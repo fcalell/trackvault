@@ -96,6 +96,7 @@ function Duplicates() {
 		<Pane
 			title="Duplicates"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "Search",
