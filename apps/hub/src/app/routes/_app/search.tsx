@@ -55,7 +55,7 @@ function Search() {
 				act={settings.at((each) =>
 					each.configured
 						? undefined
-						: { label: "Open Settings", href: "/settings" },
+						: { label: "Open Settings", href: "/settings/soulseek" },
 				)}
 			/>
 			<Section

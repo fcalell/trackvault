@@ -452,10 +452,9 @@ export const imports = {
 					...(input.spotifyClientId !== undefined && {
 						spotifyClientId: orNull(input.spotifyClientId),
 					}),
-					...(input.spotifyClientSecret !== undefined &&
-						!input.spotifyClientSecret?.includes("•") && {
-							spotifyClientSecret: orNull(input.spotifyClientSecret),
-						}),
+					...(input.spotifyClientSecret !== undefined && {
+						spotifyClientSecret: orNull(input.spotifyClientSecret),
+					}),
 					updatedAt: new Date(),
 				})
 				.where(eq(settingsTable.id, 1))

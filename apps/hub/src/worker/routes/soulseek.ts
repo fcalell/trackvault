@@ -139,10 +139,9 @@ export const soulseek = {
 					...(input.slskdUrl !== undefined && {
 						slskdUrl: orNull(input.slskdUrl),
 					}),
-					...(input.slskdApiKey !== undefined &&
-						!input.slskdApiKey?.includes("•") && {
-							slskdApiKey: orNull(input.slskdApiKey),
-						}),
+					...(input.slskdApiKey !== undefined && {
+						slskdApiKey: orNull(input.slskdApiKey),
+					}),
 					...(input.slskdDownloadsDir !== undefined && {
 						slskdDownloadsDir: orNull(input.slskdDownloadsDir),
 					}),
