@@ -254,7 +254,6 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					ISSUES.filter(([, bit]) => (each.issues & bit) !== 0).map(
 						([name]) => ({
 							key: name,
-							leading: { tone: "attention" as const },
 							title: ISSUE_LABELS[name],
 						}),
 					),
