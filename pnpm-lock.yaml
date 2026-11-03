@@ -28,6 +28,10 @@ overrides:
   msw: link:../stack/plugins/screens/node_modules/msw
   msw-storybook-addon: link:../stack/plugins/screens/node_modules/msw-storybook-addon
   playwright: link:../stack/plugins/screens/node_modules/playwright
+  phone>react: link:../stack/apps/phone/node_modules/react
+  phone>@types/react: link:../stack/apps/phone/node_modules/@types/react
+  phone>@tanstack/react-query: link:../stack/apps/phone/node_modules/@tanstack/react-query
+  phone>@orpc/tanstack-query: link:../stack/apps/phone/node_modules/@orpc/tanstack-query
 
 importers:
 
@@ -191,6 +195,145 @@ importers:
       vitest:
         specifier: link:../../../stack/plugins/screens/node_modules/vitest
         version: link:../../../stack/plugins/screens/node_modules/vitest
+
+  apps/phone:
+    dependencies:
+      '@better-auth/expo':
+        specifier: link:../../../stack/apps/phone/node_modules/@better-auth/expo
+        version: link:../../../stack/apps/phone/node_modules/@better-auth/expo
+      '@fcalell/plugin-api':
+        specifier: link:../../../stack/plugins/api
+        version: link:../../../stack/plugins/api
+      '@fcalell/plugin-auth':
+        specifier: link:../../../stack/plugins/auth
+        version: link:../../../stack/plugins/auth
+      '@fcalell/plugin-db':
+        specifier: link:../../../stack/plugins/db
+        version: link:../../../stack/plugins/db
+      '@fcalell/plugin-expo':
+        specifier: link:../../../stack/plugins/expo
+        version: link:../../../stack/plugins/expo
+      '@fcalell/plugin-native-ui':
+        specifier: link:../../../stack/plugins/native-ui
+        version: link:../../../stack/plugins/native-ui
+      '@fcalell/plugin-node':
+        specifier: link:../../../stack/plugins/node
+        version: link:../../../stack/plugins/node
+      '@fcalell/ui-core':
+        specifier: link:../../../stack/packages/ui-core
+        version: link:../../../stack/packages/ui-core
+      '@gorhom/bottom-sheet':
+        specifier: link:../../../stack/apps/phone/node_modules/@gorhom/bottom-sheet
+        version: link:../../../stack/apps/phone/node_modules/@gorhom/bottom-sheet
+      '@orpc/tanstack-query':
+        specifier: link:../../../stack/apps/phone/node_modules/@orpc/tanstack-query
+        version: link:../../../stack/apps/phone/node_modules/@orpc/tanstack-query
+      '@tanstack/react-query':
+        specifier: link:../../../stack/apps/phone/node_modules/@tanstack/react-query
+        version: link:../../../stack/apps/phone/node_modules/@tanstack/react-query
+      drizzle-orm:
+        specifier: link:../../../stack/apps/phone/node_modules/drizzle-orm
+        version: link:../../../stack/apps/phone/node_modules/drizzle-orm
+      expo:
+        specifier: link:../../../stack/apps/phone/node_modules/expo
+        version: link:../../../stack/apps/phone/node_modules/expo
+      expo-application:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-application
+        version: link:../../../stack/apps/phone/node_modules/expo-application
+      expo-clipboard:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-clipboard
+        version: link:../../../stack/apps/phone/node_modules/expo-clipboard
+      expo-constants:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-constants
+        version: link:../../../stack/apps/phone/node_modules/expo-constants
+      expo-document-picker:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-document-picker
+        version: link:../../../stack/apps/phone/node_modules/expo-document-picker
+      expo-file-system:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-file-system
+        version: link:../../../stack/apps/phone/node_modules/expo-file-system
+      expo-font:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-font
+        version: link:../../../stack/apps/phone/node_modules/expo-font
+      expo-image-picker:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-image-picker
+        version: link:../../../stack/apps/phone/node_modules/expo-image-picker
+      expo-linking:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-linking
+        version: link:../../../stack/apps/phone/node_modules/expo-linking
+      expo-network:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-network
+        version: link:../../../stack/apps/phone/node_modules/expo-network
+      expo-router:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-router
+        version: link:../../../stack/apps/phone/node_modules/expo-router
+      expo-secure-store:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-secure-store
+        version: link:../../../stack/apps/phone/node_modules/expo-secure-store
+      expo-sharing:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-sharing
+        version: link:../../../stack/apps/phone/node_modules/expo-sharing
+      expo-status-bar:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-status-bar
+        version: link:../../../stack/apps/phone/node_modules/expo-status-bar
+      expo-system-ui:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-system-ui
+        version: link:../../../stack/apps/phone/node_modules/expo-system-ui
+      expo-web-browser:
+        specifier: link:../../../stack/apps/phone/node_modules/expo-web-browser
+        version: link:../../../stack/apps/phone/node_modules/expo-web-browser
+      lucide-react-native:
+        specifier: link:../../../stack/apps/phone/node_modules/lucide-react-native
+        version: link:../../../stack/apps/phone/node_modules/lucide-react-native
+      react:
+        specifier: link:../../../stack/apps/phone/node_modules/react
+        version: link:../../../stack/apps/phone/node_modules/react
+      react-native:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native
+        version: link:../../../stack/apps/phone/node_modules/react-native
+      react-native-gesture-handler:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native-gesture-handler
+        version: link:../../../stack/apps/phone/node_modules/react-native-gesture-handler
+      react-native-keyboard-controller:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native-keyboard-controller
+        version: link:../../../stack/apps/phone/node_modules/react-native-keyboard-controller
+      react-native-reanimated:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native-reanimated
+        version: link:../../../stack/apps/phone/node_modules/react-native-reanimated
+      react-native-safe-area-context:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native-safe-area-context
+        version: link:../../../stack/apps/phone/node_modules/react-native-safe-area-context
+      react-native-svg:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native-svg
+        version: link:../../../stack/apps/phone/node_modules/react-native-svg
+      react-native-worklets:
+        specifier: link:../../../stack/apps/phone/node_modules/react-native-worklets
+        version: link:../../../stack/apps/phone/node_modules/react-native-worklets
+      uniwind:
+        specifier: link:../../../stack/apps/phone/node_modules/uniwind
+        version: link:../../../stack/apps/phone/node_modules/uniwind
+    devDependencies:
+      '@fcalell/cli':
+        specifier: link:../../../stack/packages/cli
+        version: link:../../../stack/packages/cli
+      '@fcalell/typescript-config':
+        specifier: link:../../../stack/packages/typescript-config
+        version: link:../../../stack/packages/typescript-config
+      '@types/node':
+        specifier: link:../../../stack/apps/phone/node_modules/@types/node
+        version: link:../../../stack/apps/phone/node_modules/@types/node
+      '@types/react':
+        specifier: link:../../../stack/apps/phone/node_modules/@types/react
+        version: link:../../../stack/apps/phone/node_modules/@types/react
+      babel-plugin-react-compiler:
+        specifier: link:../../../stack/apps/phone/node_modules/babel-plugin-react-compiler
+        version: link:../../../stack/apps/phone/node_modules/babel-plugin-react-compiler
+      hub:
+        specifier: workspace:*
+        version: link:../hub
+      typescript:
+        specifier: link:../../../stack/apps/phone/node_modules/typescript
+        version: link:../../../stack/apps/phone/node_modules/typescript
 
   packages/core:
     dependencies:

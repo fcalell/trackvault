@@ -41,3 +41,10 @@ overrides:
   msw: link:../stack/plugins/screens/node_modules/msw
   msw-storybook-addon: link:../stack/plugins/screens/node_modules/msw-storybook-addon
   playwright: link:../stack/plugins/screens/node_modules/playwright
+  # The phone is a React Native app: its React, renderer, query client and oRPC adapter
+  # are the physical copies stack's own phone app resolves (React 19.2.3 with RN 0.85),
+  # not the web's, so the scoped overrides below beat the global ones above.
+  "phone>react": link:../stack/apps/phone/node_modules/react
+  "phone>@types/react": link:../stack/apps/phone/node_modules/@types/react
+  "phone>@tanstack/react-query": link:../stack/apps/phone/node_modules/@tanstack/react-query
+  "phone>@orpc/tanstack-query": link:../stack/apps/phone/node_modules/@orpc/tanstack-query

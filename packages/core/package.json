@@ -9,6 +9,7 @@
 		"./analyze": "./src/analyze.ts",
 		"./art": "./src/art/index.ts",
 		"./audio": "./src/audio/index.ts",
+		"./cdj": "./src/cdj/index.ts",
 		"./dedupe": "./src/dedupe/index.ts",
 		"./exec": "./src/exec/index.ts",
 		"./harmonic": "./src/harmonic/index.ts",

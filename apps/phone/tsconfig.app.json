@@ -1,0 +1,27 @@
+{
+	"extends": "expo/tsconfig.base",
+	"compilerOptions": {
+		"noEmit": true,
+		"allowImportingTsExtensions": true,
+		"strict": true,
+		"noUncheckedIndexedAccess": true,
+		"jsxImportSource": "react",
+		"types": ["uniwind/types"],
+		"declaration": false,
+		"declarationMap": false,
+		"disableSourceOfProjectReferenceRedirect": true,
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
+	},
+	"include": [
+		"src",
+		".stack/entry.tsx",
+		".stack/routes.d.ts",
+		".stack/expo-env.d.ts"
+	],
+	"exclude": ["src/worker"],
+	"references": [
+		{
+			"path": "./tsconfig.worker.json"
+		}
+	]
+}

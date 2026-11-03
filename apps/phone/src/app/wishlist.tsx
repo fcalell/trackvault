@@ -1,0 +1,49 @@
+import { Pane } from "@fcalell/plugin-native-ui/components/pane";
+import { Section } from "@fcalell/plugin-native-ui/components/section";
+import type { StatusMark } from "@fcalell/ui-core/descriptors";
+import { useState } from "react";
+import { orpc } from "../lib/api";
+import type { WantRow } from "../lib/types";
+import { WishSheet } from "../lib/wish";
+
+const STATUS: Record<WantRow["status"], StatusMark> = {
+	wanted: { tone: "waiting", label: "Wanted" },
+	searching: { tone: "running", label: "Searching" },
+	found: { tone: "active", label: "Found" },
+	downloading: { tone: "running", label: "Downloading" },
+	downloaded: { tone: "done", label: "Downloaded" },
+	"in-library": { tone: "done", label: "In library" },
+	"gave-up": { tone: "idle", label: "Gave up" },
+	ignored: { tone: "idle", label: "Ignored" },
+};
+
+export default function Wishlist() {
+	const wants = orpc.wishlist.list.window({ limit: 50 });
+	const [adding, setAdding] = useState(false);
+	return (
+		<Pane
+			title="Wishlist"
+			back="/more"
+			actions={[
+				{
+					icon: "Plus",
+					label: "Heard in a club",
+					onAct: () => setAdding(true),
+				},
+			]}
+		>
+			<Section
+				items={wants.at((rows) =>
+					rows.map((w) => ({
+						key: String(w.id),
+						title: `${w.artist} · ${w.title}${w.mix ? ` (${w.mix})` : ""}`,
+						status: STATUS[w.status],
+						trailing: { age: w.createdAt.toISOString() },
+					})),
+				)}
+				empty={{ sentence: "Nothing on the wishlist yet." }}
+			/>
+			<WishSheet open={adding} onClose={() => setAdding(false)} />
+		</Pane>
+	);
+}

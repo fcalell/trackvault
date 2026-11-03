@@ -372,6 +372,16 @@ Gaps found building R4:
 - `Gate`'s `description` takes runs (`readonly Run[]`), not a string, unlike a `Pane`'s sentence props; a plain string fails type-check.
 - `scripts/seed-bench.ts` had gone stale against R3's `tracks.codec` (a hub script, not stack): fixed in R4, which also gives the seed plays and loudness.
 
+Gaps found building R5 (phone):
+- There is no client-only phone app. `nativeUi()` requires `expo()`, `api()` and `auth()`, `auth()` needs `db()`, and a server target is needed to generate, so `apps/phone` carries a generated worker, a schema and a `stack.config.ts` of plugins it never runs (`node()` as the target). The phone is a client of the hub: `src/lib/api.ts` imports the hub's emitted `AppRouter` declaration (as `apps/agent` does) and points the client at the hub address chosen at sign-in.
+- `virtual:stack-schema` (Metro: the phone's own `.stack/schema.ts`) describes the phone's empty router, not the hub's: a `Form` cannot derive its fields from a hub procedure (`Form` needs `act: orpc.x.y`, whose input schema comes from there), and the `reads`/`writes` entity invalidation does not know the hub's procedures. The phone builds its sheets from `Input`s and invalidates all reads after a write.
+- `createAuthClient` (plugin-auth `expo.tsx`) takes `baseURL` at creation: the hub address chosen at sign-in cannot reach it without a restart. The phone signs in with a device key (`auth({ devices: true })`, which the hub has) and a client whose `fetch` swaps the origin; `authClient` exists only for the entry's provider. Email-code sign-in from the phone would need `auth({ expo: true })` on the hub (sameSite none, the app scheme trusted): not set.
+- No audio on the phone: native-ui has no player component (`plugins/native-ui/src/ui/components` has none, the roster's `audio` is web), and the phone app carries no `expo-audio`. The hub's `/media/<id>` needs the device key as an `Authorization` header, which a native player URL cannot carry; the hub has no signed or tokened media URL. The phone previews nothing yet.
+- A phone `Sheet`'s act (`sheetOf`) is not exported (`@fcalell/plugin-native-ui/lib/act` is not in the package `exports`); the app holds the open state and renders `<Sheet>` itself, as stack's own phone does.
+- The workspace's global `react`, `@tanstack/react-query` and `@orpc/tanstack-query` overrides point at the web's copies (React 19.3); the phone needs stack's phone copies (React 19.2.3 with React Native 0.85), so `pnpm-workspace.yaml` has `phone>`-scoped overrides, and every phone dependency is a `link:` to `stack/apps/phone/node_modules`. A fresh stack checkout without `pnpm install` run in stack/apps/phone leaves those links dangling.
+- `tsc` on the phone needs `allowImportingTsExtensions` because the hub's declaration references `@trackvault/core` sources by `.ts` path.
+- The phone screens were type-checked and linted only: no emulator is available here (`phone-render.md`, `phone-capture.md` need one), so nothing has been drawn or run.
+
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
 ## 11. Decisions

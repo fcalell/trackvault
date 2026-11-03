@@ -53,6 +53,7 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
   src/app/           the web UI, from stack's roster only
   scripts/fake-slskd.ts   a tiny slskd stand-in (search, transfers, downloads) to run the Soulseek flow without slskd
   scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export; scripts/bench-r4.ts times the stats panels and set suggestions; scripts/verify-r4.ts runs auto-tag, art, analysis and the set builder end to end with mocked providers (DB_FILE=<migrated scratch copy>)
+apps/phone/          the phone app (stack Expo, a client of the hub by device key): library, playlists, next-track suggestions, inbox, wishlist, jobs
 apps/agent/          the device agent (plain Node, run from source): replica, folder upload, Rekordbox bridge; speaks /sync;
                      its `HubRouter` type is the hub's emitted declaration (`.stack/types`), so hub checks first
 packages/core/       pure Node 24 TypeScript, no stack imports: tag IO (MP3, FLAC, M4A, AIFF, WAV), audio hash, normalize, paths,
