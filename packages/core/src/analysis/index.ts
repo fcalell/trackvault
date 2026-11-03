@@ -7,6 +7,12 @@ import { estimateTempo } from "./tempo.ts";
 import { type Estimate, none } from "./types.ts";
 
 export { energyScore } from "./energy.ts";
+export {
+	ESSENTIA_RATE,
+	type EssentiaTempo,
+	essentiaKey,
+	essentiaTempo,
+} from "./essentia.ts";
 export { chroma, estimateKey, type KeyEstimate, keyFromChroma } from "./key.ts";
 export { type Loudness, measureLoudness, parseEbur128 } from "./loudness.ts";
 export { onsetEnvelope } from "./onset.ts";
