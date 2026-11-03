@@ -26,6 +26,8 @@ const AFTER_JOB: EntityName[] = [
 	"rules",
 	"jobs",
 	"inboxItems",
+	"proposals",
+	"conflicts",
 	"downloads",
 	"wishlist",
 	"searchResults",

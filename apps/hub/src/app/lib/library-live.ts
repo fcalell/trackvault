@@ -21,7 +21,7 @@ export function useLibraryLive(): void {
 		const refresh = (): void => {
 			timer = undefined;
 			last = Date.now();
-			invalidateForWrites(queryClient, ["tracks"]);
+			invalidateForWrites(queryClient, ["tracks", "conflicts"]);
 		};
 		const schedule = (): void => {
 			if (timer !== undefined) return;

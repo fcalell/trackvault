@@ -14,6 +14,7 @@ import type { InboxDecision } from "@trackvault/core/inbox";
 import { INBOX_PIPELINE } from "@trackvault/core/inbox";
 import { inboxItems, settings as settingsTable } from "../../schema/index.ts";
 import inboxApprove from "../../server/jobs/inbox-approve.ts";
+import { INBOX_WAITING_STATES } from "../../server/lib/attention.ts";
 import { db } from "../../server/lib/db.ts";
 import {
 	effectiveTags,
@@ -49,7 +50,7 @@ const STATES_OF: Record<InboxGroup, ItemRow["state"][]> = {
 };
 const STATES_OF_FILTER: Record<InboxFilterGroup, ItemRow["state"][]> = {
 	...STATES_OF,
-	waiting: [...STATES_OF.ready, ...STATES_OF.review],
+	waiting: [...INBOX_WAITING_STATES],
 };
 // Without a filter the inbox lists what is still open.
 const OPEN: ItemRow["state"][] = [

@@ -45,7 +45,7 @@ const FIELDS: readonly PlanField[] = [
 ];
 
 // Asks the providers about each track of the selection and stores what they say as
-// proposals for the Review place; nothing is written to a track here. Safe to run
+// proposals for the Auto-tag review place; nothing is written to a track here. Safe to run
 // twice: the track's open proposals are replaced, and answers come from the cache.
 export default defineJob<AutotagPayload, AutotagResult>({
 	kind: "autotag",

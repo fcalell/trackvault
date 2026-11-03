@@ -11,17 +11,17 @@ const STATUS: Record<WantRow["status"], StatusMark> = {
 	found: { tone: "active", label: "Found" },
 	downloading: { tone: "running", label: "Downloading" },
 	downloaded: { tone: "done", label: "Downloaded" },
-	"in-library": { tone: "done", label: "In library" },
+	"in-library": { tone: "done", label: "In the library" },
 	"gave-up": { tone: "idle", label: "Gave up" },
 	ignored: { tone: "idle", label: "Ignored" },
 };
 
 export default function Wishlist() {
-	const wants = orpc.wishlist.list.window({ limit: 50 });
+	const items = orpc.wishlist.list.window({ limit: 50 });
 	return (
 		<Pane title="Wishlist" back="/more" acts={[wishAct]}>
 			<Section
-				items={wants.at((rows) =>
+				items={items.at((rows) =>
 					rows.map((w) => ({
 						key: String(w.id),
 						title: `${w.artist} · ${w.title}`,
@@ -29,7 +29,7 @@ export default function Wishlist() {
 						trailing: { age: w.createdAt.toISOString() },
 					})),
 				)}
-				empty={{ sentence: "Nothing on the wishlist yet." }}
+				empty={{ sentence: "Nothing on the wishlist yet.", act: wishAct }}
 			/>
 		</Pane>
 	);

@@ -57,7 +57,7 @@ const RULE_FIELDS = {
 	},
 } as const;
 
-// Cleanup rules: the list to switch and edit, then the preview of what the enabled
+// Rules: the list to switch and edit, then the preview of what the enabled
 // ones would change across the library and the job that applies them.
 function Rules() {
 	const toggle = useMutation(orpc.cleanup.toggle.mutationOptions());
@@ -109,9 +109,21 @@ function Rules() {
 	});
 
 	const rules = orpc.cleanup.list.read();
+	const addRule = {
+		icon: "Plus" as const,
+		label: "Add a rule",
+		sheet: sheetOf({
+			title: "Add a rule",
+			form: {
+				act: orpc.cleanup.save,
+				fields: RULE_FIELDS,
+				submit: { label: "Add", done: "Rule added" },
+			},
+		}),
+	};
 	return (
 		<Pane
-			title="Cleanup rules"
+			title="Rules"
 			back={false}
 			wide
 			acts={[
@@ -129,7 +141,7 @@ function Rules() {
 					apply={{
 						label: "Apply to the library",
 						confirm: {
-							title: "Apply the cleanup rules?",
+							title: "Apply the rules?",
 							sentence:
 								"The tags in the preview are rewritten in the library and in each file. Undo the batch in History.",
 						},
@@ -142,19 +154,12 @@ function Rules() {
 				title="Rules"
 				description="Switched-on rules run in this order, on demand here or over chosen tracks in the library."
 				items={rules.at((rows) => rows.map(toRow))}
-				act={{
-					icon: "Plus",
-					label: "Add a rule",
-					sheet: sheetOf({
-						title: "Add a rule",
-						form: {
-							act: orpc.cleanup.save,
-							fields: RULE_FIELDS,
-							submit: { label: "Add", done: "Rule added" },
-						},
-					}),
+				act={addRule}
+				empty={{
+					sentence:
+						"No rules yet. A rule rewrites tags the same way every time.",
+					act: addRule,
 				}}
-				empty={{ sentence: "No rules yet." }}
 			/>
 			<PreviewSection
 				kind="rules"

@@ -92,6 +92,12 @@ function Quarantine() {
 			title="Quarantine"
 			back={false}
 			wide
+			read={items}
+			empty={{
+				sentence:
+					"Nothing is quarantined. Tracks removed from the library keep their files here for a while, so they can be restored.",
+				act: { label: "Open All tracks", href: "/library" },
+			}}
 			acts={[
 				{
 					icon: "ArchiveRestore",

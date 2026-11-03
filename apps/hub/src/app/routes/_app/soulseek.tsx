@@ -14,11 +14,11 @@ interface Params {
 	s?: string | undefined;
 }
 
-export const Route = createFileRoute("/_app/search")({
+export const Route = createFileRoute("/_app/soulseek")({
 	validateSearch: (search: Record<string, unknown>): Params => ({
 		s: typeof search.s === "string" ? search.s : undefined,
 	}),
-	component: Search,
+	component: Soulseek,
 });
 
 const TONES: Record<JobView["state"], Tone> = {
@@ -31,7 +31,7 @@ const TONES: Record<JobView["state"], Tone> = {
 
 // Soulseek, through slskd: type what you want, get the candidates ranked best first
 // with the reasons, what the library already has marked, and a download for each.
-function Search() {
+function Soulseek() {
 	const { s } = Route.useSearch();
 	const navigate = useNavigate();
 	const settings = orpc.soulseek.settings.read();
@@ -68,7 +68,7 @@ function Search() {
 						query: { label: "What to find" },
 					}}
 					submit={{ label: "Search Soulseek" }}
-					onDone={(job) => navigate({ to: "/search", search: { s: job.id } })}
+					onDone={(job) => navigate({ to: "/soulseek", search: { s: job.id } })}
 				/>
 			</Section>
 			{s && (

@@ -20,6 +20,7 @@ import {
 	type IssueFilter,
 } from "../../shared/library.ts";
 import { batchToast, namedBatch, queuedBatch } from "../ui/batch.ts";
+import { DUPE_REASONS } from "../ui/duplicates.ts";
 import { age, bitrate, bpm, duration } from "../ui/figures.ts";
 import { fetchPeaks, trackRow } from "../ui/track.ts";
 import { orpc } from "./api.ts";
@@ -56,7 +57,7 @@ function TrackWaveform({ id, track }: { id: string; track: Track }) {
 			<Text kind="meta">
 				{track.peaks
 					? "Drawing the waveform."
-					: "The waveform is drawn after a scan, with ffmpeg on the hub."}
+					: "The waveform is drawn after a scan, once the hub can decode the audio."}
 			</Text>
 		);
 	}
@@ -144,8 +145,8 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					icon: "Sparkles",
 					label: "Auto-tag",
 					onAct: () => autotag.mutateAsync({ tracks: { ids: [id] } }),
-					done: "Looking the track up; the results wait in Review",
-					to: "/review",
+					done: "Looking the track up; the results wait in Auto-tag review",
+					to: "/auto-tag-review",
 				},
 				{
 					icon: "Image",
@@ -309,6 +310,14 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 				empty={{
 					sentence:
 						"Not analysed yet. Analyse measures tempo, key, energy and loudness.",
+					act: {
+						label: "Analyse",
+						onAct: () =>
+							queuedBatch(
+								analyse.mutateAsync({ tracks: { ids: [id] }, force: true }),
+								"Analysing",
+							),
+					},
 				}}
 			/>
 			<Section
@@ -323,7 +332,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 				)}
 				empty={{ sentence: "Nothing to fix." }}
 			/>
-			<Section title="Custom tags" read={assigned}>
+			<Section title="Tags" read={assigned}>
 				<Card>
 					<Picker
 						fit="list"
@@ -361,7 +370,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 								leading: { icon: "Copy" },
 								facts: [
 									bitrate(row.format, row.bitrate),
-									`${row.reason}, ${row.confidence}% sure`,
+									`${DUPE_REASONS[row.reason]}, ${row.confidence}% sure`,
 								],
 								href: `/library/${row.id}`,
 							}),

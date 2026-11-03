@@ -17,7 +17,7 @@ type Fields = ("genre" | "artist" | "label")[];
 
 interface Preview {
 	kind: Kind;
-	// A unify preview is of the fields it was run over.
+	// A tidy-spellings preview is of the fields it was run over.
 	fields?: Fields;
 }
 

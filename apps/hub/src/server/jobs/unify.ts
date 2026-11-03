@@ -88,7 +88,11 @@ export default defineJob<UnifyPayload, UnifyResult>({
 			progress(total, total, `${result.tracks} tracks would change`);
 			return result;
 		}
-		const info = { batchId: id, origin: "rule" as const, label: "Unify tags" };
+		const info = {
+			batchId: id,
+			origin: "rule" as const,
+			label: "Tidy spellings",
+		};
 		openBatch(info);
 		const applied = applyPatches(patches(), info, { signal });
 		result.tracks = applied.tracks;

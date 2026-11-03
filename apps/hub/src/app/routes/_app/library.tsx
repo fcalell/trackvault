@@ -2,8 +2,8 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { ISSUE_FILTERS, type IssueFilter } from "../../../shared/library.ts";
 import { LibraryPane } from "../../lib/library.tsx";
 
-// Filters a link can open the library with: an issue (from Issues), a custom tag
-// (from Custom tags) or a genre.
+// Filters a link can open the library with: an issue (from Issues), a tag
+// (from Tags) or a genre.
 interface Filters {
 	issue?: IssueFilter | undefined;
 	tag?: number | undefined;

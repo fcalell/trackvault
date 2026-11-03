@@ -73,7 +73,7 @@ function SoulseekSettings() {
 					wishlistAutoDownload: {
 						label: "Download for the wishlist",
 						description:
-							"The best candidate above the score below is downloaded without asking. Off marks the want found for you to look at.",
+							"The best candidate above the score below is downloaded without asking. Off marks the wishlist item found for you to look at.",
 					},
 					wishlistMinScore: {
 						label: "Lowest score to download",

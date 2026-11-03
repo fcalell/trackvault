@@ -16,7 +16,7 @@ export const Route = createFileRoute("/_app/wishlist/$wantId")({
 	component: WantRecord,
 });
 
-// One want: how the search stands and the candidates the last search kept, ranked.
+// One wishlist item: how the search stands and the candidates the last search kept, ranked.
 function WantRecord() {
 	const id = Number(Route.useParams().wantId);
 	const want = orpc.wishlist.get.read({ id });
@@ -26,7 +26,7 @@ function WantRecord() {
 	return (
 		<Pane
 			title={want.at(wantName)}
-			noun="want"
+			noun="wishlist item"
 			read={want}
 			back="/wishlist"
 			cover
@@ -77,7 +77,7 @@ function WantRecord() {
 					},
 					{
 						key: "wants",
-						label: "Wants",
+						label: "Looking for",
 						title: each.betterCopy ? "A better copy" : "Any copy",
 					},
 					{

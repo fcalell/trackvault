@@ -89,7 +89,7 @@ const COLUMNS: TableColumn<Candidate>[] = [
 	},
 ];
 
-// The candidates of a search (or of a want's last search), best first: the ranking's
+// The candidates of a search (or of a wishlist item's last search), best first: the ranking's
 // call, quality, length and size, what the library already has, the peer, and the
 // ranking's reasons. Download asks the peer through slskd; the file lands in the inbox.
 export function Candidates({

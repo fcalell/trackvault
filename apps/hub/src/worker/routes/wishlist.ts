@@ -300,7 +300,9 @@ export const wishlist = {
 				});
 			const ids = idsOf(input.wants);
 			if (ids.length === 0)
-				throw new ApiError("BAD_REQUEST", { message: "Choose wants first." });
+				throw new ApiError("BAD_REQUEST", {
+					message: "Choose wishlist items first.",
+				});
 			return enqueue(wishlistJob, { wantIds: ids });
 		}),
 

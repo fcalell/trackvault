@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { TransferView } from "../../../shared/channels.ts";
 import { orpc } from "../../lib/api.ts";
 import { transfersLive } from "../../lib/live.ts";
-import { TRANSFER_STATE } from "../../ui/acquire.ts";
+import { TRANSFER_STATE, transferWords } from "../../ui/acquire.ts";
 import { size, speed } from "../../ui/figures.ts";
 import { trackRow } from "../../ui/track.ts";
 
@@ -23,16 +23,16 @@ function facts(t: TransferView): string[] {
 			speed(t.speed),
 		);
 	else if (t.size > 0) parts.push(size(t.size));
-	if (t.rawState && t.state === "queued") parts.push(t.rawState);
+	if (t.rawState && t.state === "queued") parts.push(transferWords(t.rawState));
 	return parts;
 }
 
 // What a row says after its artist: why it failed, or the wishlist item it is for.
 const note = (t: TransferView): string | undefined =>
 	t.error && (t.state === "failed" || t.state === "cancelled")
-		? t.error
+		? transferWords(t.error)
 		: t.want
-			? `For  on the wishlist`
+			? `For ${t.want} on the wishlist`
 			: undefined;
 
 // Soulseek downloads as slskd moves them, live; a finished file goes to the inbox on
@@ -95,7 +95,7 @@ function Downloads() {
 			back={false}
 			wide
 			acts={[
-				{ icon: "Search", label: "Search Soulseek", href: "/search" },
+				{ icon: "Search", label: "Search Soulseek", href: "/soulseek" },
 				{
 					icon: "BrushCleaning",
 					label: "Clear finished",
@@ -109,6 +109,7 @@ function Downloads() {
 				empty={{
 					sentence:
 						"No downloads yet. Search Soulseek, or let the wishlist find what you want.",
+					act: { label: "Search Soulseek", href: "/soulseek" },
 				}}
 			/>
 		</Pane>

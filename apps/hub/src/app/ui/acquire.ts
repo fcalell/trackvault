@@ -6,7 +6,7 @@ import type {
 } from "@fcalell/ui-core/descriptors";
 import { trackTitle } from "./track.ts";
 
-// What the acquisition places say of an inbox item, a download or a want, in words.
+// What the acquisition places say of an inbox item, a download or a wishlist item, in words.
 
 export const SOURCE_LABELS = {
 	upload: "Upload",
@@ -20,7 +20,7 @@ export const INBOX_STATE: Record<string, StatusMark> = {
 	processing: { tone: "running", label: "Processing" },
 	"awaiting-approval": { tone: "active", label: "Ready" },
 	duplicate: { tone: "attention", label: "Duplicate" },
-	"needs-review": { tone: "attention", label: "Needs you" },
+	"needs-review": { tone: "attention", label: "Needs a look" },
 	approved: { tone: "done", label: "Filed" },
 	rejected: { tone: "idle", label: "Rejected" },
 	failed: { tone: "failed", label: "Failed" },
@@ -30,7 +30,7 @@ export const DECISION: Record<string, ChipMark> = {
 	accept: { family: "green", label: "New track" },
 	"duplicate-of": { family: "neutral", label: "Duplicate" },
 	"better-than-existing": { family: "teal", label: "Better copy" },
-	"needs-review": { family: "amber", label: "Review" },
+	"needs-review": { family: "amber", label: "Needs a look" },
 };
 
 export const STEP_TONE: Record<string, Tone> = {
@@ -85,7 +85,7 @@ export const STEP_ICON: Record<string, IconName> = {
 };
 
 // One vocabulary for whether the library has a track, in every place that asks: a
-// search result, an import row, a want. The keys are the hub's `have` marks.
+// search result, an import row, a wishlist item. The keys are the hub's `have` marks.
 export const MATCH = {
 	have: { family: "green", label: "In the library" },
 	"other-version": { family: "teal", label: "Other mix" },
@@ -108,6 +108,24 @@ export const VERSION: Record<string, string> = {
 	unknown: "Mix not known",
 };
 
-// "Artist - Title (Mix)" of a want.
+// "Artist - Title (Mix)" of a wishlist item.
 export const wantName = (want: { artist: string; title: string }): string =>
 	`${want.artist} - ${trackTitle(want)}`;
+
+// slskd's own state strings (and the same strings a failed transfer keeps as its
+// error), in words. Anything else is the peer's or slskd's own sentence and stands.
+const SLSKD_STATE: Record<string, string> = {
+	Requested: "Asking the peer",
+	Initializing: "Starting",
+	"Queued, Remotely": "Waiting in the peer's queue",
+	"Queued, Locally": "Waiting its turn here",
+	InProgress: "Downloading",
+	"Completed, Succeeded": "Finished",
+	"Completed, TimedOut": "The peer did not answer in time",
+	"Completed, Errored": "The transfer broke off",
+	"Completed, Rejected": "The peer refused it",
+	"Completed, Cancelled": "Cancelled",
+	"Completed, Aborted": "The peer stopped it",
+};
+
+export const transferWords = (raw: string): string => SLSKD_STATE[raw] ?? raw;

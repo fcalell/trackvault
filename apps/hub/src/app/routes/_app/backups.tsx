@@ -206,6 +206,11 @@ function Backups() {
 					empty={{
 						sentence:
 							"No backups yet. Back up now, or wait for the hour set in the backup settings.",
+						act: {
+							label: "Back up now",
+							onAct: () => backupNow.mutateAsync(),
+							done: "Backup started",
+						},
 					}}
 				/>
 				<Section
@@ -235,6 +240,7 @@ function Backups() {
 								? "Nothing is in the bucket yet."
 								: "Offsite storage is not set up. The bucket and keys are in the backup settings.",
 						),
+						act: { label: "Open backup settings", href: "/backups/settings" },
 					}}
 				/>
 				<Section
@@ -246,7 +252,7 @@ function Backups() {
 							key: "stop",
 							label: "1. Stop the hub",
 							title: "Stop the hub so nothing has the database open",
-							line: "The restore tool refuses while the hub is running",
+							line: "The restore command will not run while the hub is running",
 						},
 						{
 							key: "local",
@@ -254,7 +260,7 @@ function Backups() {
 							title: {
 								code: `node dist/server/bin/restore.mjs --dir ${each.dir} <backup file>`,
 							},
-							line: "Add --list instead of the file to see the backups. It checks the backup, moves the current database aside as trackvault.sqlite.pre-restore and puts the backup in place",
+							line: "Leave the file name out and add --list to see the backups. The command checks the backup, keeps the current database beside it under a name ending in .pre-restore, and puts the backup in its place",
 						},
 						{
 							key: "bucket",
@@ -262,7 +268,7 @@ function Backups() {
 							title: {
 								code: "node dist/server/bin/restore-offsite.mjs --library <music folder>",
 							},
-							line: "On a new box. It restores the newest database backup, then downloads every music file, checking each; run it again after an interruption. --db-only restores just the database",
+							line: "For a new machine. The command restores the newest database backup, then downloads and checks every music file. If it is interrupted, run it again. Add --db-only to restore the database and leave the music",
 						},
 						{
 							key: "start",

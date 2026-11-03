@@ -20,7 +20,7 @@ type Suggestion = AppRouter["aliases"]["suggest"]["__output"][number];
 const NOUN: Record<Kind, string> = { artist: "artist", label: "label" };
 
 // Artist and label aliases: spellings that differ by case, spacing or punctuation
-// grouped for a one-click merge, the aliases kept, and the unify that applies them.
+// grouped for a one-click merge, the aliases kept, and the tidying that applies them.
 function Aliases() {
 	const map = useMutation(orpc.aliases.map.mutationOptions());
 	const remove = useMutation(orpc.aliases.remove.mutationOptions());
@@ -134,7 +134,11 @@ function Aliases() {
 				title="Artist aliases"
 				items={artistAliases.at((rows) => rows.map(toAlias("artist")))}
 				act={add("artist")}
-				empty={{ sentence: "No artist aliases yet." }}
+				empty={{
+					sentence:
+						"No artist aliases yet. An alias names the spelling to use for another.",
+					act: add("artist"),
+				}}
 			/>
 			<Section
 				title="Label spellings to merge"
@@ -145,7 +149,11 @@ function Aliases() {
 				title="Label aliases"
 				items={labelAliases.at((rows) => rows.map(toAlias("label")))}
 				act={add("label")}
-				empty={{ sentence: "No label aliases yet." }}
+				empty={{
+					sentence:
+						"No label aliases yet. An alias names the spelling to use for another.",
+					act: add("label"),
+				}}
 			/>
 			<PreviewSection
 				kind="unify"

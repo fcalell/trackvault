@@ -232,7 +232,7 @@ export const bulk = {
 				: enqueue(dedupe, { tracks: input.tracks }),
 		),
 
-	// Asks the auto-tag providers about the selection; the results wait in Review.
+	// Asks the auto-tag providers about the selection; the results wait in Auto-tag review.
 	autotag: procedure({ auth: true, writes: ["proposals", "jobs"] })
 		.input(z.object({ tracks: tracksInput }))
 		.output(jobViewSchema)

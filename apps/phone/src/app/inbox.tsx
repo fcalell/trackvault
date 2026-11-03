@@ -11,12 +11,12 @@ import type { InboxRow } from "../lib/types";
 type Group = "ready" | "review" | "processing" | "done";
 
 const STATUS: Record<InboxRow["state"], StatusMark> = {
-	queued: { tone: "waiting", label: "Queued" },
-	processing: { tone: "running", label: "Checking" },
+	queued: { tone: "waiting", label: "Waiting" },
+	processing: { tone: "running", label: "Processing" },
 	"awaiting-approval": { tone: "active", label: "Ready" },
 	duplicate: { tone: "attention", label: "Duplicate" },
 	"needs-review": { tone: "attention", label: "Needs a look" },
-	approved: { tone: "done", label: "Approved" },
+	approved: { tone: "done", label: "Filed" },
 	rejected: { tone: "idle", label: "Rejected" },
 	failed: { tone: "failed", label: "Failed" },
 };
@@ -42,7 +42,7 @@ export default function Inbox() {
 						options: [
 							{ value: "ready", label: "Ready" },
 							{ value: "review", label: "Needs a look" },
-							{ value: "processing", label: "Checking" },
+							{ value: "processing", label: "Processing" },
 							{ value: "done", label: "Done" },
 						],
 						value: group,

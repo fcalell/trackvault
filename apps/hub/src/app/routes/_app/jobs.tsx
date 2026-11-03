@@ -18,8 +18,8 @@ const KINDS: Record<string, { title: string; icon: IconName }> = {
 	"tag-write": { title: "Tag write", icon: "Tags" },
 	peaks: { title: "Waveforms", icon: "AudioWaveform" },
 	edit: { title: "Edit tags", icon: "PencilLine" },
-	rules: { title: "Cleanup rules", icon: "WandSparkles" },
-	unify: { title: "Unify tags", icon: "Replace" },
+	rules: { title: "Rules", icon: "WandSparkles" },
+	unify: { title: "Tidy spellings", icon: "Replace" },
 	organise: { title: "Organise", icon: "FolderTree" },
 	quarantine: { title: "Quarantine", icon: "Archive" },
 	restore: { title: "Restore", icon: "ArchiveRestore" },
@@ -130,6 +130,11 @@ function Jobs() {
 				empty={{
 					sentence:
 						"No jobs yet. A scan of the library shows here while it runs.",
+					act: {
+						label: "Scan now",
+						onAct: () => orpc.scan.start.call(),
+						done: "Scan started",
+					},
 				}}
 			/>
 		</Pane>

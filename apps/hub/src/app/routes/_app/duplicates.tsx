@@ -9,6 +9,7 @@ import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { queuedBatch } from "../../ui/batch.ts";
+import { DUPE_REASONS } from "../../ui/duplicates.ts";
 import { bitrate, count, duration, size } from "../../ui/figures.ts";
 import { trackRow } from "../../ui/track.ts";
 
@@ -20,12 +21,6 @@ type Groups = AppRouter["dupes"]["groups"]["__output"];
 type Group = Groups["groups"][number];
 type Member = Group["members"][number];
 type View = "open" | "dismissed";
-
-const REASONS = {
-	exact: "Same audio",
-	acoustic: "Sounds the same",
-	fuzzy: "Same artist and title",
-} as const;
 
 const VIEWS: Record<View, string> = {
 	open: "Open",
@@ -156,7 +151,7 @@ function Duplicates() {
 
 	const band = (group: Group) => ({
 		key: String(group.id),
-		label: `${REASONS[group.reason]} - ${group.members.length} tracks`,
+		label: `${DUPE_REASONS[group.reason]} - ${group.members.length} tracks`,
 		act:
 			view === "dismissed"
 				? {
@@ -247,6 +242,15 @@ function Duplicates() {
 						view === "open"
 							? "No duplicates found. Find duplicates to search the library."
 							: "No group was marked as not duplicates.",
+					act:
+						view === "open"
+							? {
+									label: "Find duplicates",
+									onAct: () => orpc.dupes.run.call(),
+									done: "Looking for duplicates",
+									to: "/jobs",
+								}
+							: undefined,
 				}}
 			/>
 			{total > limit && (
