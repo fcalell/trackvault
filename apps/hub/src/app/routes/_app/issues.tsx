@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_app/issues")({
 	component: Issues,
 });
 
-type Issue = AppRouter["health"]["summary"]["__output"]["issues"][number];
+type Summary = AppRouter["health"]["summary"]["__output"];
 
 // What each issue means, in a line.
 const WHY: Record<IssueFilter, string> = {
@@ -29,20 +29,61 @@ const WHY: Record<IssueFilter, string> = {
 	fakeBitrate: "The audio ends where a lower bitrate's does",
 };
 
+// Where each issue is fixed: the library filtered by it, where the bulk acts are
+// (or the place that finds better copies).
+const FIX: Record<IssueFilter, { label: string; href: string }> = {
+	lowBitrate: { label: "Find better copies", href: "/search" },
+	noTitle: { label: "Edit the tags", href: "/library?issue=noTitle" },
+	noArtist: { label: "Edit the tags", href: "/library?issue=noArtist" },
+	noGenre: { label: "Edit the tags", href: "/library?issue=noGenre" },
+	noBpm: { label: "Analyse the tracks", href: "/library?issue=noBpm" },
+	noKey: { label: "Analyse the tracks", href: "/library?issue=noKey" },
+	noArt: { label: "Find covers", href: "/library?issue=noArt" },
+	undecodable: {
+		label: "Review the files",
+		href: "/library?issue=undecodable",
+	},
+	missingFile: {
+		label: "Review the tracks",
+		href: "/library?issue=missingFile",
+	},
+	corrupt: { label: "Review the files", href: "/library?issue=corrupt" },
+	fakeBitrate: { label: "Find better copies", href: "/search" },
+};
+
+// The checks that read each file: an issue they find is only counted over the
+// files they have been through.
+const CHECKED: Partial<Record<IssueFilter, "integrity" | "bitrate">> = {
+	corrupt: "integrity",
+	fakeBitrate: "bitrate",
+};
+
 // The library's issues grouped, each with its count and a link into the library
 // filtered by it, and the two health checks that need ffmpeg.
 function Issues() {
 	const run = useMutation(orpc.health.run.mutationOptions());
 	const summary = orpc.health.summary.read();
-	const toRow = (issue: Issue): Row => ({
-		key: issue.value,
-		leading: { tone: issue.count > 0 ? "attention" : "done" },
-		title: ISSUE_LABELS[issue.value],
-		line: WHY[issue.value],
-		trailing: { count: issue.count },
-		href: issue.count > 0 ? `/library?issue=${issue.value}` : undefined,
-		dim: issue.count === 0,
-	});
+	const toRow = (each: Summary): Row[] =>
+		each.issues.map((issue) => {
+			const check = CHECKED[issue.value];
+			const unchecked = check ? each.total - each.checked[check] : 0;
+			const open = issue.count > 0;
+			return {
+				key: issue.value,
+				leading: {
+					tone: open ? "attention" : unchecked > 0 ? "idle" : "done",
+				},
+				title: ISSUE_LABELS[issue.value],
+				line: WHY[issue.value],
+				facts:
+					check && unchecked > 0
+						? [`Checked ${count(each.checked[check])} of ${count(each.total)}`]
+						: [],
+				trailing: open ? { count: issue.count } : undefined,
+				act: open ? { icon: "Wrench", ...FIX[issue.value] } : undefined,
+				dim: !open,
+			};
+		});
 	return (
 		<Pane title="Issues" back={false} wide>
 			<Banner
@@ -55,7 +96,7 @@ function Issues() {
 			/>
 			<Section
 				title="By issue"
-				items={summary.at((each) => each.issues.map(toRow))}
+				items={summary.at(toRow)}
 				empty={{ sentence: "Nothing to fix." }}
 			/>
 			<Section

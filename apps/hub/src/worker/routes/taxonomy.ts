@@ -14,6 +14,7 @@ import {
 import unify from "../../server/jobs/unify.ts";
 import { db } from "../../server/lib/db.ts";
 import { loadTaxonomies } from "../../server/lib/taxonomy.ts";
+import { logRemoved, newBatch } from "../../server/lib/taxonomy-log.ts";
 import { enqueue } from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
 
@@ -33,6 +34,20 @@ async function distinct(field: (typeof FIELDS)[number]) {
 		.all();
 }
 
+// How many tracks carry each value of a field, by the lower-cased value.
+function usage(field: (typeof FIELDS)[number]): Map<string, number> {
+	const column = tracks[field];
+	return new Map(
+		db()
+			.select({ value: sql<string>`lower(${column})`, n: count() })
+			.from(tracks)
+			.where(sql`${column} IS NOT NULL AND ${column} != ''`)
+			.groupBy(sql`${column} collate nocase`)
+			.all()
+			.map((row) => [row.value, row.n]),
+	);
+}
+
 export const genres = {
 	// The taxonomy with each genre's aliases and how many tracks carry it.
 	list: procedure({
@@ -40,22 +55,19 @@ export const genres = {
 		reads: ["genres", "genreAliases", "tracks"],
 	}).query(() => {
 		const database = db();
-		const used = new Map<string, number>();
-		for (const row of database
-			.select({
-				value: sql<string>`${tracks.genre} collate nocase`,
-				n: count(),
-			})
-			.from(tracks)
-			.where(sql`${tracks.genre} IS NOT NULL`)
-			.groupBy(sql`${tracks.genre} collate nocase`)
-			.all())
-			used.set(row.value.toLowerCase(), row.n);
-		const aliases = new Map<number, Array<{ id: number; alias: string }>>();
+		const used = usage("genre");
+		const aliases = new Map<
+			number,
+			Array<{ id: number; alias: string; tracks: number }>
+		>();
 		for (const row of database.select().from(genreAliases).all())
 			aliases.set(row.genreId, [
 				...(aliases.get(row.genreId) ?? []),
-				{ id: row.id, alias: row.alias },
+				{
+					id: row.id,
+					alias: row.alias,
+					tracks: used.get(row.alias.toLowerCase()) ?? 0,
+				},
 			]);
 		return database
 			.select()
@@ -106,10 +118,39 @@ export const genres = {
 			return row;
 		}),
 
-	remove: procedure({ auth: true, writes: ["genres", "genreAliases"] })
+	// Deletes a genre and its aliases; the history holds what went, to undo.
+	remove: procedure({
+		auth: true,
+		writes: ["genres", "genreAliases", "changes", "batches"],
+	})
 		.input(z.object({ id: z.number().int() }))
 		.mutation(({ input }) => {
-			db().delete(genresTable).where(eq(genresTable.id, input.id)).run();
+			db().transaction((tx) => {
+				const genre = tx
+					.select()
+					.from(genresTable)
+					.where(eq(genresTable.id, input.id))
+					.get();
+				if (!genre) return;
+				const aliases = tx
+					.select()
+					.from(genreAliases)
+					.where(eq(genreAliases.genreId, genre.id))
+					.all();
+				logRemoved(
+					tx,
+					newBatch(`Delete genre ${genre.name}`),
+					{
+						genre: genre.name,
+						aliases: aliases.map((row) => [
+							"genre",
+							{ alias: row.alias, canonical: genre.name },
+						]),
+					},
+					new Date(),
+				);
+				tx.delete(genresTable).where(eq(genresTable.id, genre.id)).run();
+			});
 		}),
 
 	addAlias: procedure({ auth: true, writes: ["genreAliases"] })
@@ -128,10 +169,28 @@ export const genres = {
 			return row;
 		}),
 
-	removeAlias: procedure({ auth: true, writes: ["genreAliases"] })
+	removeAlias: procedure({
+		auth: true,
+		writes: ["genreAliases", "changes", "batches"],
+	})
 		.input(z.object({ id: z.number().int() }))
 		.mutation(({ input }) => {
-			db().delete(genreAliases).where(eq(genreAliases.id, input.id)).run();
+			db().transaction((tx) => {
+				const row = tx
+					.select({ alias: genreAliases.alias, canonical: genresTable.name })
+					.from(genreAliases)
+					.innerJoin(genresTable, eq(genresTable.id, genreAliases.genreId))
+					.where(eq(genreAliases.id, input.id))
+					.get();
+				if (!row) return;
+				logRemoved(
+					tx,
+					newBatch(`Remove the alias ${row.alias}`),
+					{ aliases: [["genre", row]] },
+					new Date(),
+				);
+				tx.delete(genreAliases).where(eq(genreAliases.id, input.id)).run();
+			});
 		}),
 
 	// Maps one value to a genre (made when it is new).
@@ -209,11 +268,16 @@ export const aliases = {
 		.input(z.object({ kind }))
 		.query(({ input }) => {
 			const table = tableOf(input.kind);
+			const used = usage(input.kind);
 			return db()
 				.select()
 				.from(table)
 				.orderBy(sql`${table.canonical} collate nocase`, table.alias)
-				.all();
+				.all()
+				.map((row) => ({
+					...row,
+					tracks: used.get(row.alias.toLowerCase()) ?? 0,
+				}));
 		}),
 
 	// Spellings of one artist or label that differ only by case, spacing or
@@ -293,11 +357,28 @@ export const aliases = {
 			return row;
 		}),
 
-	remove: procedure({ auth: true, writes: ["artistAliases", "labelAliases"] })
+	remove: procedure({
+		auth: true,
+		writes: ["artistAliases", "labelAliases", "changes", "batches"],
+	})
 		.input(z.object({ kind, id: z.number().int() }))
 		.mutation(({ input }) => {
 			const table = tableOf(input.kind);
-			db().delete(table).where(eq(table.id, input.id)).run();
+			db().transaction((tx) => {
+				const row = tx.select().from(table).where(eq(table.id, input.id)).get();
+				if (!row) return;
+				logRemoved(
+					tx,
+					newBatch(`Remove the alias ${row.alias}`),
+					{
+						aliases: [
+							[input.kind, { alias: row.alias, canonical: row.canonical }],
+						],
+					},
+					new Date(),
+				);
+				tx.delete(table).where(eq(table.id, input.id)).run();
+			});
 		}),
 };
 

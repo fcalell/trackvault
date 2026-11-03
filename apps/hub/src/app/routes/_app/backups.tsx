@@ -2,7 +2,7 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import type { Fact } from "@fcalell/ui-core/descriptors";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { BACKUP_KINDS } from "../../../shared/backups.ts";
 import type { JobView } from "../../../shared/channels.ts";
@@ -16,6 +16,9 @@ export const Route = createFileRoute("/_app/backups")({
 });
 
 type Local = AppRouter["backups"]["list"]["__output"][number];
+const STALE_MS = 2 * 86_400_000;
+const isStale = (at: Date): boolean => Date.now() - at.getTime() > STALE_MS;
+
 type Remote = AppRouter["backups"]["remote"]["__output"]["items"][number];
 
 function localRow(
@@ -92,106 +95,184 @@ function Backups() {
 	});
 
 	return (
-		<Pane
-			title="Backups"
-			read={jobsLive}
-			back={false}
-			wide
-			acts={[
-				{
-					icon: "DatabaseBackup",
-					label: "Back up now",
-					onAct: () => backupNow.mutateAsync(),
-					done: "Backup started",
-				},
-				{
-					icon: "CloudUpload",
-					label: "Send offsite now",
-					onAct: () => uploadNow.mutateAsync({ library: false }),
-					done: "Upload started",
-				},
-			]}
-		>
-			<Section
-				title="Now"
-				description="Backups and uploads as they run."
-				items={jobsLive.at((jobs) =>
-					jobs
-						.filter((job) =>
-							(BACKUP_KINDS as readonly string[]).includes(job.kind),
-						)
-						.slice(0, 6)
-						.map(jobRow),
-				)}
-				empty={{
-					sentence:
-						"Nothing running. The next backup is on the schedule below.",
-				}}
-			/>
-			<Section
-				title="Schedule"
-				items={status.at((each) => [
+		<>
+			<Pane
+				title="Backups"
+				read={jobsLive}
+				back={false}
+				wide
+				acts={[
 					{
-						key: "next",
-						leading: { icon: "CalendarClock" },
-						title: each.enabled
-							? `Next backup ${each.nextAt ? date(each.nextAt) : ""}`
-							: "Daily backup is off",
-						facts: [{ code: each.dir }],
-						...(each.freeBytes !== null
-							? { trailing: { value: `${size(each.freeBytes)} free` } }
-							: {}),
+						icon: "DatabaseBackup",
+						label: "Back up now",
+						onAct: () => backupNow.mutateAsync(),
+						done: "Backup started",
 					},
 					{
-						key: "offsite",
-						leading: { icon: "Cloud" },
-						title: each.offsite.enabled
-							? "Offsite storage is on"
-							: "Offsite storage is off",
-						line: each.offsite.configured
-							? `${count(each.offsite.files)} audio files, ${size(each.offsite.bytes)} sent`
-							: "Not set up: the bucket and keys are in Settings",
-						act: {
-							icon: "Settings" as const,
-							label: "Open settings",
-							href: "/settings",
+						icon: "CloudUpload",
+						label: "Send offsite now",
+						onAct: () => uploadNow.mutateAsync({ library: false }),
+						done: "Upload started",
+					},
+					{
+						icon: "Settings",
+						label: "Backup settings",
+						href: "/backups/settings",
+					},
+				]}
+			>
+				<Section
+					title="Now"
+					description="Backups and uploads as they run."
+					items={jobsLive.at((jobs) =>
+						jobs
+							.filter((job) =>
+								(BACKUP_KINDS as readonly string[]).includes(job.kind),
+							)
+							.slice(0, 6)
+							.map(jobRow),
+					)}
+					empty={{
+						sentence:
+							"Nothing running. The next backup is on the schedule below.",
+					}}
+				/>
+				<Section
+					title="Schedule"
+					items={status.at((each) => [
+						{
+							key: "good",
+							leading: { icon: "ShieldCheck" },
+							title: each.lastGood
+								? `Last good backup ${date(each.lastGood)}`
+								: "No good backup yet",
+							facts: [
+								each.lastGood && !isStale(each.lastGood)
+									? { tone: "done", label: "Checked" }
+									: {
+											warning: each.lastGood
+												? "Over two days old"
+												: "None checked",
+										},
+							],
+							line:
+								each.lastBackup?.state === "failed"
+									? `The latest backup failed: ${each.lastBackup.error ?? "no reason given"}`
+									: undefined,
+							...(each.lastGood
+								? { trailing: { age: age(each.lastGood) } }
+								: {}),
 						},
-					},
-				])}
-			/>
-			<Section
-				title="On this hub"
-				description="Each backup is checked when it is taken. Check one again to catch a disk that has gone bad since."
-				items={local.at((rows) =>
-					rows.map((row) =>
-						localRow(
-							row,
-							(name) => verify.mutateAsync({ name }),
-							(name) => remove.mutateAsync({ name }),
+						{
+							key: "next",
+							leading: { icon: "CalendarClock" },
+							title: each.enabled
+								? `Next backup ${each.nextAt ? date(each.nextAt) : ""}`
+								: "Daily backup is off",
+							facts: [{ code: each.dir }],
+							...(each.freeBytes !== null
+								? { trailing: { value: `${size(each.freeBytes)} free` } }
+								: {}),
+						},
+						{
+							key: "offsite",
+							leading: { icon: "Cloud" },
+							title: each.offsite.enabled
+								? "Offsite storage is on"
+								: "Offsite storage is off",
+							line: each.offsite.configured
+								? `${count(each.offsite.files)} audio files, ${size(each.offsite.bytes)} sent`
+								: "Not set up: the bucket and keys are in the backup settings",
+							act: {
+								icon: "Settings" as const,
+								label: "Backup settings",
+								href: "/backups/settings",
+							},
+						},
+					])}
+				/>
+				<Section
+					title="On this hub"
+					description="Each backup is checked when it is taken. Check one again to catch a disk that has gone bad since."
+					items={local.at((rows) =>
+						rows.map((row) =>
+							localRow(
+								row,
+								(name) => verify.mutateAsync({ name }),
+								(name) => remove.mutateAsync({ name }),
+							),
 						),
-					),
-				)}
-				empty={{
-					sentence:
-						"No backups yet. Back up now, or wait for the hour set in Settings.",
-				}}
-			/>
-			<Section
-				title="Offsite"
-				description="Database backups in the bucket. To restore from them, run restore-offsite.mjs from the bundle with the hub stopped."
-				items={remote.at((each) =>
-					each.configured && !each.error ? each.items.map(remoteRow) : [],
-				)}
-				empty={{
-					sentence: remote.at((each) =>
-						!each.configured
-							? "Offsite storage is not set up. The bucket and keys are in Settings."
-							: each.error
-								? `The bucket could not be read: ${each.error}`
-								: "Nothing is in the bucket yet.",
-					),
-				}}
-			/>
-		</Pane>
+					)}
+					empty={{
+						sentence:
+							"No backups yet. Back up now, or wait for the hour set in the backup settings.",
+					}}
+				/>
+				<Section
+					title="Offsite"
+					description="Database backups in the bucket."
+					items={remote.at((each) =>
+						each.configured && each.error
+							? [
+									{
+										key: "unreachable",
+										leading: { icon: "CloudOff" as const },
+										title: "The bucket cannot be read",
+										facts: [{ tone: "failed" as const, label: "Unreachable" }],
+										line: `${each.error}. Test the connection in the backup settings: the endpoint, bucket and keys must be right and the keys able to list the bucket.`,
+										act: {
+											icon: "Settings" as const,
+											label: "Backup settings",
+											href: "/backups/settings",
+										},
+									},
+								]
+							: each.items.map(remoteRow),
+					)}
+					empty={{
+						sentence: remote.at((each) =>
+							each.configured
+								? "Nothing is in the bucket yet."
+								: "Offsite storage is not set up. The bucket and keys are in the backup settings.",
+						),
+					}}
+				/>
+				<Section
+					title="Restore"
+					description="Run these on the machine the hub is on."
+					items={status.at((each) => [
+						{
+							key: "stop",
+							label: "1. Stop the hub",
+							title: "Stop the hub so nothing has the database open",
+							line: "The restore tool refuses while the hub is running",
+						},
+						{
+							key: "local",
+							label: "2. From a backup here",
+							title: {
+								code: `node dist/server/bin/restore.mjs --dir ${each.dir} <backup file>`,
+							},
+							line: "Add --list instead of the file to see the backups. It checks the backup, moves the current database aside as trackvault.sqlite.pre-restore and puts the backup in place",
+						},
+						{
+							key: "bucket",
+							label: "2. Or from the bucket",
+							title: {
+								code: "node dist/server/bin/restore-offsite.mjs --library <music folder>",
+							},
+							line: "On a new box. It restores the newest database backup, then downloads every music file, checking each; run it again after an interruption. --db-only restores just the database",
+						},
+						{
+							key: "start",
+							label: "3. Start the hub",
+							title: "Start the hub: it applies any newer migrations",
+							line: "Agents keep their device keys, and the first scan finds the files in place",
+						},
+					])}
+				/>
+			</Pane>
+			<Outlet />
+		</>
 	);
 }

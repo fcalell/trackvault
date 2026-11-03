@@ -15,6 +15,7 @@ export {
 export type { FuzzyOptions } from "./fuzzy.ts";
 export { type DedupeOptions, groupDuplicates } from "./group.ts";
 export {
+	COMPLETENESS_SLOTS,
 	isLossless,
 	type KeeperChoice,
 	pickKeeper,

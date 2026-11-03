@@ -4,7 +4,12 @@ import { z } from "@fcalell/plugin-api/schema";
 import { eq } from "@fcalell/plugin-db/orm";
 import { jobs as jobsTable } from "../../schema/index.ts";
 import { db } from "../../server/lib/db.ts";
-import { cancelJob, getJob, recentJobs } from "../../server/services/jobs.ts";
+import {
+	cancelJob,
+	getJob,
+	recentJobs,
+	retryJob,
+} from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
 
 export const jobs = {
@@ -37,6 +42,16 @@ export const jobs = {
 				.get();
 			if (!row) throw new ApiError("NOT_FOUND");
 			return { kind: row.kind, result: (row.result ?? null) as unknown };
+		}),
+
+	// Runs a finished job again with the payload it had.
+	retry: procedure({ auth: true, writes: ["jobs"] })
+		.input(z.object({ id: z.string() }))
+		.output(jobViewSchema)
+		.mutation(({ input }) => {
+			const job = retryJob(input.id);
+			if (!job) throw new ApiError("NOT_FOUND");
+			return job;
 		}),
 
 	cancel: procedure({ auth: true, writes: ["jobs"] })

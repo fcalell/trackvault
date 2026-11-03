@@ -2,6 +2,7 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Button } from "@fcalell/plugin-react-ui/components/button";
 import { Gate } from "@fcalell/plugin-react-ui/components/gate";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
+import { Text } from "@fcalell/plugin-react-ui/components/text";
 import { createFileRoute } from "@tanstack/react-router";
 import { orpc } from "../lib/api.ts";
 import { followRedirect, oauthQuery } from "../lib/oauth.ts";
@@ -28,11 +29,10 @@ function ConnectConsent() {
 	return (
 		<Gate
 			title="Connect a client"
-			description="It can search your library, read tracks, playlists and stats, build playlists, and queue auto-tag, analysis and cover jobs. It cannot edit tags or delete files."
 			acts={
 				<>
 					<Button label="Allow" onAct={() => answer(true)} />
-					<Button act="quiet" label="Decline" onAct={() => answer(false)} />
+					<Button act="secondary" label="Deny" onAct={() => answer(false)} />
 				</>
 			}
 		>
@@ -46,6 +46,12 @@ function ConnectConsent() {
 					},
 				])}
 			/>
+			<Text>
+				It can search your library, read tracks, playlists and stats, build
+				playlists, and queue auto-tag, analysis and cover jobs. It cannot edit
+				tags or delete files. It keeps this access, renewing it, until its grant
+				is revoked on the hub.
+			</Text>
 		</Gate>
 	);
 }

@@ -16,11 +16,22 @@ export const count = (n: number): string => COUNT.format(n);
 export const bpm = (value: number | null): number | null =>
 	value === null ? null : Math.round(value * 10) / 10;
 
+// +3, -2, 0: a change with its sign.
+export const signed = (n: number): string => (n > 0 ? `+${n}` : String(n));
+
 // 5:32.
 export function duration(ms: number | null): string | null {
 	if (!ms || ms <= 0) return null;
 	const total = Math.round(ms / 1000);
 	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+// 4 h 32 min, 48 min: a total length.
+export function span(ms: number): string {
+	const minutes = Math.round(ms / 60_000);
+	return minutes >= 60
+		? `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+		: `${minutes} min`;
 }
 
 // 12.4 MB, 3.2 GB.

@@ -5,7 +5,8 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { PreviewSection } from "../../lib/preview.tsx";
+import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
+import { queuedBatch } from "../../ui/batch.ts";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/genres")({
@@ -50,17 +51,21 @@ function Genres() {
 				onAct: () => remove.mutateAsync({ id: genre.id }),
 				confirm: {
 					title: `Delete ${genre.name}?`,
-					sentence: "The genre and its aliases are removed. No track changes.",
+					sentence: `The genre and its ${genre.aliases.length === 1 ? "1 alias" : `${count(genre.aliases.length)} aliases`} are removed. The ${count(genre.tracks)} tracks keep their genre. Undo the batch in History.`,
 				},
 			},
 		],
 		children: genre.aliases.map((alias) => ({
 			key: `alias-${alias.id}`,
 			title: alias.alias,
-			facts: ["Alias"],
+			facts: [`Alias, ${count(alias.tracks)} tracks`],
 			act: {
 				icon: "X" as const,
 				label: `Remove ${alias.alias}`,
+				confirm: {
+					title: `Remove the alias ${alias.alias}?`,
+					sentence: `${count(alias.tracks)} tracks carry this spelling. They keep it, and tidying the genres stops rewriting it to ${genre.name}. Undo the batch in History.`,
+				},
 				onAct: () => removeAlias.mutateAsync({ id: alias.id }),
 			},
 		})),
@@ -119,11 +124,31 @@ function Genres() {
 			acts={[
 				{
 					icon: "Replace",
-					label: "Preview unify on the library",
+					label: "Preview tidying the genres",
 					onAct: () => orpc.unifyTags.preview.call({ fields: ["genre"] }),
 					done: "Previewing the genres",
 				},
 			]}
+			foot={
+				<PreviewFoot
+					kind="unify"
+					fields={["genre"]}
+					changes={(result) => result.tracks ?? 0}
+					apply={{
+						label: "Tidy the genres",
+						confirm: {
+							title: "Tidy the genres?",
+							sentence:
+								"The genre of every track in the preview is rewritten to its canonical spelling, in the library and in each file's tags. Artists and labels are not touched. Undo the batch in History.",
+						},
+						onAct: () =>
+							queuedBatch(
+								apply.mutateAsync({ fields: ["genre"] }),
+								"Tidying the genres",
+							),
+					}}
+				/>
+			}
 		>
 			<Section
 				title="Not in the taxonomy"
@@ -150,21 +175,11 @@ function Genres() {
 			/>
 			<PreviewSection
 				kind="unify"
-				title="Unify preview"
-				none="Preview the unify to see which genres would be rewritten."
+				fields={["genre"]}
+				title="Genre preview"
+				none="Preview tidying the genres to see which tracks would change."
 				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
 				changes={(result) => result.tracks ?? 0}
-				apply={{
-					label: "Unify the library",
-					confirm: {
-						title: "Unify the genres?",
-						sentence:
-							"Every change shown is written to the library and to the files. Undo the batch in History.",
-					},
-					onAct: () => apply.mutateAsync({ fields: ["genre"] }),
-					done: "Unifying",
-					to: "/jobs",
-				}}
 			/>
 		</Pane>
 	);

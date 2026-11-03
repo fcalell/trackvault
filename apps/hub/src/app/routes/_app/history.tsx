@@ -1,10 +1,14 @@
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
+import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
 import type { TableColumn } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import { useDebounced } from "../../lib/debounced.ts";
 import { age } from "../../ui/figures.ts";
+import { ORIGIN_OPTIONS, originLabel } from "../../ui/history.ts";
 
 export const Route = createFileRoute("/_app/history")({
 	component: History,
@@ -12,16 +16,10 @@ export const Route = createFileRoute("/_app/history")({
 
 type Batch = AppRouter["history"]["list"]["__output"]["data"][number];
 
-const ORIGINS: Record<string, string> = {
-	ui: "You",
-	rule: "Rules",
-	autotag: "Auto-tag",
-	rekordbox: "Rekordbox",
-	agent: "Agent",
-	scan: "Scan",
-	analysis: "Analysis",
-	mcp: "Claude",
-};
+const STATES = [
+	{ value: "applied", label: "Applied" },
+	{ value: "undone", label: "Undone" },
+];
 
 const COLUMNS: TableColumn<Batch>[] = [
 	{
@@ -34,9 +32,7 @@ const COLUMNS: TableColumn<Batch>[] = [
 		label: "By",
 		kind: "chip",
 		family: "neutral",
-		cell: (batch) =>
-			ORIGINS[batch.origin] ??
-			(batch.origin.startsWith("rekordbox:") ? "Rekordbox" : batch.origin),
+		cell: (batch) => originLabel(batch.origin),
 	},
 	{
 		key: "count",
@@ -65,12 +61,40 @@ const COLUMNS: TableColumn<Batch>[] = [
 // whether it was undone. A batch opens beside the list with its changes.
 function History() {
 	const open = useParams({ strict: false }).batchId;
+	const [text, setText] = useState("");
+	const [origin, setOrigin] = useState<string>();
+	const [state, setState] = useState<"applied" | "undone">();
+	const q = useDebounced(text.trim(), 120) || undefined;
 	return (
 		<>
 			<Pane title="History" back={false} wide>
+				<Toolbar
+					search={{
+						value: text,
+						onChange: setText,
+						placeholder: "Search the history",
+					}}
+					filters={[
+						{
+							label: "Made by",
+							placeholder: "Anyone",
+							options: ORIGIN_OPTIONS,
+							value: origin,
+							onChange: (value) => setOrigin(value ?? undefined),
+						},
+						{
+							label: "State",
+							placeholder: "Any state",
+							options: STATES,
+							value: state,
+							onChange: (value) =>
+								setState((value as "applied" | "undone") ?? undefined),
+						},
+					]}
+				/>
 				<Table
 					label="Batches"
-					items={orpc.history.list.window({})}
+					items={orpc.history.list.window({ q, origin, state })}
 					columns={COLUMNS}
 					row={{
 						id: (batch) => batch.id,

@@ -5,7 +5,8 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { PreviewSection } from "../../lib/preview.tsx";
+import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
+import { queuedBatch } from "../../ui/batch.ts";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/aliases")({
@@ -55,10 +56,14 @@ function Aliases() {
 			key: `${kind}-alias-${row.id}`,
 			leading: { icon: "ArrowRight" },
 			title: row.alias,
-			facts: [`is ${row.canonical}`],
+			facts: [`is ${row.canonical}`, `${count(row.tracks)} tracks`],
 			act: {
 				icon: "X",
 				label: `Remove ${row.alias}`,
+				confirm: {
+					title: `Remove the alias ${row.alias}?`,
+					sentence: `${count(row.tracks)} tracks carry this spelling. They keep it, and tidying the spellings stops rewriting it to ${row.canonical}. Undo the batch in History.`,
+				},
 				onAct: () => remove.mutateAsync({ kind, id: row.id }),
 			},
 		});
@@ -93,12 +98,32 @@ function Aliases() {
 			acts={[
 				{
 					icon: "Replace",
-					label: "Preview unify on the library",
+					label: "Preview tidying the spellings",
 					onAct: () =>
 						orpc.unifyTags.preview.call({ fields: ["artist", "label"] }),
 					done: "Previewing the aliases",
 				},
 			]}
+			foot={
+				<PreviewFoot
+					kind="unify"
+					fields={["artist", "label"]}
+					changes={(result) => result.tracks ?? 0}
+					apply={{
+						label: "Tidy the spellings",
+						confirm: {
+							title: "Tidy artist and label spellings?",
+							sentence:
+								"The artist and label of every track in the preview are rewritten to their canonical spelling, in the library and in each file's tags. Genres are not touched. Undo the batch in History.",
+						},
+						onAct: () =>
+							queuedBatch(
+								apply.mutateAsync({ fields: ["artist", "label"] }),
+								"Tidying the spellings",
+							),
+					}}
+				/>
+			}
 		>
 			<Section
 				title="Artist spellings to merge"
@@ -124,21 +149,11 @@ function Aliases() {
 			/>
 			<PreviewSection
 				kind="unify"
-				title="Unify preview"
-				none="Preview the unify to see which names would be rewritten."
+				fields={["artist", "label"]}
+				title="Spelling preview"
+				none="Preview tidying the spellings to see which tracks would change."
 				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
 				changes={(result) => result.tracks ?? 0}
-				apply={{
-					label: "Unify the library",
-					confirm: {
-						title: "Unify artists and labels?",
-						sentence:
-							"Every change shown is written to the library and to the files. Undo the batch in History.",
-					},
-					onAct: () => apply.mutateAsync({ fields: ["artist", "label"] }),
-					done: "Unifying",
-					to: "/jobs",
-				}}
 			/>
 		</Pane>
 	);

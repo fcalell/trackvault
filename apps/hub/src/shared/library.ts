@@ -53,6 +53,9 @@ export type ListRow = {
 	hasArt: boolean;
 };
 
+// A row of a playlist: its place in the playlist's own order, none in a smart playlist.
+export type PlaylistRow = ListRow & { position: number | null };
+
 // What each issue is called on screen.
 export const ISSUE_LABELS: Record<IssueFilter, string> = {
 	lowBitrate: "Low bitrate",

@@ -10,6 +10,7 @@ import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
 import { useChosen } from "../../lib/chosen.ts";
 import { age } from "../../ui/figures.ts";
+import { trackTitle } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/devices/conflicts")({
 	component: Conflicts,
@@ -25,7 +26,8 @@ const FIELDS: Record<string, string> = {
 };
 
 const COLUMNS: TableColumn<Conflict>[] = [
-	{ key: "label", label: "Track or playlist", cell: (row) => row.label },
+	{ key: "title", label: "Track or playlist", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (row) => row.artist },
 	{
 		key: "field",
 		label: "Field",
@@ -57,8 +59,8 @@ const COLUMNS: TableColumn<Conflict>[] = [
 ];
 
 // Fields changed in Rekordbox and in TrackVault since the last sync. The later change
-// was kept; pick the side to settle on. A value taken is written as your change (History
-// undoes it) and reaches every device.
+// was kept; pick the side to settle on. Rekordbox's value taken is one batch in History,
+// which undoes it; TrackVault's value is written to Rekordbox, so it asks first.
 function Conflicts() {
 	const resolve = useMutation(orpc.devices.resolve.mutationOptions());
 	const [picked, setPicked] = useState<Picked<{ state: "open" | "resolved" }>>({
@@ -87,14 +89,19 @@ function Conflicts() {
 							blocked: nothing,
 							onAct: () =>
 								resolve.mutateAsync({ conflicts: picked, take: "device" }),
-							done: "Took Rekordbox's values",
+							done: "Took Rekordbox's values. History undoes it.",
 						},
 						{
 							label: "Keep TrackVault",
 							blocked: nothing,
 							onAct: () =>
 								resolve.mutateAsync({ conflicts: picked, take: "hub" }),
-							done: "Kept TrackVault's values",
+							confirm: {
+								title: "Write TrackVault's values to Rekordbox?",
+								sentence:
+									"Rekordbox's values are replaced the next time the agent writes it, once Rekordbox is closed. The agent backs up Rekordbox's database first. Rekordbox keeps no undo: taking its values back needs the backup.",
+							},
+							done: "Kept TrackVault's values. They reach Rekordbox when it is closed.",
 						},
 					]}
 				/>

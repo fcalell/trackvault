@@ -33,14 +33,12 @@ export const Route = createFileRoute("/_app/library")({
 function Library() {
 	const search = Route.useSearch();
 	return (
-		<>
-			<LibraryPane
-				key={`${search.issue}|${search.tag}|${search.genre}|${search.neverPlayed}`}
-				title="All tracks"
-				base="/library"
-				initial={search}
-			/>
+		<LibraryPane
+			key={`${search.issue}|${search.tag}|${search.genre}|${search.neverPlayed}`}
+			title="All tracks"
+			initial={search}
+		>
 			<Outlet />
-		</>
+		</LibraryPane>
 	);
 }

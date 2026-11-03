@@ -55,6 +55,22 @@ const view = (t: {
 	hasArt: t.hasArt,
 });
 
+// What a track changes against the one it follows: the tempo and energy it moves by and the key it leaves.
+const change = z.object({
+	bpm: z.number().nullable(),
+	energy: z.number().nullable(),
+	keyFrom: z.string().nullable(),
+});
+
+const changeFrom = (
+	from: { bpm?: number | null; key?: string | null; energy?: number | null },
+	to: { bpm?: number | null; energy?: number | null },
+) => ({
+	bpm: from.bpm && to.bpm ? Math.round((to.bpm - from.bpm) * 10) / 10 : null,
+	energy: from.energy && to.energy ? to.energy - from.energy : null,
+	keyFrom: from.key ?? null,
+});
+
 const options = z.object({
 	pitch: z.number().min(0).max(20).default(8),
 	direction: z.enum(["up", "flat", "down"]).default("flat"),
@@ -86,6 +102,7 @@ export const sets = {
 						score: z.number().nullable(),
 						weak: z.boolean(),
 						why: z.string().nullable(),
+						change: change.nullable(),
 					}),
 				),
 				average: z.number(),
@@ -114,6 +131,7 @@ export const sets = {
 						score: step ? Math.round(step.score * 100) : null,
 						weak: step ? flow.weak.includes(step.index) : false,
 						why: step?.explanation ?? null,
+						change: i === 0 ? null : changeFrom(list[i - 1] ?? track, track),
 					};
 				}),
 				average: Math.round(flow.average * 100),
@@ -135,6 +153,7 @@ export const sets = {
 				trackView.extend({
 					score: z.number(),
 					why: z.string(),
+					change,
 					lastPlayedAt: z.number().nullable(),
 				}),
 			),
@@ -157,6 +176,7 @@ export const sets = {
 				...view(row.track),
 				score: Math.round(row.score * 100),
 				why: row.explanation,
+				change: changeFrom(current, row.track),
 				lastPlayedAt: row.track.lastPlayedAt ?? null,
 			}));
 		}),

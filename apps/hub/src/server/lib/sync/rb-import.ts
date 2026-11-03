@@ -848,6 +848,12 @@ export function importPart(deviceId: string, batch: ImportBatch): ImportResult {
 	for (const ref of batch.anlz)
 		if (!known.get({ h: ref.hash })) want.add(ref.hash);
 
+	// The import's first part holds the unmatched tracks (capped by the agent); the Devices place lists them.
+	if (batch.part === 0)
+		statement(
+			"UPDATE devices SET activity = json_set(coalesce(activity, '{}'), '$.unmatched', json(@list)) WHERE id = @id",
+		).run({ id: deviceId, list: JSON.stringify(batch.unmatched) });
+
 	const last = batch.part >= batch.parts - 1;
 	if (last) {
 		statement(

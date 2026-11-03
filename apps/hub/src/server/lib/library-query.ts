@@ -47,8 +47,6 @@ export const libraryQuery = z.object({
 	energy: z.number().int().optional(),
 	// Tracks no play was ever recorded for.
 	neverPlayed: z.boolean().optional(),
-	// The view's own order when the caller sorts nothing: newest first.
-	recent: z.boolean().optional(),
 });
 export type LibraryQuery = z.infer<typeof libraryQuery>;
 
@@ -269,9 +267,7 @@ export async function listPage(
 	const matches = fts ? sql`${trackSearch} MATCH ${fts}` : undefined;
 	const dflt = fts
 		? { column: bm25(trackSearch, RANK), direction: "asc" as const }
-		: input.recent
-			? { column: ORDER.addedAt, direction: "desc" as const }
-			: { column: ORDER.title, direction: "asc" as const };
+		: { column: ORDER.title, direction: "asc" as const };
 	const page = await paginateWindow(database.query.tracks, {
 		where: and(matches, filters),
 		orderBy: dflt,

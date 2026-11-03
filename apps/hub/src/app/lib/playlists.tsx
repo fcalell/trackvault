@@ -1,11 +1,13 @@
 import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
+import { Input } from "@fcalell/plugin-react-ui/components/input";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import type { PlaceSpec } from "@fcalell/ui-core/descriptors";
 import { skipToken } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { AppRouter } from "../../../.stack/worker";
 import type { PlaylistSource } from "../../server/lib/playlist-selection.ts";
-import { count } from "../ui/figures.ts";
+import { bpm, count } from "../ui/figures.ts";
+import { trackRow } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { useDebounced } from "./debounced.ts";
 
@@ -124,5 +126,45 @@ export function SmartPreview({ rule }: { rule: SmartRule | undefined }) {
 				),
 			)}
 		/>
+	);
+}
+
+// The sheet of a playlist's "Add tracks": a search of the library, each result one press
+// from the end of the playlist.
+export function AddTracks({ playlistId }: { playlistId: string }) {
+	const [text, setText] = useState("");
+	const q = useDebounced(text.trim(), 150);
+	const found = orpc.sets.find.read({ q });
+	const add = useMutation(orpc.playlists.add.mutationOptions());
+	return (
+		<>
+			<Input
+				label="Search"
+				kind="search"
+				value={text}
+				onChange={setText}
+				placeholder="Search title, artist, label"
+			/>
+			<Section
+				items={found.at((rows) =>
+					rows.map(
+						(each): Row =>
+							trackRow(each, {
+								key: each.id,
+								leading: { icon: "Music" },
+								facts: [each.bpm ? `${bpm(each.bpm)} BPM` : "No BPM"],
+								act: {
+									icon: "Plus",
+									label: `Add ${each.title ?? "Untitled"}`,
+									onAct: () =>
+										add.mutateAsync({ playlistId, tracks: { ids: [each.id] } }),
+									done: "Added to the playlist",
+								},
+							}),
+					),
+				)}
+				empty={{ sentence: "Type two letters of a title or an artist." }}
+			/>
+		</>
 	);
 }

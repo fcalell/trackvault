@@ -3,7 +3,9 @@ import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { createFileRoute } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
-import { CHANGE_COLUMNS, CHANGE_ROW } from "../../lib/changes.ts";
+import { STORED_CHANGE_COLUMNS, STORED_CHANGE_ROW } from "../../lib/changes.ts";
+import { count, date } from "../../ui/figures.ts";
+import { originLabel } from "../../ui/history.ts";
 
 export const Route = createFileRoute("/_app/history/$batchId")({
 	loader: ({ context, params }) =>
@@ -25,10 +27,29 @@ function Batch() {
 			back="/history"
 			cover
 			wide
+			record={{
+				within: "History",
+				facts: [
+					batch.at((each) => originLabel(each.origin)),
+					batch.at((each) => `${count(each.count)} changes`),
+					batch.at((each) => ({
+						tone: each.undone ? ("idle" as const) : ("done" as const),
+						label: each.undone ? "Undone" : "Applied",
+					})),
+					batch.at((each) => date(each.at)),
+				],
+			}}
 			acts={[
 				{
 					icon: "Undo2",
 					label: "Undo batch",
+					blocked: batch.at((each) =>
+						each.undoable
+							? undefined
+							: each.undone
+								? "This batch was already undone"
+								: "A scan only reads the disk; there is nothing to undo",
+					),
 					confirm: {
 						title: "Undo this batch?",
 						sentence:
@@ -43,8 +64,8 @@ function Batch() {
 			<Table
 				label="Changes"
 				items={orpc.history.changes.window({ batchId })}
-				columns={CHANGE_COLUMNS}
-				row={CHANGE_ROW}
+				columns={STORED_CHANGE_COLUMNS}
+				row={STORED_CHANGE_ROW}
 			/>
 		</Pane>
 	);

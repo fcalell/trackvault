@@ -3,7 +3,7 @@ import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
-import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
+import { type Act, sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -17,6 +17,9 @@ import {
 import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
 import { useChosen } from "../../lib/chosen.ts";
+import { batchToast, queuedBatch } from "../../ui/batch.ts";
+import { count } from "../../ui/figures.ts";
+import { trackTitle } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/review")({
 	loader: ({ context }) =>
@@ -30,63 +33,89 @@ export const Route = createFileRoute("/_app/review")({
 	component: Review,
 });
 
-type Proposal = AppRouter["autotag"]["list"]["__output"]["data"][number];
+type Track = AppRouter["autotag"]["list"]["__output"]["data"][number];
 
-const COLUMNS: TableColumn<Proposal>[] = [
-	{ key: "label", label: "Track", cell: (row) => row.label },
-	{
-		key: "field",
-		label: "Field",
-		width: "measure-short",
-		cell: (row) => fieldLabel(row.field),
-	},
+const CONFIDENCES = [70, 85, 95] as const;
+const ACCEPT_SENTENCE =
+	"The fields are written to the tags of the files on the hub's disk. Undo the batch in History.";
+
+const fieldsOf = (row: Track, side: "before" | "after"): string =>
+	row.proposals
+		.map((each) => `${fieldLabel(each.field)}: ${each[side] ?? "empty"}`)
+		.join(", ");
+
+const COLUMNS: TableColumn<Track>[] = [
+	{ key: "title", label: "Title", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (row) => row.artist },
 	{
 		key: "change",
 		label: "Change",
 		kind: "change",
-		cell: (row) => ({ before: row.before, after: row.after }),
+		cell: (row) => ({
+			before: fieldsOf(row, "before"),
+			after: fieldsOf(row, "after"),
+		}),
 	},
 	{
 		key: "source",
 		label: "Source",
 		kind: "chip",
 		family: "neutral",
-		cell: (row) => SOURCE_LABELS[row.source] ?? row.source,
+		cell: (row) =>
+			[...new Set(row.proposals.map((each) => each.source))]
+				.map((source) => SOURCE_LABELS[source] ?? source)
+				.join(", "),
 	},
 	{
 		key: "confidence",
 		label: "Sure",
 		kind: "number",
-		cell: (row) => `${row.confidence}%`,
+		cell: (row) =>
+			`${Math.min(...row.proposals.map((each) => each.confidence))}%`,
 	},
 	{
 		key: "other",
 		label: "Other values",
 		hidden: true,
-		cell: (row) => row.alternatives || null,
+		cell: (row) =>
+			row.proposals
+				.filter((each) => each.alternatives)
+				.map((each) => `${fieldLabel(each.field)}: ${each.alternatives}`)
+				.join("; ") || null,
 	},
 ];
 
-// The auto-tag results waiting for a decision: every field of every track as a
-// before and after with where it came from and how sure that source is. Accepted
+// The auto-tag results waiting for a decision: a row per track, its fields as a
+// before and after with where they came from and how sure that source is. Accepted
 // fields are applied as one batch (History lists it) and written to the files.
 function Review() {
 	const [view, setView] = useState<ProposalView>("pending");
+	const [source, setSource] = useState<string | undefined>();
+	const [confidence, setConfidence] = useState<number | undefined>();
 	const summary = orpc.autotag.summary.read();
-	const items = orpc.autotag.list.window({ state: view });
+	const within = { state: view, source, confidence };
+	const items = orpc.autotag.list.window(within);
 	const accept = useMutation(orpc.autotag.accept.mutationOptions());
 	const reject = useMutation(orpc.autotag.reject.mutationOptions());
-	const [picked, setPicked] = useState<Picked<{ state: ProposalView }>>({
-		ids: [],
-	});
+	const [picked, setPicked] = useState<Picked<typeof within>>({ ids: [] });
 	const waiting = view === "pending";
 	const { chosen, blocked: nothing } = useChosen(
 		items,
 		picked,
 		setPicked,
-		{ state: view },
-		"fields",
+		within,
+		"tracks",
 	);
+	const accepting = (proposals: Picked<typeof within>): Act => ({
+		label: "Accept",
+		blocked: waiting ? nothing : "Only waiting tracks can be decided.",
+		confirm: { title: "Accept these fields?", sentence: ACCEPT_SENTENCE },
+		onAct: () =>
+			queuedBatch(
+				accept.mutateAsync({ proposals, within }),
+				"Applying the tags",
+			),
+	});
 	return (
 		<Pane
 			title="Review"
@@ -99,16 +128,13 @@ function Review() {
 					sheet: sheetOf({
 						title: "Accept by confidence",
 						description:
-							"Every waiting field at or above this confidence is accepted and applied as one batch. The rest stays here.",
+							"Every waiting field at or above this confidence is accepted, written to the files and applied as one batch. Undo it in History. The rest stays here.",
 						form: {
 							act: orpc.autotag.acceptAbove,
 							values: { confidence: 85 },
 							fields: { confidence: { label: "Confidence, percent" } },
-							submit: {
-								label: "Accept and apply",
-								done: "Applying the tags",
-								to: "/jobs",
-							},
+							submit: { label: "Accept and apply" },
+							onDone: (job) => batchToast(job, "Applying the tags"),
 						},
 					}),
 				},
@@ -123,6 +149,7 @@ function Review() {
 					onAct: () =>
 						reject.mutateAsync({
 							proposals: { query: { state: "pending" }, except: [] },
+							within: { state: "pending" },
 						}),
 					done: "Rejected",
 				},
@@ -132,22 +159,19 @@ function Review() {
 					chosen={chosen}
 					acts={[
 						{
-							label: "Accept",
-							blocked: waiting
-								? nothing
-								: "Only waiting fields can be decided.",
-							onAct: () => accept.mutateAsync({ proposals: picked }),
-							done: "Applying the tags",
-							to: "/jobs",
-						},
-						{
 							label: "Reject",
 							blocked: waiting
 								? nothing
-								: "Only waiting fields can be decided.",
-							onAct: () => reject.mutateAsync({ proposals: picked }),
+								: "Only waiting tracks can be decided.",
+							confirm: {
+								title: "Reject these fields?",
+								sentence:
+									"They leave this list and are not proposed again for those tracks.",
+							},
+							onAct: () => reject.mutateAsync({ proposals: picked, within }),
 							done: "Rejected",
 						},
+						accepting(picked),
 					]}
 				/>
 			}
@@ -161,7 +185,7 @@ function Review() {
 							PROPOSAL_VIEWS.map((value) => ({
 								value,
 								label: PROPOSAL_STATE_LABELS[value],
-								line: String(each[value]),
+								line: count(each[value]),
 							})),
 						),
 						value: view,
@@ -170,23 +194,47 @@ function Review() {
 							setPicked({ ids: [] });
 						},
 					},
+					{
+						label: "Source",
+						placeholder: "Any source",
+						options: Object.entries(SOURCE_LABELS).map(([value, label]) => ({
+							value,
+							label,
+						})),
+						value: source,
+						onChange: (value) => {
+							setSource(value ?? undefined);
+							setPicked({ ids: [] });
+						},
+					},
+					{
+						label: "Confidence",
+						placeholder: "Any confidence",
+						options: CONFIDENCES.map((value) => ({
+							value: String(value),
+							label: `${value}% or more`,
+						})),
+						value: confidence === undefined ? undefined : String(confidence),
+						onChange: (value) => {
+							setConfidence(value ? Number(value) : undefined);
+							setPicked({ ids: [] });
+						},
+					},
 				]}
 			/>
 			<Table
-				label="Proposals"
+				label="Tracks to review"
 				items={items}
 				columns={COLUMNS}
 				row={{
 					id: (row) => row.id,
-					href: (row) => `/library/${row.trackId}`,
+					href: (row) => `/library/${row.id}`,
 					act: (row) =>
 						waiting
 							? {
+									...accepting({ ids: [row.id] }),
 									icon: "Check",
-									label: `Accept ${fieldLabel(row.field)} of ${row.label}`,
-									onAct: () =>
-										accept.mutateAsync({ proposals: { ids: [row.id] } }),
-									done: "Accepted",
+									label: `Accept ${trackTitle(row)}`,
 								}
 							: undefined,
 					more: (row) =>
@@ -194,8 +242,16 @@ function Review() {
 							? [
 									{
 										label: "Reject",
+										confirm: {
+											title: `Reject ${trackTitle(row)}?`,
+											sentence:
+												"Its fields leave this list and are not proposed again for the track.",
+										},
 										onAct: () =>
-											reject.mutateAsync({ proposals: { ids: [row.id] } }),
+											reject.mutateAsync({
+												proposals: { ids: [row.id] },
+												within,
+											}),
 										done: "Rejected",
 									},
 								]

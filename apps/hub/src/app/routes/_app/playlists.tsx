@@ -1,13 +1,17 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
-import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
+import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
+import type { TableColumn } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
 import type { PlaylistSource } from "../../../server/lib/playlist-selection.ts";
 import { SMART_HELP, SMART_SORTS } from "../../../shared/playlists.ts";
 import { orpc } from "../../lib/api.ts";
-import { type PlaylistNode, SmartPreview } from "../../lib/playlists.tsx";
-import { count } from "../../ui/figures.ts";
+import {
+	type PlaylistNode,
+	pathsOf,
+	SmartPreview,
+} from "../../lib/playlists.tsx";
 
 export const Route = createFileRoute("/_app/playlists")({
 	component: Playlists,
@@ -48,8 +52,42 @@ export const SMART_FIELDS = {
 	},
 } as const;
 
-// The playlists: folders, manual playlists and smart ones as a tree. A row opens its
-// playlist beside the tree; tracks dragged onto a playlist join it, a playlist dragged
+interface Entry {
+	node: PlaylistNode;
+	path: string;
+}
+
+const COLUMNS: TableColumn<Entry>[] = [
+	{ key: "name", label: "Name", cell: (row) => row.node.name },
+	{
+		key: "kind",
+		label: "Kind",
+		width: "measure-short",
+		cell: (row) =>
+			row.node.kind === "folder"
+				? "Folder"
+				: row.node.kind === "smart"
+					? "Smart"
+					: "Manual",
+	},
+	{
+		key: "tracks",
+		label: "Tracks",
+		kind: "number",
+		cell: (row) => (row.node.kind === "folder" ? null : row.node.tracks),
+	},
+	{
+		key: "in",
+		label: "In",
+		width: "measure-short",
+		cell: (row) => row.path || null,
+	},
+	{ key: "rule", label: "Rule", wrap: true, cell: (row) => row.node.rule },
+];
+
+// The playlists as records to manage: every folder, manual and smart playlist in the
+// tree's order with its kind, count, folder and a smart one's rule. A row opens its
+// playlist beside the list; tracks dragged onto a playlist join it, a playlist dragged
 // onto a folder moves into it.
 function Playlists() {
 	const open = useParams({ strict: false }).playlistId;
@@ -58,107 +96,17 @@ function Playlists() {
 	const move = useMutation(orpc.playlists.move.mutationOptions());
 	const add = useMutation(orpc.playlists.add.mutationOptions());
 
-	const toRow = (
-		node: PlaylistNode,
-		all: readonly PlaylistNode[],
-	): Row<string, PlaylistSource> => ({
-		key: node.id,
-		leading: {
-			icon:
-				node.kind === "folder"
-					? "Folder"
-					: node.kind === "smart"
-						? "WandSparkles"
-						: "ListMusic",
-		},
-		title: node.name,
-		facts:
-			node.kind === "folder"
-				? []
-				: [
-						node.kind === "smart" ? "Smart" : "Playlist",
-						node.tracks === 1 ? "1 track" : `${count(node.tracks)} tracks`,
-					],
-		...(node.kind === "folder" ? {} : { href: `/playlists/${node.id}` }),
-		selected: node.id === open,
-		children: all
-			.filter((each) => each.parentId === node.id)
-			.map((each) => toRow(each, all)),
-		drag: { kind: "playlist", picked: { ids: [node.id] } },
-		...(node.kind === "folder"
-			? {
-					drop: {
-						accepts: "playlist",
-						label: `Move into ${node.name}`,
-						onDrop: (drag) =>
-							"ids" in drag.picked
-								? Promise.all(
-										drag.picked.ids
-											.filter((id) => id !== node.id)
-											.map((id) => move.mutateAsync({ id, parentId: node.id })),
-									)
-								: undefined,
-						done: `Moved into ${node.name}`,
-					},
-				}
-			: node.kind === "manual"
-				? {
-						drop: {
-							accepts: "track",
-							label: `Add to ${node.name}`,
-							onDrop: (drag) =>
-								add.mutateAsync({
-									playlistId: node.id,
-									tracks: drag.picked,
-								}),
-							done: `Added to ${node.name}`,
-						},
-					}
-				: {}),
-		more: [
-			{
-				label: "Rename",
-				sheet: sheetOf({
-					title: `Rename ${node.name}`,
-					form: {
-						act: orpc.playlists.rename,
-						given: { id: node.id },
-						values: { name: node.name },
-						fields: { name: { label: "Name" } },
-						submit: { label: "Rename", done: "Renamed" },
-					},
-				}),
-			},
-			...(node.parentId === null
-				? []
-				: [
-						{
-							label: "Move to the top level",
-							onAct: () => move.mutateAsync({ id: node.id, parentId: null }),
-							done: "Moved to the top level",
-						},
-					]),
-			{
-				label: "Delete",
-				onAct: () => remove.mutateAsync({ id: node.id }),
-				confirm: {
-					title: `Delete ${node.name}?`,
-					sentence:
-						node.kind === "folder"
-							? "The folder and everything in it are deleted; tracks stay in the library. Undo the batch in History."
-							: "The playlist is deleted; its tracks stay in the library. Undo the batch in History.",
-				},
-				done: "Deleted",
-			},
-		],
-	});
-
 	return (
 		<>
 			<Pane
 				title="Playlists"
 				back={false}
 				wide
+				read={tree}
+				empty={{
+					sentence:
+						"No playlists yet. Make one, then drag tracks onto it or use Add to playlist in the library.",
+				}}
 				acts={[
 					{
 						icon: "Plus",
@@ -201,15 +149,89 @@ function Playlists() {
 					},
 				]}
 			>
-				<Section
+				<Table<Entry, PlaylistSource>
+					label="Playlists"
 					items={tree.at((nodes) =>
-						nodes
-							.filter((node) => node.parentId === null)
-							.map((node) => toRow(node, nodes)),
+						pathsOf(nodes).map(({ node, path }) => ({
+							node,
+							path: path.slice(0, path.length - node.name.length - 3),
+						})),
 					)}
-					empty={{
-						sentence:
-							"No playlists yet. Make one, then drag tracks onto it or use Add to playlist in the library.",
+					columns={COLUMNS}
+					selected={open}
+					drag={{ kind: "playlist" }}
+					row={{
+						id: (row) => row.node.id,
+						href: (row) =>
+							row.node.kind === "folder"
+								? undefined
+								: `/playlists/${row.node.id}`,
+						drop: ({ node }) =>
+							node.kind === "folder"
+								? {
+										accepts: "playlist",
+										label: `Move into ${node.name}`,
+										onDrop: (drag) =>
+											"ids" in drag.picked
+												? Promise.all(
+														drag.picked.ids
+															.filter((id) => id !== node.id)
+															.map((id) =>
+																move.mutateAsync({ id, parentId: node.id }),
+															),
+													)
+												: undefined,
+										done: `Moved into ${node.name}`,
+									}
+								: node.kind === "manual"
+									? {
+											accepts: "track",
+											label: `Add to ${node.name}`,
+											onDrop: (drag) =>
+												add.mutateAsync({
+													playlistId: node.id,
+													tracks: drag.picked,
+												}),
+											done: `Added to ${node.name}`,
+										}
+									: undefined,
+						more: ({ node }) => [
+							{
+								label: "Rename",
+								sheet: sheetOf({
+									title: `Rename ${node.name}`,
+									form: {
+										act: orpc.playlists.rename,
+										given: { id: node.id },
+										values: { name: node.name },
+										fields: { name: { label: "Name" } },
+										submit: { label: "Rename", done: "Renamed" },
+									},
+								}),
+							},
+							...(node.parentId === null
+								? []
+								: [
+										{
+											label: "Move to the top level",
+											onAct: () =>
+												move.mutateAsync({ id: node.id, parentId: null }),
+											done: "Moved to the top level",
+										},
+									]),
+							{
+								label: "Delete",
+								onAct: () => remove.mutateAsync({ id: node.id }),
+								confirm: {
+									title: `Delete ${node.name}?`,
+									sentence:
+										node.kind === "folder"
+											? "The folder and everything in it are deleted; tracks stay in the library. Undo the batch in History."
+											: "The playlist is deleted; its tracks stay in the library. Undo the batch in History.",
+								},
+								done: "Deleted",
+							},
+						],
 					}}
 				/>
 			</Pane>

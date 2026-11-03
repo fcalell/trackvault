@@ -16,6 +16,14 @@ import { undoPlaylistChanges } from "../lib/playlists.ts";
 import { inserter } from "../lib/raw.ts";
 import { readSettings } from "../lib/settings.ts";
 import { notifyPlaylists } from "../lib/sync/wake.ts";
+import {
+	ALIAS_ENTITY,
+	type AliasKind,
+	type AliasValue,
+	GENRE_ENTITY,
+	restoreAlias,
+	restoreGenre,
+} from "../lib/taxonomy-log.ts";
 import { TAG_KEYS, type TagKey, type TagValues } from "../lib/track-fields.ts";
 import { setTagNames } from "../lib/track-tags.ts";
 import { bumpVersion, notifyChanged } from "../services/library.ts";
@@ -209,6 +217,52 @@ export default defineJob<UndoPayload, UndoResult>({
 			result.restored += undone.restored;
 			result.skipped += undone.skipped;
 			notifyPlaylists();
+		}
+
+		// -- the taxonomy: deleted genres and aliases come back ----------------
+		const removed = rows.filter(
+			(row) =>
+				(row.entity === GENRE_ENTITY || row.entity === ALIAS_ENTITY) &&
+				row.after === null,
+		);
+		if (removed.length > 0) {
+			database.transaction((tx) => {
+				const now = new Date();
+				// A genre first, so its aliases find it.
+				for (const row of removed) {
+					if (row.entity === GENRE_ENTITY) {
+						if (restoreGenre(tx, row.before as string, now)) result.restored++;
+						else result.skipped++;
+					}
+				}
+				for (const row of removed) {
+					if (row.entity !== ALIAS_ENTITY) continue;
+					const value = row.before as AliasValue;
+					if (restoreAlias(tx, row.entityId as AliasKind, value, now)) {
+						result.restored++;
+						insertChange({
+							entity: row.entity,
+							entityId: row.entityId,
+							field: row.field,
+							before: null,
+							after: value,
+							origin: "ui",
+							batchId: id,
+							at: now,
+						});
+					} else result.skipped++;
+				}
+				tx.insert(batches)
+					.values({
+						id,
+						origin: "ui",
+						label: info.label,
+						count: removed.length,
+						at: now,
+					})
+					.onConflictDoNothing()
+					.run();
+			});
 		}
 
 		// -- files: moved or quarantined ones return --------------------------

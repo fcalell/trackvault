@@ -10,8 +10,8 @@ export const Route = createFileRoute("/connect/organization")({
 	component: ConnectOrganization,
 });
 
-// Step two of connecting an MCP client: the organization the client may work in
-// (always asked, the active one too). Choosing resumes the authorization at consent.
+// Step two of connecting an MCP client, reached only by a member of several organizations
+// or of none: stack skips it for exactly one. Choosing resumes the authorization at consent.
 function ConnectOrganization() {
 	const organizations = orpc.auth.organization.list.read();
 	const choose = useMutation(
@@ -24,7 +24,7 @@ function ConnectOrganization() {
 			description="The client will work in the library of the one you choose."
 			acts={
 				<Button
-					act="quiet"
+					act="secondary"
 					label="Deny"
 					onAct={async () =>
 						followRedirect(

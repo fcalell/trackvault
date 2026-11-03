@@ -1,4 +1,5 @@
 import type { TableColumn } from "@fcalell/ui-core/descriptors";
+import { trackTitle } from "../ui/track.ts";
 
 // The tags a person names in words, for a table of changes.
 export const FIELD_LABELS: Record<string, string> = {
@@ -9,6 +10,7 @@ export const FIELD_LABELS: Record<string, string> = {
 	remixer: "Remixer",
 	label: "Label",
 	genre: "Genre",
+	alias: "Alias",
 	isrc: "ISRC",
 	key: "Key",
 	comment: "Comment",
@@ -44,8 +46,9 @@ export interface ChangeRow {
 
 // The columns every table of changes draws (preview of an edit, of rules, of the
 // organiser; a batch in the history): the track, the field, and the `change` cell.
-export const CHANGE_COLUMNS: TableColumn<ChangeRow>[] = [
-	{ key: "label", label: "Track", cell: (row) => row.label },
+const fieldColumns = <
+	T extends { field: string; before: string | null; after: string | null },
+>(): TableColumn<T>[] => [
 	{
 		key: "field",
 		label: "Field",
@@ -60,4 +63,40 @@ export const CHANGE_COLUMNS: TableColumn<ChangeRow>[] = [
 	},
 ];
 
+export const CHANGE_COLUMNS: TableColumn<ChangeRow>[] = [
+	{ key: "label", label: "Track", cell: (row) => row.label },
+	...fieldColumns<ChangeRow>(),
+];
+
 export const CHANGE_ROW = { id: (row: ChangeRow) => row.id };
+
+// A change the hub stored, as a batch of the history and a preview job list it: the
+// track (or the playlist) it was on, which the row links to, then the same field and
+// change cells. A playlist's name is its `title`.
+export interface StoredChange {
+	id: string;
+	entity: string;
+	entityId: string;
+	title: string | null;
+	mixName: string | null;
+	artist: string | null;
+	field: string;
+	before: string | null;
+	after: string | null;
+}
+
+export const STORED_CHANGE_COLUMNS: TableColumn<StoredChange>[] = [
+	{ key: "title", label: "Track", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (row) => row.artist },
+	...fieldColumns<StoredChange>(),
+];
+
+export const STORED_CHANGE_ROW = {
+	id: (row: StoredChange) => row.id,
+	href: (row: StoredChange) =>
+		row.entity === "playlist"
+			? `/playlists/${row.entityId}`
+			: row.entity === "track"
+				? `/library/${row.entityId}`
+				: undefined,
+};

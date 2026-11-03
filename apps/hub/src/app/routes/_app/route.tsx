@@ -41,12 +41,6 @@ export const Route = createFileRoute("/_app")({
 // The plan's sidebar, group by group (the Playlists group joins from the data).
 const PLACES: PlaceSpec[] = [
 	{ label: "All tracks", icon: "Library", route: "/library", group: "Library" },
-	{
-		label: "Recently added",
-		icon: "Clock",
-		route: "/recent",
-		group: "Library",
-	},
 	{ label: "Inbox", icon: "Inbox", route: "/inbox", group: "Library" },
 	{
 		label: "Set builder",

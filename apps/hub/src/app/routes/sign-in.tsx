@@ -14,9 +14,9 @@ export const Route = createFileRoute("/sign-in")({
 	component: SignIn,
 });
 
-// A page outside the shell, one `Gate`: the email step, the code step its Continue
-// swaps in, and a passkey for an owner who has enrolled one. The code is written to the
-// hub's log, which only the owner reads.
+// A page outside the shell, one `Gate`: the email step, the code step its send act
+// swaps in, and a passkey for an owner who has enrolled one. No mail is sent: the hub
+// writes the code to its own log, which only the owner reads.
 function SignIn() {
 	const queryClient = useQueryClient();
 	const sendOtp = useMutation(orpc.auth.signIn.sendOtp.mutationOptions());
@@ -38,8 +38,9 @@ function SignIn() {
 			<Gate
 				title="Enter your code"
 				description={[
-					"The code was written to the hub's log for ",
+					"The hub wrote a code for ",
 					{ strong: sentTo },
+					" to its log. Paste it here.",
 				]}
 				form={{
 					act: orpc.auth.signIn.verifyOtp,
@@ -62,14 +63,14 @@ function SignIn() {
 	return (
 		<Gate
 			title="Sign in"
+			description="Enter your email. The hub writes a code to its log, where only you read it; no email is sent."
+			acts={<Button act="secondary" {...passkey} />}
 			form={{
 				act: orpc.auth.signIn.sendOtp,
 				fields: { email: { label: "Email" } },
-				submit: { label: "Continue" },
+				submit: { label: "Get a code" },
 				onDone: (_sent, { email }) => setSentTo(email),
 			}}
-		>
-			<Button act="quiet" {...passkey} />
-		</Gate>
+		/>
 	);
 }

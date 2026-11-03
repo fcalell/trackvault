@@ -1,27 +1,23 @@
-import { useMutation, useWindow } from "@fcalell/plugin-api/tanstack-query";
+import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
+import { Picker } from "@fcalell/plugin-react-ui/components/picker";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
-import { player, windowQueue } from "@fcalell/plugin-react-ui/lib/player";
 import type { Picked } from "@fcalell/ui-core/descriptors";
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
-import {
-	type ISSUE_FILTERS,
-	ISSUE_LABELS,
-	type ListRow,
-} from "../../shared/library.ts";
+import { type ISSUE_FILTERS, ISSUE_LABELS } from "../../shared/library.ts";
 import { count } from "../ui/figures.ts";
-import { TRACK_COLUMNS, toTrack } from "../ui/track.ts";
+import { TRACK_COLUMNS } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { EditPreview, useEditFields } from "./bulk-edit.tsx";
 import { useChosen } from "./chosen.ts";
 import { useDebounced } from "./debounced.ts";
 import { pathsOf } from "./playlists.tsx";
-import { setQueueSource } from "./queue.ts";
+import { ListSource, useListPlay } from "./queue.ts";
 
 const BPM_RANGES = [
 	{ value: "0-99", label: "Under 100", min: 0, max: 99.99 },
@@ -33,18 +29,21 @@ const BPM_RANGES = [
 	{ value: "160-999", label: "160 and over", min: 160, max: 999 },
 ] as const;
 
+const BPM_OPTIONS: Array<{ value: string | null; label: string }> = [
+	{ value: null, label: "Any tempo" },
+	...BPM_RANGES.map(({ value, label }) => ({ value, label })),
+];
+
 // The library's list: a search box and filters over a table of every track, read a
-// window at a time (the hub searches, filters and sorts). `base` is the route a
-// row's record opens under.
+// window at a time (the hub searches, filters and sorts). `children` is the record
+// a row opens, beside the list.
 export function LibraryPane({
 	title,
-	base,
-	recent = false,
 	initial = {},
+	children,
 }: {
 	title: string;
-	base: string;
-	recent?: boolean;
+	children: ReactNode;
 	// Filters the page was opened with (a link from the Issues screen).
 	initial?: {
 		issue?: (typeof ISSUE_FILTERS)[number] | undefined;
@@ -77,9 +76,8 @@ export function LibraryPane({
 			bpmMax: range?.max,
 			energy,
 			neverPlayed: never,
-			recent: recent || undefined,
 		}),
-		[q, genre, key, issue, tag, range, recent, energy, never],
+		[q, genre, key, issue, tag, range, energy, never],
 	);
 	const tracks = orpc.tracks.list.window(query);
 	const facets = orpc.tracks.facets.read();
@@ -104,270 +102,259 @@ export function LibraryPane({
 		"tracks",
 	);
 
-	// The player's queue is the rows loaded, in the list's order.
-	const view = useWindow(tracks);
-	const rows = view?.rows;
-	useEffect(() => {
-		setQueueSource(rows ? (rows.filter(Boolean) as ListRow[]) : []);
-	}, [rows]);
+	const { act } = useListPlay(tracks);
 
 	return (
-		<Pane
-			title={title}
-			back={false}
-			wide
-			acts={[
-				{
-					icon: "RefreshCw",
-					label: "Scan now",
-					onAct: () => orpc.scan.start.call(),
-					done: "Scan started",
-					to: "/jobs",
-				},
-			]}
-			foot={
-				<ActionBar
-					chosen={chosen}
-					acts={[
-						{
-							label: "Auto-tag",
-							blocked: nothing,
-							onAct: () => autotag.mutateAsync({ tracks: picked }),
-							done: "Looking the tracks up; the results wait in Review",
-							to: "/jobs",
-						},
-						{
-							label: "Fetch art",
-							blocked: nothing,
-							onAct: () => fetchArt.mutateAsync({ tracks: picked }),
-							done: "Looking for covers",
-							to: "/jobs",
-						},
-						{
-							label: "Analyse",
-							blocked: nothing,
-							onAct: () => analyse.mutateAsync({ tracks: picked }),
-							done: "Analysing in the background",
-							to: "/jobs",
-						},
-						{
-							label: "Quarantine",
-							destructive: true,
-							blocked: nothing,
-							confirm: {
-								title: "Quarantine the chosen tracks?",
-								sentence:
-									"Their files move to the quarantine and the tracks leave the library. Restore them from Quarantine, or undo the batch in History.",
+		<ListSource value={tracks}>
+			<Pane
+				title={title}
+				back={false}
+				wide
+				acts={[
+					{
+						icon: "RefreshCw",
+						label: "Scan now",
+						onAct: () => orpc.scan.start.call(),
+						done: "Scan started",
+						to: "/jobs",
+					},
+				]}
+				foot={
+					<ActionBar
+						chosen={chosen}
+						acts={[
+							{
+								label: "Auto-tag",
+								blocked: nothing,
+								onAct: () => autotag.mutateAsync({ tracks: picked }),
+								done: "Looking the tracks up; the results wait in Review",
+								to: "/jobs",
 							},
-							onAct: () => quarantine.mutateAsync({ tracks: picked }),
-							done: "Moving files to the quarantine",
-							to: "/jobs",
-						},
-						{
-							label: "Find duplicates",
-							blocked: nothing,
-							onAct: () => dedupe.mutateAsync({ tracks: picked }),
-							done: "Looking for duplicates",
-							to: "/jobs",
-						},
-						{
-							label: "Organise",
-							blocked: nothing,
-							confirm: {
-								title: "Organise the chosen tracks?",
-								sentence:
-									"Their files move to the folders the Organiser's template names. Undo the batch in History.",
+							{
+								label: "Fetch art",
+								blocked: nothing,
+								onAct: () => fetchArt.mutateAsync({ tracks: picked }),
+								done: "Looking for covers",
+								to: "/jobs",
 							},
-							onAct: () => organise.mutateAsync({ tracks: picked }),
-							done: "Organising",
-							to: "/jobs",
-						},
-						{
-							label: "Apply rules",
-							blocked: nothing,
-							confirm: {
-								title: "Apply the cleanup rules?",
-								sentence:
-									"Every enabled rule runs over the chosen tracks and their tags are rewritten. Undo the batch in History.",
+							{
+								label: "Analyse",
+								blocked: nothing,
+								onAct: () => analyse.mutateAsync({ tracks: picked }),
+								done: "Analysing in the background",
+								to: "/jobs",
 							},
-							onAct: () => rules.mutateAsync({ tracks: picked }),
-							done: "Applying rules",
-							to: "/jobs",
-						},
-						{
-							label: "Edit tags",
-							blocked: nothing,
-							sheet: sheetOf({
-								title: "Edit tags",
-								description:
-									"Fill the tags to set on the chosen tracks. Empty keeps a tag, a dash clears it.",
-								form: {
-									act: orpc.bulk.edit,
-									given: { tracks: picked },
-									fields,
-									after: (input) => (
-										<EditPreview picked={picked} edit={input} />
-									),
-									submit: {
-										label: "Apply",
-										done: "Editing tags",
-										to: "/jobs",
-									},
+							{
+								label: "Find duplicates",
+								blocked: nothing,
+								onAct: () => dedupe.mutateAsync({ tracks: picked }),
+								done: "Looking for duplicates",
+								to: "/jobs",
+							},
+							{
+								label: "Organise",
+								blocked: nothing,
+								confirm: {
+									title: "Organise the chosen tracks?",
+									sentence:
+										"Their files move to the folders the Organiser's template names. Undo the batch in History.",
 								},
-							}),
-						},
-						{
-							label: "Add to playlist",
-							blocked: nothing,
-							sheet: sheetOf({
-								title: "Add to playlist",
-								description:
-									"The chosen tracks go to the end of the playlist. Drag rows onto a playlist in the sidebar to do the same.",
-								form: {
-									act: orpc.playlists.add,
-									given: { tracks: picked },
-									fields: {
-										playlistId: {
-											label: "Playlist",
-											options: playlists.at((rows) =>
-												pathsOf(rows)
-													.filter((each) => each.node.kind === "manual")
-													.map((each) => ({
-														value: each.node.id,
-														label: each.path,
-													})),
-											),
+								onAct: () => organise.mutateAsync({ tracks: picked }),
+								done: "Organising",
+								to: "/jobs",
+							},
+							{
+								label: "Apply rules",
+								blocked: nothing,
+								confirm: {
+									title: "Apply the cleanup rules?",
+									sentence:
+										"Every enabled rule runs over the chosen tracks and their tags are rewritten. Undo the batch in History.",
+								},
+								onAct: () => rules.mutateAsync({ tracks: picked }),
+								done: "Applying rules",
+								to: "/jobs",
+							},
+							{
+								label: "Edit tags",
+								blocked: nothing,
+								sheet: sheetOf({
+									title: "Edit tags",
+									description:
+										"Fill the tags to set on the chosen tracks. Empty keeps a tag, a dash clears it.",
+									form: {
+										act: orpc.bulk.edit,
+										given: { tracks: picked },
+										fields,
+										after: (input) => (
+											<EditPreview picked={picked} edit={input} />
+										),
+										submit: {
+											label: "Apply",
+											done: "Editing tags",
+											to: "/jobs",
 										},
 									},
-									submit: { label: "Add", done: "Added to the playlist" },
+								}),
+							},
+							{
+								label: "Quarantine",
+								destructive: true,
+								blocked: nothing,
+								confirm: {
+									title: "Quarantine the chosen tracks?",
+									sentence:
+										"Their files move to the quarantine and the tracks leave the library. Restore them from Quarantine, or undo the batch in History.",
 								},
-							}),
+								onAct: () => quarantine.mutateAsync({ tracks: picked }),
+								done: "Moving files to the quarantine",
+								to: "/jobs",
+							},
+							{
+								label: "Add to playlist",
+								blocked: nothing,
+								sheet: sheetOf({
+									title: "Add to playlist",
+									description:
+										"The chosen tracks go to the end of the playlist. Drag rows onto a playlist in the sidebar to do the same.",
+									form: {
+										act: orpc.playlists.add,
+										given: { tracks: picked },
+										fields: {
+											playlistId: {
+												label: "Playlist",
+												options: playlists.at((rows) =>
+													pathsOf(rows)
+														.filter((each) => each.node.kind === "manual")
+														.map((each) => ({
+															value: each.node.id,
+															label: each.path,
+														})),
+												),
+											},
+										},
+										submit: { label: "Add", done: "Added to the playlist" },
+									},
+								}),
+							},
+						]}
+					/>
+				}
+			>
+				<Toolbar
+					search={{
+						value: text,
+						onChange: setText,
+						placeholder: "Search title, artist, label",
+					}}
+					filters={[
+						{
+							label: "Genre",
+							placeholder: "Any genre",
+							options: facets.at((each) =>
+								each.genres.map((genre) => ({
+									value: genre.value,
+									label: genre.value,
+									line: count(genre.count),
+								})),
+							),
+							value: genre,
+							onChange: (value) => setGenre(value ?? undefined),
+						},
+						{
+							label: "Energy",
+							placeholder: "Any energy",
+							options: facets.at((each) =>
+								each.energies.map((row) => ({
+									value: String(row.value),
+									label: String(row.value),
+									line: count(row.count),
+								})),
+							),
+							value: energy === undefined ? undefined : String(energy),
+							onChange: (value) => setEnergy(value ? Number(value) : undefined),
+						},
+						{
+							label: "Played",
+							placeholder: "Any",
+							options: [{ value: "never", label: "Never played" }],
+							value: never ? "never" : undefined,
+							onChange: (value) => setNever(value ? true : undefined),
+						},
+						{
+							label: "Tag",
+							placeholder: "Any tag",
+							options: facets.at((each) =>
+								each.tags.map((row) => ({
+									value: String(row.id),
+									label: row.name,
+									line: count(row.count),
+								})),
+							),
+							value: tag === undefined ? undefined : String(tag),
+							onChange: (value) => setTag(value ? Number(value) : undefined),
+						},
+						{
+							label: "Issue",
+							placeholder: "No filter",
+							options: facets.at((each) =>
+								each.issues.map((issue) => ({
+									value: issue.value,
+									label: ISSUE_LABELS[issue.value],
+									line: count(issue.count),
+								})),
+							),
+							value: issue,
+							onChange: (value) =>
+								setIssue(
+									(value as (typeof ISSUE_FILTERS)[number]) ?? undefined,
+								),
 						},
 					]}
-				/>
-			}
-		>
-			<Toolbar
-				search={{
-					value: text,
-					onChange: setText,
-					placeholder: "Search title, artist, label",
-				}}
-				filters={[
-					{
-						label: "Genre",
-						placeholder: "Any genre",
-						options: facets.at((each) =>
-							each.genres.map((genre) => ({
-								value: genre.value,
-								label: genre.value,
-								line: count(genre.count),
-							})),
-						),
-						value: genre,
-						onChange: (value) => setGenre(value ?? undefined),
-					},
-					{
-						label: "Key",
-						placeholder: "Any key",
-						options: facets.at((each) =>
-							each.keys
+				>
+					<Picker
+						fit="bar"
+						label="BPM"
+						placeholder="Any tempo"
+						options={BPM_OPTIONS}
+						value={bpm ?? null}
+						onChange={(value) => setBpm(value ?? undefined)}
+					/>
+					<Picker
+						fit="bar"
+						label="Key"
+						placeholder="Any key"
+						options={facets.at((each) => [
+							{ value: null, label: "Any key" },
+							...each.keys
 								.toSorted((a, b) => camelot(a.value) - camelot(b.value))
 								.map((key) => ({
 									value: key.value,
 									label: key.value,
 									line: count(key.count),
 								})),
-						),
-						value: key,
-						onChange: (value) => setKey(value ?? undefined),
-					},
-					{
-						label: "BPM",
-						placeholder: "Any tempo",
-						options: BPM_RANGES.map(({ value, label }) => ({ value, label })),
-						value: bpm,
-						onChange: (value) => setBpm(value ?? undefined),
-					},
-					{
-						label: "Energy",
-						placeholder: "Any energy",
-						options: facets.at((each) =>
-							each.energies.map((row) => ({
-								value: String(row.value),
-								label: String(row.value),
-								line: count(row.count),
-							})),
-						),
-						value: energy === undefined ? undefined : String(energy),
-						onChange: (value) => setEnergy(value ? Number(value) : undefined),
-					},
-					{
-						label: "Played",
-						placeholder: "Any",
-						options: [{ value: "never", label: "Never played" }],
-						value: never ? "never" : undefined,
-						onChange: (value) => setNever(value ? true : undefined),
-					},
-					{
-						label: "Tag",
-						placeholder: "Any tag",
-						options: facets.at((each) =>
-							each.tags.map((row) => ({
-								value: String(row.id),
-								label: row.name,
-								line: count(row.count),
-							})),
-						),
-						value: tag === undefined ? undefined : String(tag),
-						onChange: (value) => setTag(value ? Number(value) : undefined),
-					},
-					{
-						label: "Issue",
-						placeholder: "No filter",
-						options: facets.at((each) =>
-							each.issues.map((issue) => ({
-								value: issue.value,
-								label: ISSUE_LABELS[issue.value],
-								line: count(issue.count),
-							})),
-						),
-						value: issue,
-						onChange: (value) =>
-							setIssue((value as (typeof ISSUE_FILTERS)[number]) ?? undefined),
-					},
-				]}
-			/>
-			<Table
-				label="Tracks"
-				items={tracks}
-				columns={TRACK_COLUMNS}
-				row={{
-					id: (row) => row.id,
-					href: (row) => `${base}/${row.id}`,
-					// Shift+Enter on the active row plays it; Next and Previous follow the list.
-					act: (row) => ({
-						icon: "Play",
-						label: `Play ${row.title ?? "Untitled"}`,
-						onAct: () => {
-							const at =
-								rows?.findIndex(
-									(each) => (each as ListRow | undefined)?.id === row.id,
-								) ?? -1;
-							player.play(
-								toTrack(row),
-								at >= 0
-									? windowQueue(tracks, { track: toTrack, at })
-									: undefined,
-							);
-						},
-					}),
-				}}
-				selected={open}
-				drag={{ kind: "track" }}
-				choose={{ picked, onPick: setPicked }}
-			/>
-		</Pane>
+						])}
+						value={key ?? null}
+						onChange={(value) => setKey(value ?? undefined)}
+					/>
+				</Toolbar>
+				<Table
+					label="Tracks"
+					items={tracks}
+					columns={TRACK_COLUMNS}
+					row={{
+						id: (row) => row.id,
+						href: (row) => `/library/${row.id}`,
+						// Shift+Enter on the active row plays it; Next and Previous follow the list.
+						act,
+					}}
+					selected={open}
+					drag={{ kind: "track" }}
+					choose={{ picked, onPick: setPicked }}
+				/>
+			</Pane>
+			{children}
+		</ListSource>
 	);
 }
 

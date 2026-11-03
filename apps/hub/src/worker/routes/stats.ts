@@ -15,6 +15,7 @@ const count = z.number();
 const played_ = z.object({
 	id: z.string(),
 	title: z.string().nullable(),
+	mixName: z.string().nullable(),
 	artist: z.string().nullable(),
 	playCount: count,
 	lastPlayedAt: z.number().nullable(),

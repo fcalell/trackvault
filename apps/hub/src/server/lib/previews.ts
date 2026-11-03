@@ -21,11 +21,12 @@ export class PreviewWriter {
 	private pending: PreviewRow[] = [];
 	private readonly jobId: string;
 
-	constructor(jobId: string, kind: string) {
+	// `fields` limits "the same kind" to previews run over the same fields.
+	constructor(jobId: string, kind: string, fields?: readonly string[]) {
 		this.jobId = jobId;
 		statement(
-			"DELETE FROM previews WHERE job_id IN (SELECT id FROM jobs WHERE kind = @kind AND id != @id)",
-		).run({ kind, id: jobId });
+			"DELETE FROM previews WHERE job_id IN (SELECT id FROM jobs WHERE kind = @kind AND id != @id AND (@fields IS NULL OR json_extract(payload, '$.fields') = @fields))",
+		).run({ kind, id: jobId, fields: fields ? JSON.stringify(fields) : null });
 		statement("DELETE FROM previews WHERE job_id = @id").run({ id: jobId });
 	}
 

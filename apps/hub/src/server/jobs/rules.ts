@@ -39,11 +39,17 @@ export default defineJob<RulesPayload, RulesResult>({
 	concurrency: 1,
 	async run({ id, payload, signal, progress }) {
 		const rules = activeRules(payload.ruleIds);
-		if (rules.length === 0)
+		if (rules.length === 0 && payload.mode === "apply")
 			throw new Error("No cleanup rule is switched on. Enable one first.");
 		const compiled = compileRules(rules);
 		const context = { taxonomies: loadTaxonomies() };
-		const ids = payload.tracks ? selectedIds(payload.tracks) : allTrackIds();
+		// A preview with no rule on reads nothing: it says so.
+		const ids =
+			rules.length === 0
+				? []
+				: payload.tracks
+					? selectedIds(payload.tracks)
+					: allTrackIds();
 		const total = ids.length;
 		const result: RulesResult = {
 			mode: payload.mode,

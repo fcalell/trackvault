@@ -12,6 +12,8 @@ export const jobViewSchema = z.object({
 	createdAt: z.string(),
 	startedAt: z.string().nullable(),
 	finishedAt: z.string().nullable(),
+	// The job wrote a batch of changes, which History shows under the job's id.
+	batch: z.boolean(),
 });
 export type JobView = z.infer<typeof jobViewSchema>;
 

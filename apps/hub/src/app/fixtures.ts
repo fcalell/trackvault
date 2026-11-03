@@ -27,29 +27,39 @@ const job = (kind: string, state: "done" | "running", at: number) => ({
 	createdAt: minutes(at),
 	startedAt: minutes(at),
 	finishedAt: minutes(at - 1),
+	batch: false,
 });
 
 const CHANGE_ROWS = [
 	{
 		id: "1",
-		trackId: "track-1",
-		label: "Kalomi - Midnight Echo (Extended Mix)",
+		entity: "track",
+		entityId: "track-1",
+		title: "Midnight Echo",
+		mixName: "Extended Mix",
+		artist: "Kalomi",
 		field: "genre",
 		before: "Tech-House",
 		after: "Tech House",
 	},
 	{
 		id: "2",
-		trackId: "track-2",
-		label: "Rendor - Velvet Signal (Original Mix)",
+		entity: "track",
+		entityId: "track-2",
+		title: "Velvet Signal",
+		mixName: "Original Mix",
+		artist: "Rendor",
 		field: "genre",
 		before: "DnB",
 		after: "Drum & Bass",
 	},
 	{
 		id: "3",
-		trackId: "track-3",
-		label: "Sha & Tormar - Neon Drift (Extended Mix)",
+		entity: "track",
+		entityId: "track-3",
+		title: "Neon Drift",
+		mixName: "Extended Mix",
+		artist: "Sha & Tormar",
 		field: "artist",
 		before: "Sha & Tormar feat. Lio",
 		after: "Sha & Tormar",
@@ -76,6 +86,11 @@ const GROUP_MEMBERS = (base: number) => [
 		bitrate: 320,
 		durationMs: 372_000,
 		size: 14_800_000,
+		path: "House/Kalomi - Midnight Echo.mp3",
+		tags: 9,
+		tagSlots: 11,
+		cues: 4,
+		playlists: 2,
 	},
 	{
 		id: `track-${base + 1}`,
@@ -86,6 +101,11 @@ const GROUP_MEMBERS = (base: number) => [
 		bitrate: 192,
 		durationMs: 372_000,
 		size: 8_900_000,
+		path: "Inbox/Kalomi - Midnight Echo (1).mp3",
+		tags: 6,
+		tagSlots: 11,
+		cues: 0,
+		playlists: 0,
 	},
 ];
 
@@ -101,6 +121,7 @@ const JOBS = [
 		createdAt: minutes(2),
 		startedAt: minutes(2),
 		finishedAt: null,
+		batch: false,
 	},
 	{
 		id: "job-2",
@@ -113,6 +134,7 @@ const JOBS = [
 		createdAt: minutes(40),
 		startedAt: minutes(40),
 		finishedAt: minutes(39),
+		batch: false,
 	},
 	{
 		id: "job-1",
@@ -125,6 +147,7 @@ const JOBS = [
 		createdAt: minutes(300),
 		startedAt: minutes(300),
 		finishedAt: minutes(300),
+		batch: false,
 	},
 	{
 		id: "job-offsite",
@@ -137,6 +160,7 @@ const JOBS = [
 		createdAt: minutes(25),
 		startedAt: minutes(25),
 		finishedAt: null,
+		batch: false,
 	},
 	{
 		id: "job-backup",
@@ -149,6 +173,7 @@ const JOBS = [
 		createdAt: minutes(120),
 		startedAt: minutes(120),
 		finishedAt: minutes(119),
+		batch: false,
 	},
 ];
 
@@ -261,6 +286,7 @@ const PLAYLISTS = [
 		kind: "folder" as const,
 		name: "House",
 		position: 1024,
+		rule: null,
 		tracks: 0,
 	},
 	{
@@ -269,6 +295,7 @@ const PLAYLISTS = [
 		kind: "manual" as const,
 		name: "Peak time",
 		position: 1024,
+		rule: null,
 		tracks: 214,
 	},
 	{
@@ -277,6 +304,7 @@ const PLAYLISTS = [
 		kind: "manual" as const,
 		name: "Deep and late",
 		position: 2048,
+		rule: null,
 		tracks: 96,
 	},
 	{
@@ -285,6 +313,7 @@ const PLAYLISTS = [
 		kind: "smart" as const,
 		name: "Fresh 124 to 128",
 		position: 2048,
+		rule: "bpm between 124 128; added within 30",
 		tracks: 1320,
 	},
 ];
@@ -751,6 +780,21 @@ const DEVICES = [
 	},
 ];
 
+const UNMATCHED = [
+	{
+		contentId: "rb-1",
+		path: "/Users/dj/Music/Old Crates/Kalomi - Midnight Echo.mp3",
+		title: "Midnight Echo",
+		artist: "Kalomi",
+	},
+	{
+		contentId: "rb-2",
+		path: "/Users/dj/Downloads/untitled export.wav",
+		title: null,
+		artist: null,
+	},
+];
+
 const CONFLICTS = [
 	{
 		id: 3,
@@ -758,7 +802,9 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "track" as const,
 		refId: "track-3",
-		label: "Sha & Tormar - Neon Drift (Extended Mix)",
+		title: "Neon Drift",
+		mixName: "Extended Mix",
+		artist: "Sha & Tormar",
 		field: "genre",
 		deviceValue: "Disco",
 		hubValue: "House",
@@ -771,7 +817,9 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "track" as const,
 		refId: "track-4",
-		label: "Elix - Lunar Ritual (Original Mix)",
+		title: "Lunar Ritual",
+		mixName: "Original Mix",
+		artist: "Elix",
 		field: "rating",
 		deviceValue: "5",
 		hubValue: "3",
@@ -784,10 +832,12 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "playlist" as const,
 		refId: "pl-peak",
-		label: "Peak time",
+		title: "Peak time",
+		mixName: null,
+		artist: null,
 		field: "order",
-		deviceValue: "214 tracks in order",
-		hubValue: "214 tracks in order",
+		deviceValue: "3 moved, 2 added, 1 removed",
+		hubValue: "213 tracks",
 		winner: "hub" as const,
 		at: new Date(Date.now() - 12 * 60_000),
 	},
@@ -870,43 +920,44 @@ const record = (at: number) => ({
 
 const PROPOSALS = [
 	{
-		id: "1",
-		trackId: "track-1",
-		label: "Kalomi - Midnight Echo (Extended Mix)",
-		field: "genre",
-		before: null,
-		after: "Tech House",
-		source: "beatport",
-		sourceUrl: "https://www.beatport.com/track/1",
-		confidence: 93,
-		state: "pending" as const,
-		alternatives: "House (discogs)",
+		id: "track-1",
+		title: "Midnight Echo",
+		artist: "Kalomi",
+		mixName: "Extended Mix",
+		proposals: [
+			{
+				field: "genre",
+				before: null,
+				after: "Tech House",
+				source: "beatport",
+				confidence: 93,
+				alternatives: "House (discogs)",
+			},
+			{
+				field: "label",
+				before: "Cipher",
+				after: "Cipher Records",
+				source: "musicbrainz",
+				confidence: 78,
+				alternatives: "",
+			},
+		],
 	},
 	{
-		id: "2",
-		trackId: "track-1",
-		label: "Kalomi - Midnight Echo (Extended Mix)",
-		field: "label",
-		before: "Cipher",
-		after: "Cipher Records",
-		source: "musicbrainz",
-		sourceUrl: "https://musicbrainz.org/recording/1",
-		confidence: 78,
-		state: "pending" as const,
-		alternatives: "",
-	},
-	{
-		id: "3",
-		trackId: "track-2",
-		label: "Rendor - Velvet Signal (Original Mix)",
-		field: "year",
-		before: null,
-		after: "2022",
-		source: "deezer",
-		sourceUrl: "https://www.deezer.com/track/2",
-		confidence: 71,
-		state: "pending" as const,
-		alternatives: "",
+		id: "track-2",
+		title: "Velvet Signal",
+		artist: "Rendor",
+		mixName: "Original Mix",
+		proposals: [
+			{
+				field: "year",
+				before: null,
+				after: "2022",
+				source: "deezer",
+				confidence: 71,
+				alternatives: "",
+			},
+		],
 	},
 ];
 
@@ -923,6 +974,10 @@ const SET_TRACK = (at: number, score: number | null) => ({
 	score,
 	weak: score !== null && score < 50,
 	why: score !== null && score < 50 ? "8A to 3B: clash" : null,
+	change:
+		score === null
+			? null
+			: { bpm: 1, energy: score < 50 ? -3 : 1, keyFrom: "8A" },
 });
 
 const SET_TRACKS = [SET_TRACK(1, null), SET_TRACK(2, 86), SET_TRACK(3, 41)];
@@ -997,6 +1052,30 @@ export default defineFixtures<
 				total: TOTAL,
 			}),
 			get: ({ id }) => record(Number(id.replace("track-", "")) || 0),
+			duplicates: () => [
+				{
+					id: "track-7",
+					title: "Midnight Echo",
+					mixName: "Original Mix",
+					artist: "Kalomi",
+					format: "mp3",
+					bitrate: 192,
+					reason: "exact" as const,
+					confidence: 100,
+				},
+			],
+			history: () => [
+				{
+					seq: 2,
+					field: "bpm",
+					before: "123",
+					after: "126",
+					at: new Date(Date.now() - 1_800_000),
+					batchId: "batch-1",
+					label: "Edit tags",
+					undone: false,
+				},
+			],
 			update: ({ id }) => record(Number(id.replace("track-", "")) || 0),
 		},
 		autotag: {
@@ -1027,12 +1106,15 @@ export default defineFixtures<
 			suggest: () =>
 				[4, 5, 6].map((at, i) => ({
 					...SET_TRACK(at, null),
+					change: { bpm: 0.8, energy: 1, keyFrom: "8A" },
 					score: 92 - i * 9,
 					why: "8A to 9A: adjacent; 126 to 127 bpm, +0.8% pitch; energy 6 to 7; never played",
 					lastPlayedAt: null,
 				})),
 			find: () =>
-				SET_TRACKS.map(({ score: _s, weak: _w, why: _y, ...row }) => row),
+				SET_TRACKS.map(
+					({ score: _s, weak: _w, why: _y, change: _c, ...row }) => row,
+				),
 			append: () => ({ added: 1 }),
 			appendSelection: () => ({ added: 3 }),
 			fromPlaylist: () => ({ added: 12 }),
@@ -1077,6 +1159,7 @@ export default defineFixtures<
 				most: [1, 2, 3].map((at) => ({
 					id: `track-${at}`,
 					title: TITLES[at % TITLES.length] ?? null,
+					mixName: "Original Mix",
 					artist: ARTISTS[at % ARTISTS.length] ?? null,
 					playCount: 60 - at * 9,
 					lastPlayedAt: Date.now() - at * 86_400_000,
@@ -1084,6 +1167,7 @@ export default defineFixtures<
 				least: [4, 5].map((at) => ({
 					id: `track-${at}`,
 					title: TITLES[at % TITLES.length] ?? null,
+					mixName: "Original Mix",
 					artist: ARTISTS[at % ARTISTS.length] ?? null,
 					playCount: 1,
 					lastPlayedAt: Date.now() - at * 40 * 86_400_000,
@@ -1108,7 +1192,7 @@ export default defineFixtures<
 				touched: 3,
 				changes: CHANGE_ROWS.map((row) => ({
 					key: row.id,
-					label: row.label,
+					label: `${row.artist} - ${row.title} (${row.mixName})`,
 					field: row.field,
 					before: row.before,
 					after: row.after,
@@ -1185,7 +1269,9 @@ export default defineFixtures<
 					collisions: 1,
 					unchanged: 48_000,
 					skipped: 0,
+					rules: 2,
 				},
+				apply: null,
 			}),
 			list: ({ offset = 0, limit = 200 }) => ({
 				data: CHANGE_ROWS.slice(offset, offset + limit),
@@ -1197,7 +1283,6 @@ export default defineFixtures<
 			get: () => ({
 				template: "{genre|Unknown}/{artist|Unknown} - {title}",
 			}),
-			save: () => undefined,
 			preview: () => job("organise", "running", 1),
 			apply: () => job("organise", "running", 1),
 		},
@@ -1241,15 +1326,15 @@ export default defineFixtures<
 					name: "Tech House",
 					tracks: 5200,
 					aliases: [
-						{ id: 1, alias: "Tech-House" },
-						{ id: 2, alias: "Techhouse" },
+						{ id: 1, alias: "Tech-House", tracks: 240 },
+						{ id: 2, alias: "Techhouse", tracks: 31 },
 					],
 				},
 				{
 					id: 2,
 					name: "Drum & Bass",
 					tracks: 1900,
-					aliases: [{ id: 3, alias: "DnB" }],
+					aliases: [{ id: 3, alias: "DnB", tracks: 88 }],
 				},
 			],
 			unknown: () => [
@@ -1269,7 +1354,12 @@ export default defineFixtures<
 		},
 		aliases: {
 			list: () => [
-				{ id: 1, alias: "Sha and Tormar", canonical: "Sha & Tormar" },
+				{
+					id: 1,
+					alias: "Sha and Tormar",
+					canonical: "Sha & Tormar",
+					tracks: 7,
+				},
 			],
 			suggest: () => [
 				{
@@ -1303,8 +1393,8 @@ export default defineFixtures<
 			run: () => job("integrity", "running", 1),
 		},
 		dupes: {
-			groups: () => ({
-				total: 2,
+			groups: ({ state }) => ({
+				total: state === "dismissed" ? 1 : 2,
 				groups: [
 					{
 						id: 1,
@@ -1322,13 +1412,16 @@ export default defineFixtures<
 						keeperReason: "kept more complete tags (9 vs 6 fields)",
 						members: GROUP_MEMBERS(20),
 					},
-				],
+				].slice(0, state === "dismissed" ? 1 : 2),
 			}),
 			status: () => ({ open: 2, dismissed: 1, fingerprints: 0, fpcalc: false }),
 			run: () => job("dedupe", "running", 1),
 			dismiss: () => undefined,
 			restore: () => undefined,
-			keep: () => undefined,
+			keep: () => ({
+				keeperId: "track-10",
+				keeperReason: "kept higher bitrate (320 vs 192 kbps)",
+			}),
 			merge: () => job("merge", "running", 1),
 		},
 		quarantine: {
@@ -1336,17 +1429,34 @@ export default defineFixtures<
 				data: [
 					{
 						id: "1",
-						label: "Kalomi - Midnight Echo",
+						title: "Midnight Echo",
+						artist: "Kalomi",
+						mixName: "Original Mix",
 						originalPath: "House/Kalomi - Midnight Echo.mp3",
+						size: 8_900_000,
+						batchId: "batch-1",
+						reason: "Merge duplicates",
 						at: new Date(Date.now() - 86_400_000),
 						daysLeft: 29,
 					},
+					{
+						id: "2",
+						title: null,
+						artist: null,
+						mixName: null,
+						originalPath: "Inbox/unknown.mp3",
+						size: 4_200_000,
+						batchId: null,
+						reason: null,
+						at: new Date(Date.now() - 5 * 86_400_000),
+						daysLeft: 25,
+					},
 				].slice(offset, offset + limit),
-				total: 1,
+				total: 2,
 				offset,
 			}),
+			size: () => ({ files: 2, bytes: 13_100_000 }),
 			restore: () => job("restore", "running", 1),
-			restoreAll: () => job("restore", "running", 1),
 			purge: () => job("purge", "running", 1),
 		},
 		playlists: {
@@ -1360,6 +1470,8 @@ export default defineFixtures<
 					parentId: row.parentId,
 					kind: row.kind,
 					name: row.name,
+					tracks: row.tracks,
+					durationMs: row.tracks * 330_000,
 					rule:
 						row.kind === "smart"
 							? {
@@ -1374,8 +1486,9 @@ export default defineFixtures<
 				};
 			},
 			tracks: ({ offset = 0, limit = 200 }) => ({
-				data: Array.from({ length: Math.min(limit, 214 - offset) }, (_, at) =>
-					track(offset + at),
+				data: Array.from(
+					{ length: Math.min(limit, 214 - offset) },
+					(_, at) => ({ ...track(offset + at), position: offset + at + 1 }),
 				),
 				total: 214,
 				offset,
@@ -1398,6 +1511,10 @@ export default defineFixtures<
 		},
 		devices: {
 			list: () => DEVICES,
+			get: ({ id }) =>
+				DEVICES.find((device) => device.id === id) ??
+				(DEVICES[0] as (typeof DEVICES)[number]),
+			unmatched: () => UNMATCHED,
 			forget: () => undefined,
 			wake: () => undefined,
 			conflicts: ({ offset = 0, limit = 200 }) => ({
@@ -1535,6 +1652,7 @@ export default defineFixtures<
 				dir: "/var/lib/trackvault/backups",
 				freeBytes: 412_000_000_000,
 				nextAt: hoursAgo(-22),
+				lastGood: hoursAgo(2),
 				lastBackup: JOBS[4] as (typeof JOBS)[number],
 				lastVerify: null,
 				lastOffsite: JOBS[3] as (typeof JOBS)[number],
@@ -1619,6 +1737,7 @@ export default defineFixtures<
 		itemId: "item-3",
 		wantId: "1",
 		importId: "imp-1",
+		deviceId: "dev-mac",
 	},
 	{
 		jobs: () => ({ jobs: JOBS }),
