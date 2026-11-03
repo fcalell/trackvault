@@ -6,7 +6,7 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { player, windowQueue } from "@fcalell/plugin-react-ui/lib/player";
 import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
 import {
 	type ISSUE_FILTERS,
@@ -15,12 +15,7 @@ import {
 } from "../../shared/library.ts";
 import { clock, quality, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
-import {
-	BulkEditFields,
-	type EditDraft,
-	EMPTY_DRAFT,
-	patchOf,
-} from "./bulk-edit.tsx";
+import { type EditInput, EditPreview, useEditFields } from "./bulk-edit.tsx";
 import { useDebounced } from "./debounced.ts";
 import { pathsOf } from "./playlists.tsx";
 import { setQueueSource } from "./queue.ts";
@@ -163,8 +158,8 @@ export function LibraryPane({
 
 	// The rows a bulk act takes: the ticked ids, or the whole query less the unticked.
 	const [picked, setPicked] = useState<Picked<LibraryQuery>>({ ids: [] });
-	const draft = useRef<EditDraft>(EMPTY_DRAFT);
-	const edit = useMutation(orpc.bulk.edit.mutationOptions());
+	const [edit, setEdit] = useState<EditInput>();
+	const fields = useEditFields();
 	const rules = useMutation(orpc.bulk.rules.mutationOptions());
 	const organise = useMutation(orpc.bulk.organise.mutationOptions());
 	const dedupe = useMutation(orpc.bulk.dedupe.mutationOptions());
@@ -414,32 +409,23 @@ export function LibraryPane({
 						{
 							label: "Edit tags",
 							blocked: nothing,
-							sheet: {
+							sheet: sheetOf({
 								title: "Edit tags",
 								description:
 									"Fill the tags to set on the chosen tracks. Empty keeps a tag, a dash clears it.",
-								submit: {
-									label: "Apply",
-									onAct: () => {
-										const typed = draft.current;
-										const patch = patchOf(typed.text);
-										if (
-											Object.keys(patch).length === 0 &&
-											typed.addTags.length + typed.removeTags.length === 0
-										)
-											throw new Error("Enter a value to change.");
-										return edit.mutateAsync({
-											tracks: picked,
-											patch,
-											addTags: typed.addTags,
-											removeTags: typed.removeTags,
-										});
+								form: {
+									act: orpc.bulk.edit,
+									given: { tracks: picked },
+									fields,
+									onChange: setEdit,
+									submit: {
+										label: "Apply",
+										done: "Editing tags",
+										to: "/jobs",
 									},
-									done: "Editing tags",
-									to: "/jobs",
 								},
-								children: <BulkEditFields picked={picked} draft={draft} />,
-							},
+								children: <EditPreview picked={picked} edit={edit} />,
+							}),
 						},
 					],
 				}}

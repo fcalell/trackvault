@@ -37,19 +37,6 @@ function Search() {
 	const settings = orpc.soulseek.settings.read();
 	return (
 		<Pane title="Search" back={false}>
-			<Banner
-				tone="attention"
-				sentence={settings.at((each) =>
-					each.configured
-						? ""
-						: "Soulseek is not set up. Add the slskd address and API key in Settings.",
-				)}
-				act={settings.at((each) =>
-					each.configured
-						? undefined
-						: { label: "Open Settings", href: "/settings" },
-				)}
-			/>
 			<Section
 				title="Find a track"
 				description="Artist - Title (Mix) works best; a few words do too."
@@ -63,6 +50,19 @@ function Search() {
 					onDone={(job) => navigate({ to: "/search", search: { s: job.id } })}
 				/>
 			</Section>
+			<Banner
+				tone="attention"
+				sentence={settings.at((each) =>
+					each.configured
+						? ""
+						: "Soulseek is not set up. Add the slskd address and API key in Settings.",
+				)}
+				act={settings.at((each) =>
+					each.configured
+						? undefined
+						: { label: "Open Settings", href: "/settings" },
+				)}
+			/>
 			{s && (
 				<Section title="Candidates">
 					<Banner

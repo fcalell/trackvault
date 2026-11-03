@@ -254,15 +254,6 @@ const SPOTIFY_SETTINGS = {
 	spotifyClientSecret: "••••••••ret1",
 };
 
-const ORGANIZATION = {
-	id: "org-1",
-	name: "TrackVault",
-	slug: "trackvault",
-	logo: null,
-	createdAt: new Date(),
-	metadata: null,
-};
-
 const PLAYLISTS = [
 	{
 		id: "pl-house",
@@ -864,21 +855,6 @@ export default defineFixtures<
 	}>
 >(
 	{
-		auth: {
-			organization: {
-				list: () => [ORGANIZATION],
-				create: () => ({ ...ORGANIZATION, members: [] }),
-				setActive: () => ({ redirect: true as const, url: "/connect/consent" }),
-			},
-			oauth: {
-				client: () => ({
-					client_id: "client",
-					client_name: "Claude",
-					client_uri: "https://claude.ai",
-				}),
-				consent: () => ({ redirect: true as const, url: "/" }),
-			},
-		},
 		settings: {
 			read: () => SETTINGS,
 			update: () => SETTINGS,

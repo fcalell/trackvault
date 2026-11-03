@@ -7,6 +7,7 @@ import { isUnderRoot, safeJoin } from "@trackvault/core/paths";
 import { files } from "../../schema/index.ts";
 import { artSize, thumbnail } from "../lib/art.ts";
 import { db } from "../lib/db.ts";
+import { verifyMediaToken } from "../lib/media-token.ts";
 import { peaksPath } from "../lib/peaks.ts";
 import { parseRange } from "../lib/range.ts";
 import { readSettings } from "../lib/settings.ts";
@@ -76,11 +77,16 @@ async function serve(
 ): Promise<Response> {
 	if (request.method !== "GET" && request.method !== "HEAD")
 		return plain(405, "Method not allowed");
-	if (!(await signedIn(request))) return plain(401, "Sign in first");
-
-	const path = decodeURIComponent(
-		new URL(request.url).pathname.slice("/media/".length),
-	);
+	const url = new URL(request.url);
+	const path = decodeURIComponent(url.pathname.slice("/media/".length));
+	// A signed address (`?t=`, minted by `media.url`) opens its own track without a
+	// session; anything else needs the session the cookie or bearer key holds.
+	const owner = path.split("/")[0] ?? "";
+	if (
+		!verifyMediaToken(owner, url.searchParams.get("t")) &&
+		!(await signedIn(request))
+	)
+		return plain(401, "Sign in first");
 	if (path.endsWith("/peaks")) return servePeaks(request, path.slice(0, -6));
 	if (path.endsWith("/art")) return serveArt(request, path.slice(0, -4));
 	const id = path;

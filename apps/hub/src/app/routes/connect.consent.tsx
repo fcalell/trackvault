@@ -28,9 +28,7 @@ function ConnectConsent() {
 	return (
 		<Gate
 			title="Connect a client"
-			description={[
-				"It can search your library, read tracks, playlists and stats, build playlists, and queue auto-tag, analysis and cover jobs. It cannot edit tags or delete files.",
-			]}
+			description="It can search your library, read tracks, playlists and stats, build playlists, and queue auto-tag, analysis and cover jobs. It cannot edit tags or delete files."
 			acts={
 				<>
 					<Button label="Allow" onAct={() => answer(true)} />

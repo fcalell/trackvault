@@ -127,7 +127,7 @@ function Duplicates() {
 			)}
 			<Section
 				items={groups.at(rowsOf)}
-				groups={found ? found.groups.map(band) : []}
+				groups={groups.at((data) => data.groups.map(band))}
 				empty={{
 					sentence:
 						"No duplicates found. Find duplicates to search the library.",

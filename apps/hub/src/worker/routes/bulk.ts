@@ -1,4 +1,5 @@
 import { procedure } from "virtual:stack-procedure";
+import { ApiError } from "@fcalell/plugin-api/error";
 import { selectionWhere } from "@fcalell/plugin-api/lib/selection";
 import { selector, z } from "@fcalell/plugin-api/schema";
 import { count, inArray } from "@fcalell/plugin-db/orm";
@@ -25,12 +26,37 @@ import { readSettings } from "../../server/lib/settings.ts";
 import { TAG_KEYS } from "../../server/lib/track-fields.ts";
 import { enqueue } from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
-import { tagPatch } from "../../shared/patch.ts";
+import { editFields, patchOf, tagPatch } from "../../shared/patch.ts";
 
 const tracksInput = selector(libraryQuery);
 
 // How many tracks the preview reads: the first of the selection, in title order.
 const SAMPLE = 40;
+
+// The Edit tags form's input, read as the patch, the tag ids and the job's payload.
+const editInput = z.object({ tracks: tracksInput, ...editFields });
+
+function editOf(input: z.infer<typeof editInput>) {
+	const parsed = tagPatch.safeParse(patchOf(input));
+	if (!parsed.success)
+		throw new ApiError("BAD_REQUEST", {
+			message: parsed.error.issues[0]?.message ?? "Check the values",
+		});
+	const ids = new Map(
+		db()
+			.select()
+			.from(tags)
+			.all()
+			.map((row) => [row.name, row.id]),
+	);
+	const idsOf = (names: readonly string[] | undefined): number[] =>
+		(names ?? []).flatMap((name) => ids.get(name) ?? []);
+	return {
+		patch: parsed.data,
+		addTags: idsOf(input.addTags),
+		removeTags: idsOf(input.removeTags),
+	};
+}
 
 const word = (value: unknown): string | null =>
 	value === null || value === undefined || value === "" ? null : String(value);
@@ -39,16 +65,11 @@ export const bulk = {
 	// What an edit would do to the first tracks of the selection, as rows of
 	// before and after, and how many tracks it names. Nothing is written.
 	preview: procedure({ auth: true, reads: ["tracks", "tags"] })
-		.input(
-			z.object({
-				tracks: tracksInput,
-				patch: tagPatch.default({}),
-				addTags: z.array(z.number().int()).default([]),
-				removeTags: z.array(z.number().int()).default([]),
-			}),
-		)
-		.query(({ input }) => {
+		.input(editInput)
+		.query(({ input: given }) => {
 			const database = db();
+			const { patch, addTags, removeTags } = editOf(given);
+			const input = { tracks: given.tracks, patch, addTags, removeTags };
 			const version = readSettings().libraryVersion;
 			const selection =
 				"query" in input.tracks
@@ -149,23 +170,24 @@ export const bulk = {
 	// Edit tags over a selection: a job that writes the database in chunks, logs
 	// each field, then writes the files.
 	edit: procedure({ auth: true, writes: ["tracks", "jobs"] })
-		.input(
-			z.object({
-				tracks: tracksInput,
-				patch: tagPatch.default({}),
-				addTags: z.array(z.number().int()).default([]),
-				removeTags: z.array(z.number().int()).default([]),
-			}),
-		)
+		.input(editInput)
 		.output(jobViewSchema)
-		.mutation(({ input }) =>
-			enqueue(edit, {
+		.mutation(({ input }) => {
+			const { patch, addTags, removeTags } = editOf(input);
+			if (
+				Object.keys(patch).length === 0 &&
+				addTags.length + removeTags.length === 0
+			)
+				throw new ApiError("BAD_REQUEST", {
+					message: "Enter a value to change.",
+				});
+			return enqueue(edit, {
 				tracks: input.tracks,
-				patch: input.patch,
-				addTags: input.addTags,
-				removeTags: input.removeTags,
-			}),
-		),
+				patch,
+				addTags,
+				removeTags,
+			});
+		}),
 
 	// The enabled cleanup rules over a selection.
 	rules: procedure({ auth: true, writes: ["tracks", "jobs"] })

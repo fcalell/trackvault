@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { checkDatabaseOffThread } from "../lib/backup/check.ts";
 import {
-	checkDatabase,
 	decompressFile,
 	listLocal,
 	sha256File,
@@ -51,7 +51,7 @@ export default defineJob<BackupVerifyPayload, BackupVerifyResult>({
 						"The unpacked database differs from the one that was backed up";
 				else {
 					progress(2, 3, "Checking the database");
-					const check = checkDatabase(scratch);
+					const check = await checkDatabaseOffThread(scratch, signal);
 					if (check.integrity !== "ok")
 						problem = `integrity_check: ${check.integrity}`;
 					else if (check.problems.length > 0)

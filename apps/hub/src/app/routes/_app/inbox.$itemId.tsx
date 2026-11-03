@@ -65,36 +65,42 @@ function Item() {
 				],
 			}}
 			actions={[
-				item.at((each) => ({
-					icon: "Check" as const,
+				{
+					icon: "Check",
 					label: "Approve",
-					...(each.state === "awaiting-approval"
-						? {}
-						: { blocked: "Not ready yet" }),
+					blocked: item.at((each) =>
+						each.state === "awaiting-approval" ? undefined : "Not ready yet",
+					),
 					onAct: () => approve.mutateAsync({ items }),
 					done: "Filing the track",
-				})),
-				item.at((each) => ({
-					icon: "ListRestart" as const,
+				},
+				{
+					icon: "ListRestart",
 					label: "Keep it anyway",
-					...(each.canKeep ? {} : { blocked: "Nothing to override" }),
+					blocked: item.at((each) =>
+						each.canKeep ? undefined : "Nothing to override",
+					),
 					onAct: () => keep.mutateAsync({ items }),
 					done: "Running the pipeline again",
-				})),
-				item.at((each) => ({
-					icon: "RotateCcw" as const,
+				},
+				{
+					icon: "RotateCcw",
 					label: "Try again",
-					...(each.state === "failed" ? {} : { blocked: "Nothing failed" }),
+					blocked: item.at((each) =>
+						each.state === "failed" ? undefined : "Nothing failed",
+					),
 					onAct: () => retry.mutateAsync({ items }),
 					done: "Running the pipeline again",
-				})),
-				item.at((each) => ({
-					icon: "Trash2" as const,
+				},
+				{
+					icon: "Trash2",
 					label: "Reject",
-					destructive: true as const,
-					...(each.state === "approved" || each.state === "rejected"
-						? { blocked: "Already decided" }
-						: {}),
+					destructive: true,
+					blocked: item.at((each) =>
+						each.state === "approved" || each.state === "rejected"
+							? "Already decided"
+							: undefined,
+					),
 					confirm: {
 						title: "Reject this file?",
 						sentence:
@@ -103,7 +109,7 @@ function Item() {
 					onAct: () => reject.mutateAsync({ items }),
 					done: "Rejecting",
 					to: "/inbox",
-				})),
+				},
 			]}
 		>
 			<Section

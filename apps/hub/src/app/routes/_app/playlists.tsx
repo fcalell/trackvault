@@ -3,9 +3,14 @@ import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
+import { useState } from "react";
 import { SMART_HELP, SMART_SORTS } from "../../../shared/playlists.ts";
 import { orpc } from "../../lib/api.ts";
-import type { PlaylistNode } from "../../lib/playlists.tsx";
+import {
+	type PlaylistNode,
+	SmartPreview,
+	type SmartRule,
+} from "../../lib/playlists.tsx";
 
 export const Route = createFileRoute("/_app/playlists")({
 	component: Playlists,
@@ -53,6 +58,7 @@ export const SMART_FIELDS = {
 // onto a folder moves into it.
 function Playlists() {
 	const open = useParams({ strict: false }).playlistId;
+	const [rule, setRule] = useState<SmartRule>();
 	const tree = orpc.playlists.tree.read();
 	const remove = useMutation(orpc.playlists.remove.mutationOptions());
 	const move = useMutation(orpc.playlists.move.mutationOptions());
@@ -192,8 +198,10 @@ function Playlists() {
 							form: {
 								act: orpc.playlists.createSmart,
 								fields: SMART_FIELDS,
+								onChange: setRule,
 								submit: { label: "Add", done: "Smart playlist added" },
 							},
+							children: <SmartPreview rule={rule} />,
 						}),
 					},
 				]}

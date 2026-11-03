@@ -64,6 +64,13 @@
       "when": 1793678904040,
       "tag": "0008_certain_galactus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793680173417,
+      "tag": "0009_special_synch",
+      "breakpoints": true
     }
   ]
 }

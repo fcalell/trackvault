@@ -85,28 +85,32 @@ function ImportResult() {
 				],
 			}}
 			actions={[
-				imported.at((each) => ({
-					icon: "ListMusic" as const,
+				{
+					icon: "ListMusic",
 					label: "Make a playlist from what the library has",
-					...(each.playlistId
-						? { blocked: "Already made" }
-						: each.matched === 0
-							? { blocked: "No track of this list is in the library" }
-							: {}),
+					blocked: imported.at((each) =>
+						each.playlistId
+							? "Already made"
+							: each.matched === 0
+								? "No track of this list is in the library"
+								: undefined,
+					),
 					onAct: () => createPlaylist.mutateAsync({ id: importId }),
 					done: "Playlist made",
 					to: "/playlists",
-				})),
-				imported.at((each) => ({
-					icon: "ListPlus" as const,
+				},
+				{
+					icon: "ListPlus",
 					label: "Add the missing tracks to the wishlist",
-					...(each.missing + each.otherVersion === 0
-						? { blocked: "Nothing is missing" }
-						: {}),
+					blocked: imported.at((each) =>
+						each.missing + each.otherVersion === 0
+							? "Nothing is missing"
+							: undefined,
+					),
 					onAct: () => toWishlist.mutateAsync({ id: importId }),
 					done: "Added to the wishlist",
 					to: "/wishlist",
-				})),
+				},
 				{
 					icon: "Trash2",
 					label: "Delete this import",

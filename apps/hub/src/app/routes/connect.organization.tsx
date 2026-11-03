@@ -21,9 +21,7 @@ function ConnectOrganization() {
 	return (
 		<Gate
 			title="Choose an organization"
-			description={[
-				"The client will work in the library of the one you choose.",
-			]}
+			description="The client will work in the library of the one you choose."
 			acts={
 				<Button
 					act="quiet"

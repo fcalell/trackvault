@@ -1,7 +1,7 @@
 import { preload, useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
-import { Section } from "@fcalell/plugin-react-ui/components/section";
+import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -31,6 +31,31 @@ export const Route = createFileRoute("/_app/settings")({
 	component: Settings,
 });
 
+// A saved secret is never read back into its field, so a row says it is set and
+// takes it away (an empty field left alone sends nothing).
+const savedRow = (
+	key: string,
+	label: string,
+	masked: string | null | undefined,
+	remove: () => Promise<unknown>,
+): Row[] =>
+	masked
+		? [
+				{
+					key,
+					leading: { icon: "KeyRound" },
+					title: label,
+					meta: [`Saved, ends in ${masked.slice(-4)}`],
+					act: {
+						icon: "Trash2",
+						label: `Remove ${label}`,
+						onAct: remove,
+						done: "Removed",
+					},
+				},
+			]
+		: [];
+
 function Settings() {
 	const settings = orpc.settings.read.read();
 	const update = useMutation(orpc.settings.update.mutationOptions());
@@ -39,6 +64,18 @@ function Settings() {
 	const spotify = orpc.imports.spotify.read();
 	const autotag = orpc.autotag.settings.read();
 	const test = useMutation(orpc.soulseek.test.mutationOptions());
+	const updateSoulseek = useMutation(
+		orpc.soulseek.updateSettings.mutationOptions(),
+	);
+	const updateSpotify = useMutation(
+		orpc.imports.updateSpotify.mutationOptions(),
+	);
+	const updateAutotag = useMutation(
+		orpc.autotag.updateSettings.mutationOptions(),
+	);
+	const updateBackups = useMutation(
+		orpc.backups.updateSettings.mutationOptions(),
+	);
 	const backups = orpc.backups.settings.read();
 	const bucketTest = useMutation(orpc.backups.test.mutationOptions());
 	const backupNow = useMutation(orpc.backups.backupNow.mutationOptions());
@@ -127,7 +164,10 @@ function Settings() {
 					commit="field"
 					values={soulseek.at((each) => ({
 						slskdUrl: each.slskdUrl ?? "",
-						slskdApiKey: each.slskdApiKey ?? "",
+						// A secret field is always empty: it holds a blank, never the saved
+						// value (a key missing from a selection's values flips the input
+						// from controlled to uncontrolled as the read lands).
+						slskdApiKey: "",
 						slskdDownloadsDir: each.slskdDownloadsDir ?? "",
 						wantedQuality: each.wantedQuality,
 						slskdMaxQueue: each.slskdMaxQueue,
@@ -142,8 +182,9 @@ function Settings() {
 						},
 						slskdApiKey: {
 							label: "slskd API key",
+							control: "secret",
 							description:
-								"Made in slskd's options (web.authentication.api_keys). Type a new one to replace it; empty removes it.",
+								"Made in slskd's options (web.authentication.api_keys). Type a new one to replace the saved one.",
 						},
 						slskdDownloadsDir: {
 							label: "slskd downloads folder",
@@ -174,7 +215,10 @@ function Settings() {
 					}}
 				/>
 				<Section
-					items={[
+					items={soulseek.at((each) => [
+						...savedRow("slskd-key", "slskd API key", each.slskdApiKey, () =>
+							updateSoulseek.mutateAsync({ slskdApiKey: "" }),
+						),
 						{
 							key: "test",
 							leading: { icon: "PlugZap" },
@@ -187,7 +231,7 @@ function Settings() {
 								done: "Connected to slskd",
 							},
 						},
-					]}
+					])}
 				/>
 			</Section>
 			<Section
@@ -242,11 +286,11 @@ function Settings() {
 						autotagMusicbrainz: each.autotagMusicbrainz,
 						autotagMusicbrainzAgent: each.autotagMusicbrainzAgent ?? "",
 						autotagAcoustid: each.autotagAcoustid,
-						autotagAcoustidKey: each.autotagAcoustidKey ?? "",
+						autotagAcoustidKey: "",
 						autotagDiscogs: each.autotagDiscogs,
-						autotagDiscogsToken: each.autotagDiscogsToken ?? "",
+						autotagDiscogsToken: "",
 						autotagBeatport: each.autotagBeatport,
-						autotagBeatportToken: each.autotagBeatportToken ?? "",
+						autotagBeatportToken: "",
 						autotagDeezer: each.autotagDeezer,
 						autotagPolicy: each.autotagPolicy,
 						autotagMinConfidence: each.autotagMinConfidence,
@@ -264,18 +308,21 @@ function Settings() {
 						autotagAcoustid: { label: "AcoustID" },
 						autotagAcoustidKey: {
 							label: "AcoustID key",
+							control: "secret",
 							description:
 								"A free application key (acoustid.org/new-application). Needs fpcalc on the hub to fingerprint files.",
 						},
 						autotagDiscogs: { label: "Discogs" },
 						autotagDiscogsToken: {
 							label: "Discogs token",
+							control: "secret",
 							description:
 								"A personal access token (discogs.com/settings/developers).",
 						},
 						autotagBeatport: { label: "Beatport" },
 						autotagBeatportToken: {
 							label: "Beatport access token",
+							control: "secret",
 							description: "Genre, key and tempo for dance music.",
 						},
 						autotagDeezer: {
@@ -305,6 +352,28 @@ function Settings() {
 								"The inbox pipeline fills tags with this policy before you approve a file.",
 						},
 					}}
+				/>
+				<Section
+					items={autotag.at((each) => [
+						...savedRow(
+							"acoustid",
+							"AcoustID key",
+							each.autotagAcoustidKey,
+							() => updateAutotag.mutateAsync({ autotagAcoustidKey: "" }),
+						),
+						...savedRow(
+							"discogs",
+							"Discogs token",
+							each.autotagDiscogsToken,
+							() => updateAutotag.mutateAsync({ autotagDiscogsToken: "" }),
+						),
+						...savedRow(
+							"beatport",
+							"Beatport access token",
+							each.autotagBeatportToken,
+							() => updateAutotag.mutateAsync({ autotagBeatportToken: "" }),
+						),
+					])}
 				/>
 			</Section>
 			<Section
@@ -348,16 +417,27 @@ function Settings() {
 					commit="field"
 					values={spotify.at((each) => ({
 						spotifyClientId: each.spotifyClientId ?? "",
-						spotifyClientSecret: each.spotifyClientSecret ?? "",
+						spotifyClientSecret: "",
 					}))}
 					submit={{ done: "Saved" }}
 					fields={{
 						spotifyClientId: { label: "Spotify client id" },
 						spotifyClientSecret: {
 							label: "Spotify client secret",
-							description: "Type a new one to replace it; empty removes it.",
+							control: "secret",
+							description: "Type a new one to replace the saved one.",
 						},
 					}}
+				/>
+				<Section
+					items={spotify.at((each) =>
+						savedRow(
+							"spotify",
+							"Spotify client secret",
+							each.spotifyClientSecret,
+							() => updateSpotify.mutateAsync({ spotifyClientSecret: "" }),
+						),
+					)}
 				/>
 			</Section>
 			<Section
@@ -445,8 +525,8 @@ function Settings() {
 						offsiteEndpoint: each.offsiteEndpoint ?? "",
 						offsiteBucket: each.offsiteBucket ?? "",
 						offsiteRegion: each.offsiteRegion,
-						offsiteAccessKey: each.offsiteAccessKey ?? "",
-						offsiteSecretKey: each.offsiteSecretKey ?? "",
+						offsiteAccessKey: "",
+						offsiteSecretKey: "",
 						offsitePrefix: each.offsitePrefix ?? "",
 						offsiteVirtualHosted: each.offsiteVirtualHosted,
 						offsiteDatabases: each.offsiteDatabases,
@@ -474,11 +554,13 @@ function Settings() {
 						},
 						offsiteAccessKey: {
 							label: "Access key id",
-							description: "Type a new one to replace it; empty removes it.",
+							control: "secret",
+							description: "Type a new one to replace the saved one.",
 						},
 						offsiteSecretKey: {
 							label: "Secret access key",
-							description: "Type a new one to replace it; empty removes it.",
+							control: "secret",
+							description: "Type a new one to replace the saved one.",
 						},
 						offsitePrefix: {
 							label: "Folder in the bucket",
@@ -510,6 +592,22 @@ function Settings() {
 							description: "Kilobytes per second. 0 is unlimited.",
 						},
 					}}
+				/>
+				<Section
+					items={backups.at((each) => [
+						...savedRow(
+							"offsite-access",
+							"Access key id",
+							each.offsiteAccessKey,
+							() => updateBackups.mutateAsync({ offsiteAccessKey: "" }),
+						),
+						...savedRow(
+							"offsite-secret",
+							"Secret access key",
+							each.offsiteSecretKey,
+							() => updateBackups.mutateAsync({ offsiteSecretKey: "" }),
+						),
+					])}
 				/>
 				<Section
 					items={[
@@ -576,7 +674,9 @@ function Settings() {
 											"For a rebuilt hub that must read files an earlier one encrypted. The 64 characters of the key.",
 										form: {
 											act: orpc.backups.setKey,
-											fields: { key: { label: "Encryption key" } },
+											fields: {
+												key: { label: "Encryption key", control: "secret" },
+											},
 											submit: { label: "Use this key", done: "Key set" },
 										},
 									}),

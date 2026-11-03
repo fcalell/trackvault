@@ -17,6 +17,9 @@ export default defineService({
 	start() {
 		ensureGenres();
 		ensureRules();
+	},
+	// The purge is a job, so it waits for the runner: every service has started.
+	ready() {
 		const tidy = (): void => {
 			purgeOldPreviews();
 			purgeProviderCache();

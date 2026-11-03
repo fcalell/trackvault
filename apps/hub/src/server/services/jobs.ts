@@ -35,9 +35,6 @@ let channel: JobsChannel | null = null;
 let ticker: ReturnType<typeof setInterval> | null = null;
 let pumping = false;
 let stopping = false;
-// Kinds are registered once the service has started: a job queued by a service that
-// starts earlier (file-name order) waits for them instead of failing as unknown.
-let loaded = false;
 
 const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
@@ -243,7 +240,7 @@ async function execute(row: JobRow, definition: AnyJob): Promise<void> {
 }
 
 function pump(): void {
-	if (pumping || stopping || !loaded) return;
+	if (pumping || stopping) return;
 	pumping = true;
 	try {
 		const queued = db()
@@ -310,7 +307,6 @@ export default defineService({
 	async start({ ws, log }) {
 		stopping = false;
 		await loadKinds();
-		loaded = true;
 		const database = db();
 		// Finished jobs age out.
 		database
@@ -341,7 +337,6 @@ export default defineService({
 		return async () => {
 			stopping = true;
 			if (ticker) clearInterval(ticker);
-			loaded = false;
 			for (const state of live.values()) state.abort.abort();
 			// Give running jobs a moment to notice the signal and stop.
 			const deadline = Date.now() + 5000;

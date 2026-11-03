@@ -29,3 +29,13 @@ export const client = createClient<HubRouter>({
 });
 
 export const orpc = createApiQueryUtils(client);
+
+// An address a native audio player can open with no headers: the hub signs one for the
+// track (`media.url`), good for a few hours. Pass it to the player; mint again when a
+// play outlives it. (The phone carries no audio module yet: see the plan's §10.)
+export async function streamUrl(trackId: string): Promise<string> {
+	const { url } = hub();
+	if (!url) throw new Error("No hub address is set.");
+	const signed = await client.media.url({ id: trackId });
+	return `${url}${signed.url}`;
+}

@@ -7,9 +7,9 @@ import {
 } from "@trackvault/core/backup";
 import { db } from "../db.ts";
 import type { SettingsRow } from "../settings.ts";
+import { checkDatabaseOffThread } from "./check.ts";
 import {
 	type BackupMeta,
-	checkDatabase,
 	compressFile,
 	defaultBackupDir,
 	hashUnpacked,
@@ -95,7 +95,7 @@ export async function makeBackup(
 		options.signal.throwIfAborted();
 		settleJournal(scratch);
 		options.progress(0, 0, "Checking the copy");
-		const check = checkDatabase(scratch);
+		const check = await checkDatabaseOffThread(scratch, options.signal);
 		if (check.integrity !== "ok" || check.problems.length > 0)
 			throw new Error(
 				`The copy failed its check: ${[check.integrity !== "ok" ? check.integrity : "", ...check.problems].filter(Boolean).join("; ")}`,

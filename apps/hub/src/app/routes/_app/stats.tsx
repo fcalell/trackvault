@@ -38,7 +38,7 @@ function LibraryStats() {
 	const played = orpc.stats.played.read();
 	const freshness = orpc.stats.freshness.read();
 	return (
-		<Pane title="Stats" back={false} read={totals}>
+		<Pane title="Stats" back={false}>
 			<Stats
 				items={[
 					{ label: "Tracks", value: totals.at((each) => each.tracks) },
@@ -63,7 +63,7 @@ function LibraryStats() {
 			<Section title="Tempo">
 				<BarChart
 					label="Tracks by tempo, bins of 5 BPM"
-					items={bpm.at((rows) => rows)}
+					items={bpm}
 					bar={{
 						key: (row) => String(row.bin),
 						value: (row) => row.count,
@@ -75,11 +75,11 @@ function LibraryStats() {
 			<Section title="Keys">
 				<BarChart
 					label="Tracks by Camelot key"
-					items={keys.at((rows) => rows)}
+					items={keys}
 					bar={{
 						key: (row) => row.key,
 						value: (row) => row.count,
-						at: (row) => row.key,
+						label: (row) => row.key,
 					}}
 					unit={{ one: "track", other: "tracks" }}
 				/>
@@ -87,7 +87,7 @@ function LibraryStats() {
 			<Section title="Added">
 				<BarChart
 					label="Tracks added per month"
-					items={added.at((rows) => rows)}
+					items={added}
 					bar={{
 						key: (row) => row.month,
 						value: (row) => row.count,
@@ -99,11 +99,11 @@ function LibraryStats() {
 			<Section title="Last played">
 				<BarChart
 					label="Tracks by when they were last played"
-					items={freshness.at((rows) => rows)}
+					items={freshness}
 					bar={{
 						key: (row) => row.bucket,
 						value: (row) => row.count,
-						at: (row) => row.bucket,
+						label: (row) => row.bucket,
 					}}
 					unit={{ one: "track", other: "tracks" }}
 				/>

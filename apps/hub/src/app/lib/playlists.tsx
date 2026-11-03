@@ -1,7 +1,11 @@
 import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
+import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import type { PlaceSpec } from "@fcalell/ui-core/descriptors";
+import { skipToken } from "@tanstack/react-query";
+import { useMemo } from "react";
 import type { AppRouter } from "../../../.stack/worker";
 import { orpc } from "./api.ts";
+import { useDebounced } from "./debounced.ts";
 
 export type PlaylistNode = AppRouter["playlists"]["tree"]["__output"][number];
 
@@ -80,4 +84,43 @@ export function usePlaylistPlaces(): PlaceSpec[] {
 		},
 		...(byParent.get(null) ?? []).map((node) => placeOf(node, "Playlists")),
 	];
+}
+
+// The rule a smart-playlist form has made, as its `onChange` hears it.
+export type SmartRule = Partial<
+	Parameters<typeof orpc.playlists.preview.call>[0]
+>;
+
+const count = new Intl.NumberFormat("en");
+
+// What the rule would hold now, read from the form's own input once the typing pauses:
+// the number of tracks and the first few. Nothing is saved.
+export function SmartPreview({ rule }: { rule: SmartRule | undefined }) {
+	const settled = useDebounced(JSON.stringify(rule ?? null), 300);
+	const input = useMemo(
+		() => (JSON.parse(settled) as SmartRule | null) ?? undefined,
+		[settled],
+	);
+	const preview = orpc.playlists.preview.read(
+		input && (input.conditions?.length ?? 0) > 0 ? input : skipToken,
+	);
+	return (
+		<Section
+			title="Matches now"
+			description={preview.at(
+				(each) => `${count.format(each.count)} tracks match this rule.`,
+			)}
+			read={preview}
+			items={preview.at((each) =>
+				each.sample.map(
+					(row): Row => ({
+						key: row.id,
+						leading: { icon: "Music" },
+						title: row.title ?? "Untitled",
+						meta: [row.artist ?? "Unknown artist"],
+					}),
+				),
+			)}
+		/>
+	);
 }

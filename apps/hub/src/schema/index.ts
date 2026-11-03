@@ -78,10 +78,8 @@ export const tracks = sqliteTable(
 		playCount: integer("play_count").notNull().default(0),
 		lastPlayedAt: integer("last_played_at", { mode: "timestamp_ms" }),
 		// The container (mp3, flac, m4a, aiff, wav) and what is coded inside it (mp3,
-		// flac, aac, alac, pcm...): lossless is a codec, not an extension. (The column
-		// keeps its old "mp3" default: dropping it makes SQLite rebuild the table, which
-		// drops the FTS triggers. Every writer sets the format.)
-		format: text("format").notNull().default("mp3"),
+		// flac, aac, alac, pcm...): lossless is a codec, not an extension.
+		format: text("format").notNull(),
 		codec: text("codec"),
 		bitrate: integer("bitrate"),
 		sampleRate: integer("sample_rate"),

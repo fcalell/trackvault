@@ -12,6 +12,7 @@ export * from "./history.ts";
 export * from "./imports.ts";
 export * from "./inbox.ts";
 export * from "./jobs.ts";
+export * from "./media.ts";
 export * from "./organiser.ts";
 export * from "./playlists.ts";
 export * from "./previews.ts";

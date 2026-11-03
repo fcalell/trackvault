@@ -100,7 +100,6 @@ export default defineService({
 	start({ log: logger }) {
 		log = (message) => logger.info(message);
 		watchLibrary();
-		if (root) requestScan();
 		reconcile = setInterval(() => {
 			if (root) requestScan();
 		}, RECONCILE_MS);
@@ -109,5 +108,9 @@ export default defineService({
 			if (reconcile) clearInterval(reconcile);
 			reconcile = null;
 		};
+	},
+	// The first scan is a job: it waits for the runner, which has started by now.
+	ready() {
+		if (root) requestScan();
 	},
 });

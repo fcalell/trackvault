@@ -33,7 +33,6 @@ export function requestInboxSoon(): void {
 export default defineService({
 	name: "inbox",
 	start() {
-		if (readSettings().libraryRoot) requestInbox();
 		reconcile = setInterval(() => {
 			if (readSettings().libraryRoot) requestInbox();
 		}, RECONCILE_MS);
@@ -43,5 +42,9 @@ export default defineService({
 			timer = null;
 			reconcile = null;
 		};
+	},
+	// The first pass is a job: it waits for the runner, which has started by now.
+	ready() {
+		if (readSettings().libraryRoot) requestInbox();
 	},
 });

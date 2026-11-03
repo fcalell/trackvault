@@ -4,7 +4,7 @@
 // scan -> autotag (proposals) -> accept -> autotag-apply (tags read back from the file)
 // -> art (cover embedded, thumbnail made) -> analyse (tempo, key, loudness) -> set builder.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq } from "@fcalell/plugin-db/orm";
@@ -162,7 +162,7 @@ readSettings();
 db()
 	.update(settings)
 	.set({
-		libraryRoot: root + "/lib",
+		libraryRoot: `${root}/lib`,
 		autotagMusicbrainzAgent: "TrackVault/1.0 (test@example.com)",
 		autotagAcoustid: false,
 		autotagDiscogs: false,
