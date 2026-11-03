@@ -2,6 +2,10 @@ import { preload } from "@fcalell/plugin-api/tanstack-query";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { createFileRoute } from "@tanstack/react-router";
+import {
+	ANALYSIS_WINDOW_LABELS,
+	ANALYSIS_WINDOWS,
+} from "../../../shared/intelligence.ts";
 import { orpc } from "../../lib/api.ts";
 
 export const Route = createFileRoute("/_app/settings/analysis")({
@@ -30,6 +34,7 @@ function AnalysisSettings() {
 					artMinSide: each.artMinSide,
 					analyseAuto: each.analyseAuto,
 					analyseFillConfidence: each.analyseFillConfidence,
+					analyseWindow: each.analyseWindow,
 				}))}
 				submit={{ done: "Saved" }}
 				fields={{
@@ -47,6 +52,15 @@ function AnalysisSettings() {
 						label: "Fill tags above",
 						description:
 							"Percent. An empty BPM, key or energy tag is filled when the measure is this sure. Tracks Rekordbox analysed are left alone.",
+					},
+					analyseWindow: {
+						label: "Analysis window",
+						description:
+							"How much of each track is read for BPM, key and energy, from its middle. A longer window reads more of the track, so each one takes longer to analyse. A change applies to the next run and does not re-analyse tracks already measured.",
+						options: ANALYSIS_WINDOWS.map((value) => ({
+							value,
+							label: ANALYSIS_WINDOW_LABELS[value],
+						})),
 					},
 				}}
 			/>

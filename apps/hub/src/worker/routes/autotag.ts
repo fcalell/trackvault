@@ -21,7 +21,11 @@ import { db } from "../../server/lib/db.ts";
 import { readSettings } from "../../server/lib/settings.ts";
 import { enqueue } from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
-import { AUTOTAG_POLICIES, PROPOSAL_VIEWS } from "../../shared/intelligence.ts";
+import {
+	ANALYSIS_WINDOWS,
+	AUTOTAG_POLICIES,
+	PROPOSAL_VIEWS,
+} from "../../shared/intelligence.ts";
 
 // A review view: a state, the proposals of one source, those at or above a confidence
 // (percent). A row of the review is a track, so a selection is of track ids.
@@ -79,6 +83,7 @@ const settingsView = z.object({
 	artMinSide: z.number(),
 	analyseAuto: z.boolean(),
 	analyseFillConfidence: z.number(),
+	analyseWindow: z.enum(ANALYSIS_WINDOWS),
 	// The providers that will be asked, by name.
 	ready: z.array(z.string()),
 });
@@ -103,6 +108,7 @@ function settingsOf() {
 		artMinSide: s.artMinSide,
 		analyseAuto: s.analyseAuto,
 		analyseFillConfidence: s.analyseFillConfidence,
+		analyseWindow: s.analyseWindow,
 		ready: set.providers.map((p) => PROVIDER_LABELS[p.name]),
 	};
 }
@@ -114,8 +120,7 @@ const percent = (max = 100) =>
 		.min(0, "Enter 0 or more")
 		.max(max, `Enter ${max} or less`);
 
-// A secret: null (or empty) takes it away, a value replaces it, absent keeps it; the masked
-// echo (it has bullets) is never written.
+// A secret: null (or empty) takes it away, a value replaces it, absent keeps it.
 const secret = z.string().trim().nullable().optional();
 const orNull = (v: string): string | null => (v === "" ? null : v);
 
@@ -152,6 +157,7 @@ export const autotag = {
 					.optional(),
 				analyseAuto: z.boolean().optional(),
 				analyseFillConfidence: percent().optional(),
+				analyseWindow: z.enum(ANALYSIS_WINDOWS).optional(),
 			}),
 		)
 		.output(settingsView)
@@ -161,7 +167,6 @@ export const autotag = {
 			for (const [key, value] of Object.entries(input)) {
 				if (value === undefined) continue;
 				if (typeof value === "string") {
-					if (value.includes("•")) continue;
 					set[key] = orNull(value);
 				} else set[key] = value;
 			}

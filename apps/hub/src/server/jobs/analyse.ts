@@ -1,6 +1,7 @@
 import { analyseTrack } from "@trackvault/core/analysis";
 import { ISSUE } from "@trackvault/core/issues";
 import { safeJoin } from "@trackvault/core/paths";
+import { windowSecOf } from "../../shared/intelligence.ts";
 import { niceFfmpeg } from "../lib/analysis.ts";
 import { applyPatches, flushTagWrites } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
@@ -56,6 +57,7 @@ export default defineJob<AnalysePayload, AnalyseResult>({
 		}
 		const ffmpegPath = await niceFfmpeg();
 		const wanted = settings.analyseFillConfidence / 100;
+		const windowSec = windowSecOf(settings.analyseWindow);
 		const ids = payload.tracks
 			? selectedIds(payload.tracks)
 			: (
@@ -126,6 +128,7 @@ export default defineJob<AnalysePayload, AnalyseResult>({
 			const found = await analyseTrack(safeJoin(root, file.path), {
 				ffmpegPath,
 				only,
+				windowSec,
 				...(row.durationMs ? { durationSec: row.durationMs / 1000 } : {}),
 			});
 			signal.throwIfAborted();
