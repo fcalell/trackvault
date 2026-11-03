@@ -1,8 +1,6 @@
-// After `stack build`, beside `server.mjs`:
-// - the worker threads the hub starts. The build bundles the server into one file and
-//   follows no `new Worker(new URL(...))`, so each worker module is bundled on its own
-//   here (`lib/worker-file.ts` finds it);
-// - the restore tools, so a box that holds only `dist/` can restore a backup.
+// After `stack build`, beside `server.mjs`: the restore tools, so a box that holds only `dist/`
+// can restore a backup. (The worker threads and the job kinds are bundled by `stack build` itself.)
+// threads and the job kinds are bundled by `stack build` itself.)
 // `node scripts/bundle-extras.ts` from apps/hub.
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -14,8 +12,6 @@ if (!existsSync(fileURLToPath(new URL("server.mjs", out))))
 	throw new Error("dist/server/server.mjs is missing: run `stack build` first");
 
 const EXTRAS = {
-	"analyze-worker": "src/server/lib/scan/analyze-worker.ts",
-	"check-worker": "src/server/lib/backup/check-worker.ts",
 	restore: "scripts/restore.ts",
 	"restore-offsite": "scripts/restore-offsite.ts",
 };

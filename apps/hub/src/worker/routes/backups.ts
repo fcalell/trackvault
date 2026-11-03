@@ -167,8 +167,8 @@ export const backups = {
 					.optional(),
 				offsiteBucket: z.string().trim().optional(),
 				offsiteRegion: z.string().trim().min(1, "Enter a region").optional(),
-				offsiteAccessKey: z.string().trim().optional(),
-				offsiteSecretKey: z.string().trim().optional(),
+				offsiteAccessKey: z.string().trim().nullable().optional(),
+				offsiteSecretKey: z.string().trim().nullable().optional(),
 				offsitePrefix: z.string().trim().optional(),
 				offsiteVirtualHosted: z.boolean().optional(),
 				offsiteDatabases: z.boolean().optional(),
@@ -206,8 +206,10 @@ export const backups = {
 			// An encryption key is made the first time encryption is switched on.
 			const key =
 				input.offsiteEncrypt && !before.offsiteKey ? newKey() : undefined;
-			const secret = (v: string | undefined) =>
-				v !== undefined && !v.includes("•") ? { v: orNull(v) } : undefined;
+			const secret = (v: string | null | undefined) =>
+				v !== undefined && !v?.includes("•")
+					? { v: v ? orNull(v) : null }
+					: undefined;
 			const access = secret(input.offsiteAccessKey);
 			const secretKey = secret(input.offsiteSecretKey);
 			db()

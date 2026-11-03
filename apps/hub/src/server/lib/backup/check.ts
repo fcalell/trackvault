@@ -1,5 +1,4 @@
 import { Worker } from "node:worker_threads";
-import { workerFile } from "../worker-file.ts";
 import type { DatabaseCheck } from "./files.ts";
 
 // `checkDatabase` on a worker thread: integrity_check reads the whole file, a second
@@ -11,10 +10,9 @@ export function checkDatabaseOffThread(
 ): Promise<DatabaseCheck> {
 	signal?.throwIfAborted();
 	return new Promise((resolve, reject) => {
-		const worker = new Worker(
-			workerFile("check-worker", new URL("./check-worker.ts", import.meta.url)),
-			{ workerData: { path } },
-		);
+		const worker = new Worker(new URL("./check-worker.ts", import.meta.url), {
+			workerData: { path },
+		});
 		const stop = (): void => {
 			void worker.terminate();
 			reject(signal?.reason ?? new Error("The check was cancelled"));

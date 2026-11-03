@@ -2,24 +2,44 @@ import { player, windowQueue } from "@fcalell/plugin-native-ui/lib/player";
 import type { Track } from "@fcalell/ui-core/descriptors";
 import { client, hubUrl } from "./api";
 
-// The player streams from the hub with no headers, so the file and its cover carry their
-// own access: a signed token per track (`media.urls`), good for a few hours, opens
-// `/media/<id>` and `/media/<id>/art`. A queue signs a page of rows at a time, before the
-// rows become tracks, so a track is always made with its token in hand.
+// The player streams from the hub, and the system fetches the lock screen's cover from the
+// address alone, so the file and its cover carry their own access: a signed token per track
+// (`media.urls`), good for a few hours, opens `/media/<id>` and `/media/<id>/art`. The queue
+// makes a track asynchronously, so a track signs itself as the page of rows loads; the calls
+// of one page share a single request.
 const MARGIN_MS = 10 * 60 * 1000;
-const signed = new Map<string, { token: string; expiresAt: number }>();
+const held = new Map<string, { token: string; expiresAt: number }>();
+let batch: {
+	ids: Set<string>;
+	done: Promise<void>;
+} | null = null;
 
-async function sign(ids: readonly string[]): Promise<void> {
-	const base = hubUrl();
-	const now = Date.now();
-	const wanted = ids.filter((id) => {
-		const held = signed.get(`${base}\0${id}`);
-		return !held || held.expiresAt - now < MARGIN_MS;
-	});
-	if (wanted.length === 0) return;
-	const { tokens, expiresAt } = await client.media.urls({ ids: wanted });
+async function flush(ids: readonly string[], base: string): Promise<void> {
+	const { tokens, expiresAt } = await client.media.urls({ ids: [...ids] });
 	for (const [id, token] of Object.entries(tokens))
-		signed.set(`${base}\0${id}`, { token, expiresAt });
+		held.set(`${base}\0${id}`, { token, expiresAt });
+}
+
+async function signed(id: string): Promise<string> {
+	const base = hubUrl();
+	const kept = held.get(`${base}\0${id}`);
+	if (kept && kept.expiresAt - Date.now() >= MARGIN_MS) return kept.token;
+	if (!batch) {
+		const ids = new Set<string>();
+		// The microtask lets every row of the page add its id before the one request.
+		batch = {
+			ids,
+			done: Promise.resolve().then(() => {
+				batch = null;
+				return flush([...ids], base);
+			}),
+		};
+	}
+	batch.ids.add(id);
+	await batch.done;
+	const token = held.get(`${base}\0${id}`)?.token;
+	if (!token) throw new Error("The track could not be signed.");
+	return token;
 }
 
 /** What a track row needs to be played. */
@@ -30,11 +50,9 @@ export interface Playable {
 	durationMs: number | null;
 }
 
-function toTrack(row: Playable): Track {
-	const base = hubUrl();
-	const token = signed.get(`${base}\0${row.id}`)?.token;
-	if (!token) throw new Error("The track is not signed.");
-	const at = `${base}/media/${encodeURIComponent(row.id)}`;
+async function toTrack(row: Playable): Promise<Track> {
+	const at = `${hubUrl()}/media/${encodeURIComponent(row.id)}`;
+	const token = await signed(row.id);
 	return {
 		src: `${at}?t=${token}`,
 		key: row.id,
@@ -63,25 +81,13 @@ export async function playFrom(
 ) {
 	const row = rows[at];
 	if (!row || !read.page) return;
-	const page = read.page;
-	await sign([row.id]);
 	player.play(
-		toTrack(row),
-		windowQueue<Playable>(
-			{
-				page: async (offset) => {
-					const answer = await page(offset);
-					await sign((answer.data as Playable[]).map((r) => r.id));
-					return answer;
-				},
-			},
-			{ track: toTrack, at },
-		),
+		await toTrack(row),
+		windowQueue<Playable>(read, { track: toTrack, at }),
 	);
 }
 
 /** Plays one track (the record's), with no queue. */
 export async function playOne(row: Playable) {
-	await sign([row.id]);
-	player.play(toTrack(row));
+	player.play(await toTrack(row));
 }

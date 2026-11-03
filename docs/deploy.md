@@ -38,9 +38,9 @@ TRACKVAULT_DOMAIN=trackvault.example.com pnpm build     # writes apps/hub/dist/
 ```
 
 `pnpm build` runs `stack build` (client, then the server bundle) and
-`apps/hub/scripts/bundle-extras.ts`, which writes the scan and backup-check worker threads and
-the two restore tools beside `server.mjs` (the bundle follows no `new Worker(new URL(...))`).
-`dist/` holds `client/` and `server/` (`server.mjs`, the workers, `migrations/`, `node_modules/`
+`apps/hub/scripts/bundle-extras.ts`, which writes the two restore tools beside `server.mjs`
+(`stack build` itself bundles the scan and backup-check worker threads and the job kinds).
+`dist/` holds `client/` and `server/` (`server.mjs`, `workers/`, `migrations/`, `node_modules/`
 with only the native addon). Copy it to the box:
 
 ```bash

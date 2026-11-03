@@ -189,27 +189,17 @@ function Backups() {
 				description="Database backups in the bucket. To restore from them, run restore-offsite.mjs from the bundle with the hub stopped."
 				read={remote}
 				items={remote.at((each) =>
-					!each.configured
-						? [
-								{
-									key: "unset",
-									leading: { icon: "CloudOff" as const },
-									title: "Offsite storage is not set up",
-									meta: ["The bucket and keys are in Settings"],
-								},
-							]
-						: each.error
-							? [
-									{
-										key: "error",
-										leading: { icon: "CloudOff" as const },
-										title: "The bucket could not be read",
-										warning: each.error,
-									},
-								]
-							: each.items.map(remoteRow),
+					each.configured && !each.error ? each.items.map(remoteRow) : [],
 				)}
-				empty={{ sentence: "Nothing is in the bucket yet." }}
+				empty={{
+					sentence: remote.at((each) =>
+						!each.configured
+							? "Offsite storage is not set up. The bucket and keys are in Settings."
+							: each.error
+								? `The bucket could not be read: ${each.error}`
+								: "Nothing is in the bucket yet.",
+					),
+				}}
 			/>
 		</Pane>
 	);

@@ -29,7 +29,7 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
                      soulseek (settings, search, candidates, downloads), wishlist, imports (playlist import),
                      autotag (provider settings, Review proposals), sets (set builder), stats, backups (settings, list, remote, status, backup now, verify, test), agent (the MCP tools; listed in
                      src/worker/mcp.ts)
-  src/server/jobs/   one file per job kind (defineJob; also listed in src/server/lib/job-kinds.ts, since the bundle has no directory): scan, tag-write, peaks, edit, rules, unify, organise,
+  src/server/jobs/   one file per job kind (defineJob, default export; the runner finds them with `loadModules`): scan, tag-write, peaks, edit, rules, unify, organise,
                      quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate,
                      playlist-add, playlist-remove, tag-flush, inbox, inbox-approve, search, wishlist, playlist-import,
                      autotag, autotag-apply, art, analyse, backup, backup-verify, offsite
@@ -56,7 +56,7 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
   src/app/           the web UI, from stack's roster only
   scripts/fake-slskd.ts   a tiny slskd stand-in (search, transfers, downloads) to run the Soulseek flow without slskd
   scripts/restore.ts, scripts/restore-offsite.ts   restore the database from a local backup, or rebuild database and library from the bucket (hub stopped; see docs/deploy.md; built to dist/server/restore*.mjs)
-  scripts/bundle-extras.ts   after `stack build`: bundles the worker threads and the restore tools beside server.mjs
+  scripts/bundle-extras.ts   after `stack build`: bundles the restore tools beside server.mjs (the worker threads and job kinds are bundled by `stack build`)
   scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export; scripts/bench-r4.ts times the stats panels and set suggestions; scripts/verify-r4.ts runs auto-tag, art, analysis and the set builder end to end with mocked providers (DB_FILE=<migrated scratch copy>)
 apps/phone/          the phone app: a client-only stack Expo app of the hub (`nativeUi({ server: "../hub" })`: no backend, no schema, the
                      hub's `AppRouter` from `.stack/server`); signs in by email code (traded for a device key) or a pasted key;
@@ -90,6 +90,6 @@ pnpm --filter hub exec stack db generate   # the migration for a schema change (
 - Every bulk or slow operation is a job (`src/server/jobs/<kind>.ts`), safe to run twice.
 - A hot write path uses the prepared statements in `src/server/lib/raw.ts`; the rest uses Drizzle
   through `@fcalell/plugin-db/orm`.
-- The hub deploys as a bundle (`docs/deploy.md`): a worker thread is started through `lib/worker-file.ts` and bundled
-  by `apps/hub/scripts/bundle-extras.ts`; never read a file by a path relative to a module in server code.
+- The hub deploys as a bundle (`docs/deploy.md`): a worker thread is `new Worker(new URL("./x.ts", import.meta.url))` and a directory of
+  modules is `loadModules(new URL("../jobs/", import.meta.url))`, both bundled by `stack build`; never read a file by a path relative to a module in server code.
 - A stack gap is recorded, not patched: see `.project_management/revamp-plan.md` §10.

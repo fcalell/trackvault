@@ -1,13 +1,16 @@
-import { createClient } from "@fcalell/plugin-api/client";
-import { sendEmailOtp, signInWithEmailOtp } from "@fcalell/plugin-auth/expo";
+import {
+	type AuthClient,
+	sendEmailOtp,
+	signInWithEmailOtp,
+	useAuthClient,
+} from "@fcalell/plugin-auth/expo";
 import { Button } from "@fcalell/plugin-native-ui/components/button";
 import { Gate } from "@fcalell/plugin-native-ui/components/gate";
 import { Input } from "@fcalell/plugin-native-ui/components/input";
 import { Picker } from "@fcalell/plugin-native-ui/components/picker";
 import { useState } from "react";
 import { Platform } from "react-native";
-import { type AppRouter, client, hubUrl } from "./api";
-import { authClient } from "./auth";
+import { client, hubUrl } from "./api";
 import { forget, normalizeUrl, point, save, use, useHub } from "./hub";
 
 type Way = "code" | "key";
@@ -20,14 +23,9 @@ const WAYS = [
 // A signed-in session is traded for a device key of this phone: the key is what every
 // later request carries (the API, the player), it can be revoked in the hub under
 // Devices, and no session is kept.
-async function keyFromSession(url: string): Promise<string> {
-	const cookie = await authClient.getCookie();
-	const session = createClient<AppRouter>({
-		url: () => `${url}/rpc`,
-		headers: { cookie },
-		credentials: "omit",
-	});
-	const made = await session.auth.devices.create({
+async function keyFromSession(authClient: AuthClient): Promise<string> {
+	// No key is held yet, so the shared client sends the session's cookie.
+	const made = await client.auth.devices.create({
 		name: `Phone (${Platform.OS})`,
 	});
 	await authClient.signOut();
@@ -47,6 +45,7 @@ async function connect(url: string, key: string) {
 }
 
 export function SignIn() {
+	const authClient = useAuthClient();
 	const saved = useHub();
 	const [way, setWay] = useState<Way>("code");
 	const [address, setAddress] = useState(saved.url ?? "");
@@ -164,7 +163,7 @@ export function SignIn() {
 								otp: entered,
 							});
 							if (signed.error) throw new Error(signed.error.message);
-							await connect(hubUrl(), await keyFromSession(hubUrl()));
+							await connect(hubUrl(), await keyFromSession(authClient));
 						}}
 					/>
 					<Button

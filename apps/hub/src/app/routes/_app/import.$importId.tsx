@@ -160,7 +160,7 @@ function ImportResult() {
 				sentence={imported.at((each) =>
 					each.state === "ready" && each.playlistId
 						? "A playlist was made from this list."
-						: "",
+						: undefined,
 				)}
 				act={imported.at((each) =>
 					each.state === "ready" && each.playlistId

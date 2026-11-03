@@ -1,6 +1,7 @@
 import { createClient } from "@fcalell/plugin-api/client";
 import { createApiQueryUtils } from "@fcalell/plugin-api/tanstack-query";
 import type { AppRouter } from "../../.stack/server";
+import { authClient } from "./auth";
 import { hub } from "./hub";
 
 // The hub's router type (`stack generate` writes `.stack/server.ts` from the `server`
@@ -20,9 +21,13 @@ export function hubUrl(): string {
 // sign-in chose (or a new one) needs no new client.
 export const client = createClient<AppRouter>({
 	url: () => `${hubUrl()}/rpc`,
-	headers: (): Record<string, string> => {
+	// The device key once there is one; before it, the email-code session the sign-in holds,
+	// which it trades for a key (lib/sign-in.tsx).
+	headers: async (): Promise<Record<string, string>> => {
 		const { key } = hub();
-		return key ? { authorization: `Bearer ${key}` } : {};
+		if (key) return { authorization: `Bearer ${key}` };
+		const cookie = await authClient.getCookie();
+		return cookie ? { cookie } : {};
 	},
 	credentials: "omit",
 });

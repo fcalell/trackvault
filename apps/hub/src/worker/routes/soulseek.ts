@@ -108,7 +108,8 @@ export const soulseek = {
 						message: "Enter an address like http://localhost:5030",
 					})
 					.optional(),
-				slskdApiKey: z.string().trim().optional(),
+				// A secret: null (or empty) takes it away, a value replaces it, absent keeps it.
+				slskdApiKey: z.string().trim().nullable().optional(),
 				slskdDownloadsDir: z.string().trim().optional(),
 				wantedQuality: z.enum(WANTED_QUALITY).optional(),
 				slskdMaxQueue: z
@@ -129,7 +130,7 @@ export const soulseek = {
 		.output(settingsView)
 		.mutation(({ input }) => {
 			readSettings();
-			const orNull = (v: string): string | null => (v === "" ? null : v);
+			const orNull = (v: string | null): string | null => (v ? v : null);
 			db()
 				.update(settingsTable)
 				.set({
@@ -137,7 +138,7 @@ export const soulseek = {
 						slskdUrl: orNull(input.slskdUrl),
 					}),
 					...(input.slskdApiKey !== undefined &&
-						!input.slskdApiKey.includes("•") && {
+						!input.slskdApiKey?.includes("•") && {
 							slskdApiKey: orNull(input.slskdApiKey),
 						}),
 					...(input.slskdDownloadsDir !== undefined && {

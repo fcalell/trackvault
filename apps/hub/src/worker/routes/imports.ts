@@ -383,13 +383,14 @@ export const imports = {
 		.input(
 			z.object({
 				spotifyClientId: z.string().trim().optional(),
-				spotifyClientSecret: z.string().trim().optional(),
+				// A secret: null (or empty) takes it away, a value replaces it, absent keeps it.
+				spotifyClientSecret: z.string().trim().nullable().optional(),
 			}),
 		)
 		.output(spotifyView)
 		.mutation(({ input }) => {
 			readSettings();
-			const orNull = (v: string): string | null => (v === "" ? null : v);
+			const orNull = (v: string | null): string | null => (v ? v : null);
 			db()
 				.update(settingsTable)
 				.set({
@@ -397,7 +398,7 @@ export const imports = {
 						spotifyClientId: orNull(input.spotifyClientId),
 					}),
 					...(input.spotifyClientSecret !== undefined &&
-						!input.spotifyClientSecret.includes("•") && {
+						!input.spotifyClientSecret?.includes("•") && {
 							spotifyClientSecret: orNull(input.spotifyClientSecret),
 						}),
 					updatedAt: new Date(),

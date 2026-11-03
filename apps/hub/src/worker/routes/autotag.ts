@@ -71,8 +71,9 @@ const percent = (max = 100) =>
 		.min(0, "Enter 0 or more")
 		.max(max, `Enter ${max} or less`);
 
-// Secrets are written only when typed anew (the masked echo has bullets).
-const secret = z.string().trim().optional();
+// A secret: null (or empty) takes it away, a value replaces it, absent keeps it; the masked
+// echo (it has bullets) is never written.
+const secret = z.string().trim().nullable().optional();
 const orNull = (v: string): string | null => (v === "" ? null : v);
 
 function queued() {

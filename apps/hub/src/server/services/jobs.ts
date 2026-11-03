@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, readdirSync } from "node:fs";
 import { and, desc, eq, inArray, lt } from "@fcalell/plugin-db/orm";
 import type { ChannelHandle } from "@fcalell/plugin-node/server";
-import { defineService } from "@fcalell/plugin-node/server";
+import { defineService, loadModules } from "@fcalell/plugin-node/server";
 import { jobs } from "../../schema/index.ts";
 import { type JobView, jobsChannel } from "../../shared/channels.ts";
 import { db } from "../lib/db.ts";
@@ -287,18 +286,10 @@ function pump(): void {
 }
 
 async function loadKinds(): Promise<void> {
-	// Imported here, not at the top: the kinds import this service's `enqueue`.
-	const { KIND_FILES, KINDS } = await import("../lib/job-kinds.ts");
-	// From source the directory is there to check against; the bundle has none.
-	const directory = new URL("../jobs/", import.meta.url);
-	if (existsSync(directory)) {
-		for (const name of readdirSync(directory)) {
-			if (!name.endsWith(".ts") || name.endsWith(".test.ts")) continue;
-			if (!(KIND_FILES as readonly string[]).includes(name))
-				throw new Error(`jobs/${name} is not listed in lib/job-kinds.ts`);
-		}
-	}
-	for (const definition of KINDS as AnyJob[]) {
+	// Loaded here, not at the top: the kinds import this service's `enqueue`.
+	const modules = await loadModules(new URL("../jobs/", import.meta.url));
+	for (const module of Object.values(modules)) {
+		const definition = (module as { default: AnyJob }).default;
 		if (!definition?.kind) throw new Error("a job kind has no name");
 		if (registry.has(definition.kind))
 			throw new Error(`job kind ${definition.kind} is defined twice`);
