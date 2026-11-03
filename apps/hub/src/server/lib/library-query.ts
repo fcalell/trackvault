@@ -51,7 +51,7 @@ export type LibraryQuery = z.infer<typeof libraryQuery>;
 // Text sorts are case-insensitive, to match the indexes (`collate nocase`).
 const nocase = (column: SQLiteColumn) => sql`${column} collate nocase`;
 
-const ORDER: Record<SortColumn, SQL> = {
+export const ORDER: Record<SortColumn, SQL> = {
 	title: nocase(tracks.title),
 	artist: nocase(tracks.artist),
 	genre: nocase(tracks.genre),
@@ -206,7 +206,7 @@ export function prepareQuery<T extends LibraryQuery>(
 
 // What a window draws is the list columns: every other column of a track is left out
 // of the page's rows (the full record loads on open).
-const OTHER_COLUMNS = {
+export const OTHER_COLUMNS = {
 	seq: false,
 	audioHash: false,
 	fingerprint: false,
@@ -223,6 +223,8 @@ const OTHER_COLUMNS = {
 	loudness: false,
 	colour: false,
 	comment: false,
+	playCount: false,
+	lastPlayedAt: false,
 	sampleRate: false,
 	size: false,
 	hasArt: false,

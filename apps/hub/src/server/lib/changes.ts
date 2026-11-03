@@ -1,8 +1,15 @@
 import { stat } from "node:fs/promises";
 import { and, eq, inArray, sql } from "@fcalell/plugin-db/orm";
+import { refreshFileHash } from "@trackvault/core/hash";
 import { safeJoin } from "@trackvault/core/paths";
 import { type TagPatch, writeTags } from "@trackvault/core/tags";
-import { batches, changes, files, tracks } from "../../schema/index.ts";
+import {
+	batches,
+	type ChangeOrigin,
+	changes,
+	files,
+	tracks,
+} from "../../schema/index.ts";
 import { bumpVersion, notifyChanged } from "../services/library.ts";
 import { db, type Tx } from "./db.ts";
 import { inserter, statement } from "./raw.ts";
@@ -30,7 +37,7 @@ export interface PatchEntry {
 
 export interface BatchInfo {
 	batchId: string;
-	origin: "ui" | "rule" | "autotag" | "rekordbox" | "agent" | "scan";
+	origin: ChangeOrigin;
 	label: string;
 }
 
@@ -261,20 +268,33 @@ export async function writeTrackFiles(
 		if (result.errors.length < 20)
 			result.errors.push(`${trackId}: no file on disk`);
 	}
+	const audioHash = database
+		.select({ audioHash: tracks.audioHash })
+		.from(tracks)
+		.where(eq(tracks.id, trackId))
+		.get()?.audioHash;
+	let hashed = false;
 	for (const row of rows) {
 		try {
 			const absolute = safeJoin(root, row.path);
 			await writeTags(absolute, patch);
 			const info = await stat(absolute);
+			// The tags changed the file's bytes, not its audio: the file hash the sync
+			// serves it by is made again from the head and tail alone.
+			const fresh = audioHash
+				? await refreshFileHash(absolute, audioHash).catch(() => null)
+				: null;
 			database
 				.update(files)
 				.set({
 					size: info.size,
 					mtimeMs: Math.floor(info.mtimeMs),
 					inode: info.ino,
+					...(fresh ? { fileHash: fresh.fileHash } : {}),
 				})
 				.where(eq(files.id, row.id))
 				.run();
+			hashed ||= fresh !== null;
 			result.written++;
 		} catch (error) {
 			result.failed++;
@@ -283,6 +303,16 @@ export async function writeTrackFiles(
 					`${row.path}: ${error instanceof Error ? error.message : String(error)}`,
 				);
 		}
+	}
+	// A device that already read the track's old version would never look again: the
+	// new file hash is a change of the track, so its version moves on.
+	if (hashed) {
+		let version = 0;
+		database.transaction((tx) => {
+			version = bumpVersion(tx);
+			tx.update(tracks).set({ version }).where(eq(tracks.id, trackId)).run();
+		});
+		notifyChanged([trackId], version);
 	}
 }
 

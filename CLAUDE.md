@@ -18,23 +18,31 @@ no test suite, the gate is `pnpm check`.
 ```
 apps/hub/            the stack app (node target, sqlite, auth, api, vite, react, react-ui, screens)
   src/schema/        Drizzle tables: tracks, files, jobs, changes, batches, settings, genres + aliases, tags,
-                     rules, previews, dupeGroups, fingerprints, healthChecks (+ auth's)
+                     rules, previews, dupeGroups, fingerprints, healthChecks, playlists + playlistTracks,
+                     devices, deviceFiles, rekordboxLinks, conflicts, analysisBlobs, cues, plays, uploads (+ auth's,
+                     devices keys included)
   src/worker/routes/ procedures: settings, jobs, scan, tracks (list = window read, facets, get, update), fs,
                      bulk (acts on a selection), history, genres/aliases/unifyTags, tags, cleanup, previews,
-                     organiser, quarantine, health, dupes
+                     organiser, quarantine, health, dupes, playlists (tree, window over a playlist, add/remove/
+                     reorder, smart rules), devices (list, conflicts, resolve)
   src/server/jobs/   one file per job kind (defineJob): scan, tag-write, peaks, edit, rules, unify, organise,
-                     quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate
+                     quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate,
+                     playlist-add, playlist-remove, tag-flush
   src/server/services/  jobs (durable runner + `jobs` channel), library (version + `library` channel),
                      scanner (watcher + reconcile), media (/media/<trackId>, /peaks, Range),
-                     housekeeping (seeds genres and built-in rules, purges the quarantine)
+                     housekeeping (seeds genres and built-in rules, purges the quarantine),
+                     sync (the `/sync` mount for the agent: protocol v1 of core/sync, and the `devices` channel)
   src/server/lib/    db handle and pragmas, scan pipeline (walk, worker pool, batched apply), track fields,
                      library-query (the one `where`, list, facets), peaks (ffmpeg), changes (every library
                      write: chunked, logged, undoable), file-ops (recorded file moves), fs-lock (scan and
-                     file-moving jobs do not overlap), previews, taxonomy, rules, health
-  src/shared/        channels (jobs, library)
+                     file-moving jobs do not overlap), previews, taxonomy, rules, health, playlists (tree, members,
+                     fractional positions, smart rules, undo), playlist-query (windows), conflicts,
+                     sync/ (manifest, files, uploads, anlz, rb-import = the 3-way merge, rb-export, devices, wake)
+  src/shared/        channels (jobs, library, devices), playlists + smart-lines (the smart-rule editor's language)
   src/app/           the web UI, from stack's roster only
-  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs
-apps/agent/          placeholder for the Rekordbox-machine agent (R2)
+  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export
+apps/agent/          the device agent (plain Node, run from source): replica, folder upload, Rekordbox bridge; speaks /sync;
+                     its `HubRouter` type is the hub's emitted declaration (`.stack/types`), so hub checks first
 packages/core/       pure Node 24 TypeScript, no stack imports: ID3 tag IO, audio hash, normalize, paths, issues
 ```
 

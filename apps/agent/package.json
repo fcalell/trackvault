@@ -23,6 +23,7 @@
 	"devDependencies": {
 		"@fcalell/typescript-config": "link:../../../stack/packages/typescript-config",
 		"@types/node": "^25.5.0",
+		"hub": "workspace:*",
 		"typescript": "^5.9.3"
 	}
 }

@@ -310,6 +310,8 @@ const run = sqlite.transaction(() => {
 					? pick(["red", "orange", "green", "blue", "purple"])
 					: null,
 			comment: random() < 0.1 ? pick(WORDS) : null,
+			play_count: 0,
+			last_played_at: null,
 			format: "mp3",
 			bitrate,
 			sample_rate: 44100,

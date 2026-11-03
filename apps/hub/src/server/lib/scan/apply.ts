@@ -197,6 +197,8 @@ export function applyOutcomes(
 					releaseDate: null,
 					loudness: null,
 					colour: null,
+					playCount: 0,
+					lastPlayedAt: null,
 					...fields,
 					addedAt: now,
 					updatedAt: now,

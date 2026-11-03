@@ -31,7 +31,9 @@ const COLUMNS: TableColumn<Batch>[] = [
 		label: "By",
 		kind: "chip",
 		family: "neutral",
-		cell: (batch) => ORIGINS[batch.origin] ?? batch.origin,
+		cell: (batch) =>
+			ORIGINS[batch.origin] ??
+			(batch.origin.startsWith("rekordbox:") ? "Rekordbox" : batch.origin),
 	},
 	{
 		key: "count",

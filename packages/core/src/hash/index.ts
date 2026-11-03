@@ -78,3 +78,31 @@ export async function hashFile(path: string): Promise<FileIdentity> {
 		await fh.close();
 	}
 }
+
+// The file hash of a file whose audio is known to be unchanged (a tag edit): only the
+// head and the tail are read, the audio hash between them is the one given. Equal to
+// `hashFile(path).fileHash` while the audio payload is the one `audioHash` names.
+export async function refreshFileHash(
+	path: string,
+	audioHash: string,
+): Promise<{ fileHash: string; size: number }> {
+	const fh = await open(path, "r");
+	const buffer = take();
+	try {
+		const { size } = await fh.stat();
+		const layout = await readMp3Layout(fh, size);
+		const file = createHash("sha256");
+		const headEnd = layout.payloadStart;
+		const tailStart = layout.payloadEnd;
+		file.update("tvf1");
+		file.update(u32(headEnd));
+		await feed(fh, 0, headEnd, buffer, file);
+		file.update(Buffer.from(audioHash, "hex"));
+		file.update(u32(size - tailStart));
+		await feed(fh, tailStart, size, buffer, file);
+		return { fileHash: file.digest("hex"), size };
+	} finally {
+		if (pool.length < 8) pool.push(buffer);
+		await fh.close();
+	}
+}

@@ -1,8 +1,8 @@
 import { procedure } from "virtual:stack-procedure";
 import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
-import { asc, count, desc, eq } from "@fcalell/plugin-db/orm";
-import { batches, changes, tracks } from "../../schema/index.ts";
+import { asc, count, desc, eq, inArray } from "@fcalell/plugin-db/orm";
+import { batches, changes, playlists, tracks } from "../../schema/index.ts";
 import undo from "../../server/jobs/undo.ts";
 import { db } from "../../server/lib/db.ts";
 import type { FileValue } from "../../server/lib/file-ops.ts";
@@ -22,8 +22,23 @@ const batchView = z.object({
 
 // A value of the change log as a short phrase: a file is its path (and the state
 // when it is the quarantine), a list its items.
-export function describe(field: string, value: unknown): string | null {
+export function describe(
+	field: string,
+	value: unknown,
+	titles?: ReadonlyMap<string, string>,
+): string | null {
 	if (value === null || value === undefined || value === "") return null;
+	if (field === "node") {
+		const node = value as { kind: string; name: string };
+		return `${node.name} (${node.kind})`;
+	}
+	if (field === "member") {
+		const member = value as { trackId: string; position: number };
+		return titles?.get(member.trackId) ?? member.trackId;
+	}
+	if (field === "rule") return "Rule";
+	if (field === "cues")
+		return Array.isArray(value) ? `${value.length} cues` : null;
 	if (field === "file") {
 		const file = value as FileValue;
 		return file.state === "ok" ? file.path : `${file.path} (${file.state})`;
@@ -88,33 +103,64 @@ export const history = {
 		.input(z.object({ batchId: z.string() }))
 		.query(({ input }) => {
 			const database = db();
-			const data = database
+			const rows = database
 				.select({
 					seq: changes.seq,
+					entity: changes.entity,
 					entityId: changes.entityId,
 					field: changes.field,
 					before: changes.before,
 					after: changes.after,
 					title: tracks.title,
 					artist: tracks.artist,
+					playlist: playlists.name,
 				})
 				.from(changes)
 				.leftJoin(tracks, eq(tracks.id, changes.entityId))
+				.leftJoin(playlists, eq(playlists.id, changes.entityId))
 				.where(eq(changes.batchId, input.batchId))
 				.orderBy(asc(changes.seq))
 				.limit(input.limit)
 				.offset(input.offset)
-				.all()
-				.map((row) => ({
-					id: String(row.seq),
-					trackId: row.entityId,
-					label: row.title
-						? [row.artist, row.title].filter(Boolean).join(" - ")
-						: row.entityId,
-					field: row.field,
-					before: describe(row.field, row.before),
-					after: describe(row.field, row.after),
-				}));
+				.all();
+			// A playlist's member changes name the track.
+			const memberIds = rows.flatMap((row) =>
+				row.field === "member"
+					? [row.before, row.after].flatMap((value) =>
+							value ? [(value as { trackId: string }).trackId] : [],
+						)
+					: [],
+			);
+			const titles = new Map(
+				memberIds.length === 0
+					? []
+					: database
+							.select({
+								id: tracks.id,
+								title: tracks.title,
+								artist: tracks.artist,
+							})
+							.from(tracks)
+							.where(inArray(tracks.id, memberIds))
+							.all()
+							.map((row) => [
+								row.id,
+								[row.artist, row.title].filter(Boolean).join(" - "),
+							]),
+			);
+			const data = rows.map((row) => ({
+				id: String(row.seq),
+				trackId: row.entityId,
+				label:
+					row.entity === "playlist"
+						? (row.playlist ?? "Deleted playlist")
+						: row.title
+							? [row.artist, row.title].filter(Boolean).join(" - ")
+							: row.entityId,
+				field: row.field,
+				before: describe(row.field, row.before, titles),
+				after: describe(row.field, row.after, titles),
+			}));
 			const total =
 				database
 					.select({ n: count() })

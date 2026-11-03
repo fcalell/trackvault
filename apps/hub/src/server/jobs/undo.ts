@@ -12,8 +12,10 @@ import { db } from "../lib/db.ts";
 import { type FileMove, type FileValue, moveTracked } from "../lib/file-ops.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
 import { defineJob } from "../lib/job.ts";
+import { undoPlaylistChanges } from "../lib/playlists.ts";
 import { inserter } from "../lib/raw.ts";
 import { readSettings } from "../lib/settings.ts";
+import { notifyPlaylists } from "../lib/sync/wake.ts";
 import { TAG_KEYS, type TagKey, type TagValues } from "../lib/track-fields.ts";
 import { setTagNames } from "../lib/track-tags.ts";
 import { bumpVersion, notifyChanged } from "../services/library.ts";
@@ -188,6 +190,25 @@ export default defineJob<UndoPayload, UndoResult>({
 			});
 			notifyChanged([trackId], version);
 			result.restored++;
+		}
+
+		// -- playlists: the tree, the rule and the members ---------------------
+		const playlistRows = rows
+			.filter((row) => row.entity === "playlist")
+			.map((row) => ({
+				entityId: row.entityId,
+				field: row.field,
+				before: row.before,
+				after: row.after,
+			}));
+		if (playlistRows.length > 0) {
+			progress(0, playlistRows.length, "Restoring playlists");
+			const undone = database.transaction((tx) =>
+				undoPlaylistChanges(tx, info, playlistRows, new Date()),
+			);
+			result.restored += undone.restored;
+			result.skipped += undone.skipped;
+			notifyPlaylists();
 		}
 
 		// -- files: moved or quarantined ones return --------------------------

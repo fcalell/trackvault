@@ -38,3 +38,26 @@ export const libraryChannel = defineChannel("library", {
 	},
 	client: {},
 });
+
+// The per-device channel of the sync service: the hub sends to the connection of a device
+// key (see server/lib/sync/wake). `wake` says work is waiting (scope "replica": the
+// manifest moved, "rekordbox": export changes are waiting); `conflict` that a merge kept
+// one side. The agent mirrors this definition in `apps/agent/src/hub/channels.ts`.
+export const devicesChannel = defineChannel("devices", {
+	server: {
+		snapshot: z.object({ deviceId: z.string() }),
+		wake: z.object({
+			scope: z.enum(["replica", "rekordbox", "all"]),
+			reason: z.string().optional(),
+		}),
+		conflict: z.object({
+			id: z.string(),
+			entity: z.enum(["track", "playlist"]),
+			refId: z.string(),
+			field: z.string().nullable(),
+			winner: z.enum(["device", "hub"]),
+			at: z.string(),
+		}),
+	},
+	client: {},
+});

@@ -4,6 +4,7 @@ import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
 import { useJobEffects } from "../../lib/jobs-effects.ts";
 import { useLibraryLive } from "../../lib/library-live.ts";
+import { usePlaylistPlaces } from "../../lib/playlists.tsx";
 
 // A session younger than this is not asked for again on the next navigation.
 const SESSION_FRESH_MS = 10_000;
@@ -40,6 +41,7 @@ const PLACES: PlaceSpec[] = [
 		route: "/recent",
 		group: "Library",
 	},
+	// The Playlists group stands here: `usePlaylistPlaces`.
 	{ label: "Issues", icon: "TriangleAlert", route: "/issues", group: "Curate" },
 	{ label: "Duplicates", icon: "Copy", route: "/duplicates", group: "Curate" },
 	{
@@ -63,16 +65,29 @@ const PLACES: PlaceSpec[] = [
 	{ label: "Genres", icon: "Music", route: "/genres", group: "Tags" },
 	{ label: "Custom tags", icon: "Tags", route: "/tags", group: "Tags" },
 	{ label: "Aliases", icon: "Replace", route: "/aliases", group: "Tags" },
+	{
+		label: "Devices",
+		icon: "MonitorSmartphone",
+		route: "/devices",
+		group: "System",
+	},
 	{ label: "History", icon: "History", route: "/history", group: "System" },
 	{ label: "Jobs", icon: "ListChecks", route: "/jobs", group: "System" },
 	{ label: "Settings", icon: "Settings", route: "/settings", group: "System" },
 ];
 
+// Library first, then the playlists, then the rest, as the plan's sidebar reads.
 function App() {
 	useLibraryLive();
 	useJobEffects();
+	const playlists = usePlaylistPlaces();
+	const places = [
+		...PLACES.filter((place) => place.group === "Library"),
+		...playlists,
+		...PLACES.filter((place) => place.group !== "Library"),
+	];
 	return (
-		<Shell places={PLACES}>
+		<Shell places={places}>
 			<Outlet />
 		</Shell>
 	);

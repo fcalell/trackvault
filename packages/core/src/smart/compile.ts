@@ -64,7 +64,10 @@ export function compileRule(
 	const col = (field: string): string => {
 		const name = (schema.columns as Record<string, string | undefined>)[field];
 		if (!name) throw new Error(`smart schema has no column for "${field}"`);
-		return ident(name);
+		const scale = (schema.scale as Record<string, number> | undefined)?.[field];
+		if (scale !== undefined && (!Number.isFinite(scale) || scale <= 0))
+			throw new Error(`smart schema scale for "${field}" must be positive`);
+		return scale === undefined ? ident(name) : `(${ident(name)} / ${scale}.0)`;
 	};
 	const unit = (ms: number): number =>
 		schema.dateUnit === "s" ? Math.floor(ms / 1000) : ms;
@@ -76,11 +79,16 @@ export function compileRule(
 				const t = schema.tags;
 				if (!t) throw new Error("smart schema has no tags mapping");
 				const tag = ident(t.tagColumn);
-				const inner = `FROM ${ident(t.table)} WHERE ${ident(t.table)}.${ident(t.trackColumn)} = ${ident(t.trackId)} AND ${ident(t.table)}.${tag} COLLATE NOCASE IN (${marks(c.value.length)})`;
+				const link = ident(t.table);
+				const named = t.join ? ident(t.join.table) : link;
+				const from = t.join
+					? `${link} JOIN ${named} ON ${named}.${ident(t.join.idColumn)} = ${link}.${ident(t.join.linkColumn)}`
+					: link;
+				const inner = `FROM ${from} WHERE ${link}.${ident(t.trackColumn)} = ${ident(t.trackId)} AND ${named}.${tag} COLLATE NOCASE IN (${marks(c.value.length)})`;
 				if (c.value.length === 0) return c.op === "hasNone" ? "1" : "0";
 				params.push(...c.value);
 				if (c.op === "hasAll") {
-					return `(SELECT COUNT(DISTINCT lower(${ident(t.table)}.${tag})) ${inner}) >= ${new Set(c.value.map((v) => v.toLowerCase())).size}`;
+					return `(SELECT COUNT(DISTINCT lower(${named}.${tag})) ${inner}) >= ${new Set(c.value.map((v) => v.toLowerCase())).size}`;
 				}
 				return `${c.op === "hasNone" ? "NOT " : ""}EXISTS (SELECT 1 ${inner})`;
 			}

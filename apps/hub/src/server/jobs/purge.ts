@@ -1,5 +1,5 @@
 import { and, eq, inArray, lt } from "@fcalell/plugin-db/orm";
-import { files, tracks } from "../../schema/index.ts";
+import { files, tracks, trackTombstones } from "../../schema/index.ts";
 import { db } from "../lib/db.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
 import { defineJob } from "../lib/job.ts";
@@ -80,9 +80,18 @@ export default defineJob<PurgePayload, PurgeResult>({
 			for (let i = 0; i < orphans.length; i += 400) {
 				version = db().transaction((tx) => {
 					const v = bumpVersion(tx);
-					tx.delete(tracks)
-						.where(inArray(tracks.id, orphans.slice(i, i + 400)))
+					const gone = orphans.slice(i, i + 400);
+					// A device reading changes since a version learns of the removal here.
+					tx.insert(trackTombstones)
+						.values(
+							gone.map((trackId) => ({ trackId, version: v, at: new Date() })),
+						)
+						.onConflictDoUpdate({
+							target: trackTombstones.trackId,
+							set: { version: v },
+						})
 						.run();
+					tx.delete(tracks).where(inArray(tracks.id, gone)).run();
 					return v;
 				});
 			}

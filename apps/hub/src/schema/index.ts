@@ -13,6 +13,7 @@ import {
 } from "@fcalell/plugin-db/orm";
 
 export * from "@fcalell/plugin-auth/schema";
+export * from "@fcalell/plugin-auth/schema/devices";
 export * from "@fcalell/plugin-auth/schema/organization";
 export * from "@fcalell/plugin-auth/schema/passkey";
 
@@ -71,6 +72,10 @@ export const tracks = sqliteTable(
 		rating: integer("rating").notNull().default(0),
 		colour: text("colour"),
 		comment: text("comment"),
+		// Play history imported from Rekordbox (all devices): kept on the row so a smart
+		// playlist can test it. Not a library change: the version does not move.
+		playCount: integer("play_count").notNull().default(0),
+		lastPlayedAt: integer("last_played_at", { mode: "timestamp_ms" }),
 		format: text("format").notNull().default("mp3"),
 		bitrate: integer("bitrate"),
 		sampleRate: integer("sample_rate"),
@@ -102,7 +107,8 @@ export const tracks = sqliteTable(
 		index("tracks_format_idx").on(t.format, t.id),
 		index("tracks_issues_idx").on(t.issues, t.id),
 		index("tracks_added_idx").on(t.addedAt, t.id),
-		index("tracks_version_idx").on(t.version),
+		// "Changed since version N" in (version, id) order: a sync page is a range scan.
+		index("tracks_version_idx").on(t.version, t.id),
 		index("tracks_block_key_idx").on(t.blockKey),
 		// A facet filter with a sort: the equality leads and the order follows, so
 		// the window is a range scan of the facet's slice and `total` a count of it
@@ -217,7 +223,7 @@ export const jobs = sqliteTable(
 	],
 );
 
-const CHANGE_ORIGINS = [
+export const CHANGE_ORIGINS = [
 	"ui",
 	"rule",
 	"autotag",
@@ -225,6 +231,10 @@ const CHANGE_ORIGINS = [
 	"agent",
 	"scan",
 ] as const;
+// `rekordbox:<deviceId>` is a change merged from one install's import.
+export type ChangeOrigin =
+	| (typeof CHANGE_ORIGINS)[number]
+	| `rekordbox:${string}`;
 
 // The op log: one row per field changed. It drives undo, history and sync
 // cursors; `seq` is the cursor.
@@ -237,7 +247,7 @@ export const changes = sqliteTable(
 		field: text("field").notNull(),
 		before: text("before", { mode: "json" }),
 		after: text("after", { mode: "json" }),
-		origin: text("origin", { enum: CHANGE_ORIGINS }).notNull(),
+		origin: text("origin").$type<ChangeOrigin>().notNull(),
 		batchId: text("batch_id").notNull(),
 		at: at("at").notNull(),
 	},
@@ -281,7 +291,7 @@ export const batches = sqliteTable(
 	"batches",
 	{
 		id: text("id").primaryKey(),
-		origin: text("origin", { enum: CHANGE_ORIGINS }).notNull(),
+		origin: text("origin").$type<ChangeOrigin>().notNull(),
 		// What it was, in a short phrase ("Edit tags", "Cleanup rules").
 		label: text("label").notNull(),
 		count: integer("count").notNull().default(0),
@@ -459,3 +469,283 @@ export const healthChecks = sqliteTable("health_checks", {
 	bitrateNote: text("bitrate_note"),
 	checkedAt: at("checked_at").notNull(),
 });
+
+// -- R2 playlists ----------------------------------------------------------
+
+export const PLAYLIST_KINDS = ["folder", "manual", "smart"] as const;
+export type PlaylistKind = (typeof PLAYLIST_KINDS)[number];
+
+// The playlist tree: folders hold playlists and folders, a manual playlist holds an
+// ordered list of tracks, a smart one holds a rule (core/smart `SmartPlaylist` as
+// JSON) and no rows. `position` orders siblings and is fractional: a move writes one
+// number between its neighbours.
+export const playlists = sqliteTable(
+	"playlists",
+	{
+		id: text("id").primaryKey(),
+		parentId: text("parent_id"),
+		kind: text("kind", { enum: PLAYLIST_KINDS }).notNull(),
+		name: text("name").notNull(),
+		position: real("position").notNull(),
+		rule: text("rule", { mode: "json" }),
+		createdAt: at("created_at").notNull(),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [index("playlists_parent_idx").on(t.parentId, t.position, t.id)],
+);
+
+// A manual playlist's tracks in order. `position` is fractional, so a reorder is one
+// row; a playlist holds a track once (the sync's membership is a set).
+export const playlistTracks = sqliteTable(
+	"playlist_tracks",
+	{
+		playlistId: text("playlist_id")
+			.notNull()
+			.references(() => playlists.id, { onDelete: "cascade" }),
+		trackId: text("track_id")
+			.notNull()
+			.references(() => tracks.id, { onDelete: "cascade" }),
+		position: real("position").notNull(),
+		addedAt: at("added_at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.playlistId, t.trackId] }),
+		// A window of the playlist is a range scan of its slice.
+		index("playlist_tracks_order_idx").on(t.playlistId, t.position, t.trackId),
+		index("playlist_tracks_track_idx").on(t.trackId),
+	],
+);
+
+// -- R2 devices and sync ---------------------------------------------------
+
+// One row per device key (`id` is the key's id in auth's `apikey`) that has said hello:
+// what the agent reported, and where the hub's streams to it stand.
+export const devices = sqliteTable(
+	"devices",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		platform: text("platform").notNull(),
+		hostname: text("hostname"),
+		localRoot: text("local_root"),
+		agentVersion: text("agent_version"),
+		modes: text("modes", { mode: "json" }),
+		freeDiskBytes: integer("free_disk_bytes"),
+		totalDiskBytes: integer("total_disk_bytes"),
+		// The RekordboxStatus and DeviceStatus the agent last reported.
+		rekordbox: text("rekordbox", { mode: "json" }),
+		status: text("status", { mode: "json" }),
+		// What the last Rekordbox import and export did ({ import?, export? }).
+		activity: text("activity", { mode: "json" }),
+		// The lineage of the Rekordbox base the hub accepted last, and its version: the
+		// install's identity on the hub.
+		baseId: text("base_id"),
+		baseVersion: integer("base_version").notNull().default(0),
+		manifestCursor: text("manifest_cursor"),
+		// Where the export stream to this device stands (see rb-export).
+		exportCursor: text("export_cursor"),
+		firstSeenAt: at("first_seen_at").notNull(),
+		lastSeenAt: at("last_seen_at").notNull(),
+	},
+	(t) => [index("devices_seen_idx").on(t.lastSeenAt)],
+);
+
+// What a device holds of the replica, as it reported.
+export const deviceFiles = sqliteTable(
+	"device_files",
+	{
+		deviceId: text("device_id").notNull(),
+		trackId: text("track_id").notNull(),
+		state: text("state").notNull(),
+		fileHash: text("file_hash"),
+		error: text("error"),
+		at: at("at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.deviceId, t.trackId] }),
+		index("device_files_state_idx").on(t.deviceId, t.state),
+	],
+);
+
+// Rekordbox ids of one install mapped to hub ids: a content id to a track, a playlist
+// id to a playlist. `removed` marks a track the install dropped from its collection, so
+// the export does not add it again. `stamp` is the content last exported of a smart
+// playlist.
+export const rekordboxLinks = sqliteTable(
+	"rekordbox_links",
+	{
+		deviceId: text("device_id").notNull(),
+		kind: text("kind", { enum: ["track", "playlist"] }).notNull(),
+		rbId: text("rb_id").notNull(),
+		refId: text("ref_id").notNull(),
+		via: text("via"),
+		state: text("state", { enum: ["linked", "removed"] })
+			.notNull()
+			.default("linked"),
+		stamp: text("stamp"),
+	},
+	(t) => [
+		primaryKey({ columns: [t.deviceId, t.kind, t.rbId] }),
+		uniqueIndex("rekordbox_links_ref_idx").on(t.deviceId, t.kind, t.refId),
+	],
+);
+
+// A field (or a playlist) changed on a device and on the hub since the base: both
+// values, who won, and whether the owner has looked. `pushed` is false while the hub's
+// winning value has not been sent to the device yet.
+export const conflicts = sqliteTable(
+	"conflicts",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		deviceId: text("device_id").notNull(),
+		entity: text("entity", { enum: ["track", "playlist"] }).notNull(),
+		refId: text("ref_id").notNull(),
+		field: text("field"),
+		baseValue: text("base_value", { mode: "json" }),
+		deviceValue: text("device_value", { mode: "json" }),
+		hubValue: text("hub_value", { mode: "json" }),
+		winner: text("winner", { enum: ["device", "hub"] }).notNull(),
+		state: text("state", { enum: ["open", "resolved"] })
+			.notNull()
+			.default("open"),
+		resolution: text("resolution", { enum: ["hub", "device"] }),
+		pushed: integer("pushed", { mode: "boolean" }).notNull().default(true),
+		batchId: text("batch_id"),
+		at: at("at").notNull(),
+		resolvedAt: at("resolved_at"),
+	},
+	(t) => [
+		index("conflicts_state_idx").on(t.state, t.id),
+		index("conflicts_device_idx").on(t.deviceId, t.pushed, t.id),
+		index("conflicts_ref_idx").on(t.entity, t.refId),
+	],
+);
+
+// ANLZ files by the hash of their bytes (kept on disk beside the database).
+export const analysisBlobs = sqliteTable(
+	"analysis_blobs",
+	{
+		hash: text("hash").primaryKey(),
+		trackId: text("track_id").notNull(),
+		deviceId: text("device_id").notNull(),
+		kind: text("kind").notNull(),
+		size: integer("size").notNull(),
+		at: at("at").notNull(),
+	},
+	(t) => [index("analysis_blobs_track_idx").on(t.trackId)],
+);
+
+// Which blob is a track's analysis of a kind, per the device it came from.
+export const trackAnalysis = sqliteTable(
+	"track_analysis",
+	{
+		trackId: text("track_id").notNull(),
+		kind: text("kind").notNull(),
+		deviceId: text("device_id").notNull(),
+		hash: text("hash").notNull(),
+		size: integer("size").notNull(),
+		at: at("at").notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.trackId, t.kind, t.deviceId] })],
+);
+
+// Cues, hot cues and loops of a track: the whole set, the latest import winning.
+export const cues = sqliteTable(
+	"cues",
+	{
+		trackId: text("track_id")
+			.notNull()
+			.references(() => tracks.id, { onDelete: "cascade" }),
+		idx: integer("idx").notNull(),
+		kind: integer("kind").notNull(),
+		startMs: integer("start_ms").notNull(),
+		endMs: integer("end_ms"),
+		color: integer("color"),
+		colorTableIndex: integer("color_table_index"),
+		comment: text("comment"),
+		activeLoop: integer("active_loop", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		beatLoopSize: integer("beat_loop_size"),
+	},
+	(t) => [primaryKey({ columns: [t.trackId, t.idx] })],
+);
+
+// Who last set a track's cues and when (the merge is latest wins, per track).
+export const cueSets = sqliteTable("cue_sets", {
+	trackId: text("track_id").primaryKey(),
+	deviceId: text("device_id").notNull(),
+	takenAt: integer("taken_at").notNull(),
+	at: at("at").notNull(),
+	// The cue set as `kind:start:end:color:comment` strings, sorted (core cueSignature).
+	signature: text("signature", { mode: "json" }).notNull(),
+});
+
+// Play history from every install; never written back.
+export const plays = sqliteTable(
+	"plays",
+	{
+		trackId: text("track_id").notNull(),
+		deviceId: text("device_id").notNull(),
+		playedAt: integer("played_at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.trackId, t.deviceId, t.playedAt] }),
+		index("plays_time_idx").on(t.playedAt),
+	],
+);
+
+// A Rekordbox import part already merged: a repeat of (batch, part) answers the same.
+export const importParts = sqliteTable(
+	"import_parts",
+	{
+		batchId: text("batch_id").notNull(),
+		part: integer("part").notNull(),
+		deviceId: text("device_id").notNull(),
+		parts: integer("parts").notNull(),
+		result: text("result", { mode: "json" }).notNull(),
+		at: at("at").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.batchId, t.part] }),
+		index("import_parts_at_idx").on(t.at),
+	],
+);
+
+// A resumable upload from a device into the library's inbox.
+export const uploads = sqliteTable(
+	"uploads",
+	{
+		id: text("id").primaryKey(),
+		deviceId: text("device_id").notNull(),
+		audioHash: text("audio_hash").notNull(),
+		fileHash: text("file_hash").notNull(),
+		size: integer("size").notNull(),
+		name: text("name").notNull(),
+		sourceRelPath: text("source_rel_path"),
+		mtimeMs: integer("mtime_ms").notNull(),
+		received: integer("received").notNull().default(0),
+		state: text("state", { enum: ["receiving", "complete", "aborted"] })
+			.notNull()
+			.default("receiving"),
+		// Where the finished file landed, relative to the library root.
+		landedPath: text("landed_path"),
+		createdAt: at("created_at").notNull(),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [
+		uniqueIndex("uploads_device_hash_idx").on(t.deviceId, t.fileHash),
+		index("uploads_state_idx").on(t.state, t.updatedAt),
+	],
+);
+
+// A track removed for good, so a device reading "changes since version N" learns of it.
+export const trackTombstones = sqliteTable(
+	"track_tombstones",
+	{
+		trackId: text("track_id").primaryKey(),
+		version: integer("version").notNull(),
+		at: at("at").notNull(),
+	},
+	(t) => [index("track_tombstones_version_idx").on(t.version, t.trackId)],
+);

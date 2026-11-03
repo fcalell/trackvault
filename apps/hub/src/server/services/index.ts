@@ -4,5 +4,6 @@ import jobs from "./jobs.ts";
 import library from "./library.ts";
 import media from "./media.ts";
 import scanner from "./scanner.ts";
+import sync from "./sync.ts";
 
-export const services = [housekeeping, jobs, library, media, scanner];
+export const services = [housekeeping, jobs, library, media, scanner, sync];

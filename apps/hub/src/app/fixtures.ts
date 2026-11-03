@@ -140,6 +140,162 @@ const ORGANIZATION = {
 	metadata: null,
 };
 
+const PLAYLISTS = [
+	{
+		id: "pl-house",
+		parentId: null,
+		kind: "folder" as const,
+		name: "House",
+		position: 1024,
+		tracks: 0,
+	},
+	{
+		id: "pl-peak",
+		parentId: "pl-house",
+		kind: "manual" as const,
+		name: "Peak time",
+		position: 1024,
+		tracks: 214,
+	},
+	{
+		id: "pl-deep",
+		parentId: "pl-house",
+		kind: "manual" as const,
+		name: "Deep and late",
+		position: 2048,
+		tracks: 96,
+	},
+	{
+		id: "pl-fresh",
+		parentId: null,
+		kind: "smart" as const,
+		name: "Fresh 124 to 128",
+		position: 2048,
+		tracks: 1320,
+	},
+];
+
+const REKORDBOX = {
+	installed: true,
+	appVersion: "7.0.3",
+	dbVersion: "7.0.3",
+	running: false,
+	writeSupport: "pending-verification",
+	exportState: "idle",
+	pendingExport: 14,
+	lastImportAt: minutes(12),
+	lastExportAt: null,
+	message: null,
+};
+
+const DEVICES = [
+	{
+		id: "dev-mac",
+		name: "DJ Mac",
+		state: "online" as const,
+		platform: "darwin",
+		hostname: "djs-macbook",
+		agentVersion: "0.1.0",
+		modes: ["replica", "rekordbox"],
+		localRoot: "/Users/dj/Music/TrackVault",
+		keyStart: "stk_a1b2c",
+		createdAt: new Date(Date.now() - 20 * 86_400_000),
+		expiresAt: null,
+		lastSeenAt: new Date(Date.now() - 30_000),
+		freeDiskBytes: 220_000_000_000,
+		files: { ok: 47_900, pending: 310, failed: 0 },
+		rekordbox: REKORDBOX,
+		openConflicts: 3,
+		unmatched: 41,
+		lastImportAt: new Date(Date.now() - 12 * 60_000),
+		lastExportAt: null,
+	},
+	{
+		id: "dev-pc",
+		name: "Booth PC",
+		state: "offline" as const,
+		platform: "win32",
+		hostname: "booth",
+		agentVersion: "0.1.0",
+		modes: ["upload"],
+		localRoot: null,
+		keyStart: "stk_9f8e7",
+		createdAt: new Date(Date.now() - 60 * 86_400_000),
+		expiresAt: null,
+		lastSeenAt: new Date(Date.now() - 3 * 86_400_000),
+		freeDiskBytes: null,
+		files: { ok: 0, pending: 0, failed: 0 },
+		rekordbox: null,
+		openConflicts: 0,
+		unmatched: null,
+		lastImportAt: null,
+		lastExportAt: null,
+	},
+	{
+		id: "dev-old",
+		name: "Old laptop",
+		state: "revoked" as const,
+		platform: "darwin",
+		hostname: null,
+		agentVersion: null,
+		modes: [],
+		localRoot: null,
+		keyStart: null,
+		createdAt: null,
+		expiresAt: null,
+		lastSeenAt: new Date(Date.now() - 90 * 86_400_000),
+		freeDiskBytes: null,
+		files: { ok: 12_000, pending: 0, failed: 0 },
+		rekordbox: null,
+		openConflicts: 0,
+		unmatched: null,
+		lastImportAt: null,
+		lastExportAt: null,
+	},
+];
+
+const CONFLICTS = [
+	{
+		id: 3,
+		deviceId: "dev-mac",
+		device: "DJ Mac",
+		entity: "track" as const,
+		refId: "track-3",
+		label: "Sha & Tormar - Neon Drift (Extended Mix)",
+		field: "genre",
+		deviceValue: "Disco",
+		hubValue: "House",
+		winner: "hub" as const,
+		at: new Date(Date.now() - 12 * 60_000),
+	},
+	{
+		id: 2,
+		deviceId: "dev-mac",
+		device: "DJ Mac",
+		entity: "track" as const,
+		refId: "track-4",
+		label: "Elix - Lunar Ritual (Original Mix)",
+		field: "rating",
+		deviceValue: "5",
+		hubValue: "3",
+		winner: "device" as const,
+		at: new Date(Date.now() - 12 * 60_000),
+	},
+	{
+		id: 1,
+		deviceId: "dev-mac",
+		device: "DJ Mac",
+		entity: "playlist" as const,
+		refId: "pl-peak",
+		label: "Peak time",
+		field: "order",
+		deviceValue: "214 tracks in order",
+		hubValue: "214 tracks in order",
+		winner: "hub" as const,
+		at: new Date(Date.now() - 12 * 60_000),
+	},
+];
+
 const GENRES = ["House", "Tech House", "Techno", "Deep House", "Trance"];
 const KEYS = ["8A", "9A", "10A", "11B", "5A", "12B"];
 const TITLES = [
@@ -187,6 +343,8 @@ const record = (at: number) => ({
 	loudness: null,
 	colour: null,
 	comment: null,
+	playCount: 0,
+	lastPlayedAt: null,
 	sampleRate: 44_100,
 	size: 12_000_000,
 	hasArt: true,
@@ -202,6 +360,21 @@ export default defineFixtures<
 >(
 	{
 		auth: {
+			devices: {
+				list: () => [],
+				create: ({ name }) => ({
+					device: {
+						id: "dev-new",
+						name,
+						start: "stk_fixtu",
+						createdAt: new Date(),
+						expiresAt: null,
+						lastUsedAt: null,
+					},
+					key: "stk_fixturekey",
+				}),
+				revoke: () => ({ success: true }),
+			},
 			organization: {
 				list: () => [ORGANIZATION],
 				create: () => ({ ...ORGANIZATION, members: [] }),
@@ -494,6 +667,64 @@ export default defineFixtures<
 			restoreAll: () => job("restore", "running", 1),
 			purge: () => job("purge", "running", 1),
 		},
+		playlists: {
+			tree: () => PLAYLISTS,
+			get: ({ id }) => {
+				const row =
+					PLAYLISTS.find((each) => each.id === id) ??
+					(PLAYLISTS[1] as (typeof PLAYLISTS)[number]);
+				return {
+					id: row.id,
+					parentId: row.parentId,
+					kind: row.kind,
+					name: row.name,
+					rule:
+						row.kind === "smart"
+							? {
+									editable: true,
+									match: "all" as const,
+									conditions: ["bpm between 124 128", "added within 30"],
+									sortBy: "addedAt" as const,
+									descending: true,
+									limit: undefined,
+								}
+							: null,
+				};
+			},
+			tracks: ({ offset = 0, limit = 200 }) => ({
+				data: Array.from({ length: Math.min(limit, 214 - offset) }, (_, at) =>
+					track(offset + at),
+				),
+				total: 214,
+				offset,
+			}),
+			create: () => ({ id: "pl-new" }),
+			createSmart: () => ({ id: "pl-new" }),
+			updateSmart: () => undefined,
+			preview: () => ({
+				count: 1320,
+				sample: [{ id: "track-1", title: "Midnight Echo", artist: "Kalomi" }],
+			}),
+			rename: () => undefined,
+			move: () => undefined,
+			remove: () => undefined,
+			add: () => ({ added: 3, job: null }),
+			removeTracks: () => ({ removed: 3, job: null }),
+			reorder: () => undefined,
+			forTrack: () =>
+				PLAYLISTS.slice(1, 3).map(({ id, name }) => ({ id, name })),
+		},
+		devices: {
+			list: () => DEVICES,
+			forget: () => undefined,
+			wake: () => undefined,
+			conflicts: ({ offset = 0, limit = 200 }) => ({
+				data: CONFLICTS.slice(offset, offset + limit),
+				total: CONFLICTS.length,
+				offset,
+			}),
+			resolve: () => ({ resolved: 1, changed: 1 }),
+		},
 		fs: {
 			browse: ({ path }) => ({
 				path: path ?? "/music",
@@ -506,6 +737,6 @@ export default defineFixtures<
 			}),
 		},
 	},
-	{ trackId: "track-3", batchId: "batch-1" },
+	{ trackId: "track-3", batchId: "batch-1", playlistId: "pl-peak" },
 	{ jobs: () => ({ jobs: JOBS }), library: () => ({ version: 12 }) },
 );

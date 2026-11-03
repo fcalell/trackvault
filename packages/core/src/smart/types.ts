@@ -82,6 +82,9 @@ export interface SmartTrack {
 // (`tracks.bpm` or `bpm`), validated, never quoted user input.
 export interface SmartSchema {
 	columns: Partial<Record<Exclude<keyof SmartTrack, "tags">, string>>;
+	// A column stored in a smaller unit than the rule's field (durationSec over a
+	// millisecond column: 1000): the condition compares `column / scale`.
+	scale?: Partial<Record<Exclude<keyof SmartTrack, "tags">, number>>;
 	// Key column holds Camelot ("8A").
 	// Date columns hold epoch ms unless dateUnit says seconds.
 	dateUnit?: "ms" | "s";
@@ -91,7 +94,10 @@ export interface SmartSchema {
 		// The join table and its columns, e.g. track_tags / track_id / tag.
 		table: string;
 		trackColumn: string;
+		// With `join`, the tag's name lives in another table (`tags.name`) that the
+		// link table reaches by id: `tagColumn` is then a column of `join.table`.
 		tagColumn: string;
+		join?: { table: string; idColumn: string; linkColumn: string };
 	};
 }
 

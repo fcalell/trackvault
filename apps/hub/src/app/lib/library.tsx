@@ -2,6 +2,7 @@ import { useMutation, useWindow } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
+import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { player, windowQueue } from "@fcalell/plugin-react-ui/lib/player";
 import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
 import { useParams } from "@tanstack/react-router";
@@ -21,10 +22,11 @@ import {
 	patchOf,
 } from "./bulk-edit.tsx";
 import { useDebounced } from "./debounced.ts";
+import { pathsOf } from "./playlists.tsx";
 import { setQueueSource } from "./queue.ts";
 
 // The keys are the hub's sort columns (shared/library.ts) where the column sorts.
-const COLUMNS: TableColumn<ListRow>[] = [
+export const LIBRARY_COLUMNS: TableColumn<ListRow>[] = [
 	{
 		key: "title",
 		label: "Title",
@@ -135,6 +137,7 @@ export function LibraryPane({
 	);
 	const tracks = orpc.tracks.list.window(query);
 	const facets = orpc.tracks.facets.read();
+	const playlists = orpc.playlists.tree.read();
 	const open = useParams({ strict: false }).trackId;
 
 	// The rows a bulk act takes: the ticked ids, or the whole query less the unticked.
@@ -245,7 +248,7 @@ export function LibraryPane({
 			<Table
 				label="Tracks"
 				items={tracks}
-				columns={COLUMNS}
+				columns={LIBRARY_COLUMNS}
 				row={{
 					id: (row) => row.id,
 					href: (row) => `${base}/${row.id}`,
@@ -268,9 +271,37 @@ export function LibraryPane({
 					}),
 				}}
 				selected={open}
+				drag={{ kind: "track" }}
 				choose={{ picked, onPick: setPicked, noun: "tracks" }}
 				select={{
 					acts: [
+						{
+							label: "Add to playlist",
+							blocked: nothing,
+							sheet: sheetOf({
+								title: "Add to playlist",
+								description:
+									"The chosen tracks go to the end of the playlist. Drag rows onto a playlist in the sidebar to do the same.",
+								form: {
+									act: orpc.playlists.add,
+									given: { tracks: picked },
+									fields: {
+										playlistId: {
+											label: "Playlist",
+											options: playlists.at((rows) =>
+												pathsOf(rows)
+													.filter((each) => each.node.kind === "manual")
+													.map((each) => ({
+														value: each.node.id,
+														label: each.path,
+													})),
+											),
+										},
+									},
+									submit: { label: "Add", done: "Added to the playlist" },
+								},
+							}),
+						},
 						{
 							label: "Quarantine",
 							destructive: true,

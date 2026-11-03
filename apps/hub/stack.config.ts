@@ -27,6 +27,8 @@ export default defineConfig({
 			passkey: {},
 			// One personal organization: the MCP server of a later phase needs one.
 			organization: true,
+			// Agents on the Rekordbox machines call /sync and /ws with a device key.
+			devices: true,
 		}),
 		api(),
 		vite(),

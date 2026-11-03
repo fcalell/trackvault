@@ -5,6 +5,7 @@ import { settings, tracks } from "../../schema/index.ts";
 import { libraryChannel } from "../../shared/channels.ts";
 import { db, type Tx } from "../lib/db.ts";
 import { readSettings } from "../lib/settings.ts";
+import { wakeDevices } from "../lib/sync/wake.ts";
 
 type LibraryChannel = ChannelHandle<(typeof libraryChannel)["server"]>;
 
@@ -38,6 +39,8 @@ export function notifyChanged(
 ): void {
 	if (!channel) return;
 	if (ids.length === 0 && !all) return;
+	// Devices read the manifest and the Rekordbox export on this.
+	wakeDevices("all", `library v${version}`);
 	const wide = all || ids.length > MAX_IDS;
 	channel.broadcast("changed", {
 		ids: wide ? [] : [...ids],

@@ -350,6 +350,12 @@ Gaps found building the library (R0):
 - The generated `.stack/biome.json` lists `files.includes: ["!src/migrations"]` alone; in an app's `extends` chain it replaces the shared include list and Biome checks 0 files.
 - Biome's `useValidAriaRole` flags `<Text role="meta">` (the type role); the app silences it on the line.
 
+Gaps found building R2:
+- A Shell place cannot nest: `PlaceSpec` (ui-core `descriptors.ts`) has `group` and no children, so the playlist tree is flat in the sidebar (the folder path is in the label); only a `Section` row has `children`.
+- `stack db generate` cannot read a `sqliteView(...).as(qb => ...)` in the schema: drizzle-kit fails with `TypeError: query.inlineParams is not a function at ManualViewBuilder.as`, so smart tags use a join in core/smart instead of a view.
+- plugin-auth supplies no screens fixtures for `auth.devices.*`; the app wrote its own.
+- `stack db apply` ignores `DB_FILE` (it migrates the config's database), so a scratch copy is made by copying a migrated file.
+
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
 ## 11. Decisions
