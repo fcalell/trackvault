@@ -1,5 +1,6 @@
 import { desc, eq } from "@fcalell/plugin-db/orm";
 import type { ChannelHandle } from "@fcalell/plugin-node/server";
+import { composeTitle } from "@trackvault/core/normalize";
 import { downloads, wishlist } from "../../schema/index.ts";
 import type { TransferView, transfersChannel } from "../../shared/channels.ts";
 import { db } from "./db.ts";
@@ -23,9 +24,7 @@ const basename = (path: string): string =>
 function wantName(id: number | null): string | null {
 	if (id === null) return null;
 	const want = db().select().from(wishlist).where(eq(wishlist.id, id)).get();
-	return want
-		? `${want.artist} - ${want.title}${want.mix ? ` (${want.mix})` : ""}`
-		: null;
+	return want ? `${want.artist} - ${composeTitle(want.title, want.mix)}` : null;
 }
 
 export function transferView(row: DownloadRow): TransferView {
@@ -34,8 +33,7 @@ export function transferView(row: DownloadRow): TransferView {
 		username: row.username,
 		name: basename(row.filename),
 		artist: row.artist,
-		title: row.title,
-		mixName: row.mix,
+		title: row.title === null ? null : composeTitle(row.title, row.mix),
 		format: row.format,
 		bitrate: row.bitrate,
 		state: row.state,

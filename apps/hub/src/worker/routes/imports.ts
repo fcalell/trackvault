@@ -3,6 +3,7 @@ import { procedure } from "virtual:stack-procedure";
 import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
 import { and, asc, count, desc, eq, inArray } from "@fcalell/plugin-db/orm";
+import { composeTitle } from "@trackvault/core/normalize";
 import type { NewWant } from "@trackvault/core/wishlist";
 import {
 	importItems,
@@ -81,7 +82,6 @@ const item = z.object({
 	id: z.number(),
 	artist: z.string(),
 	title: z.string(),
-	mixName: z.string().nullable(),
 	status: z.enum(STATUSES),
 	confidence: z.number(),
 	// The library track it matched.
@@ -90,7 +90,6 @@ const item = z.object({
 			id: z.string(),
 			artist: z.string().nullable(),
 			title: z.string().nullable(),
-			mixName: z.string().nullable(),
 		})
 		.nullable(),
 	resolution: z.enum(["wishlist", "confirmed", "ignored"]).nullable(),
@@ -225,7 +224,6 @@ export const imports = {
 					id: string;
 					artist: string | null;
 					title: string | null;
-					mixName: string | null;
 				}
 			>();
 			if (best.length > 0)
@@ -234,7 +232,6 @@ export const imports = {
 						id: tracks.id,
 						title: tracks.title,
 						artist: tracks.artist,
-						mixName: tracks.mixName,
 					})
 					.from(tracks)
 					.where(inArray(tracks.id, best))
@@ -245,8 +242,7 @@ export const imports = {
 				return {
 					id: r.id,
 					artist: r.artist,
-					title: r.title,
-					mixName: r.mix,
+					title: composeTitle(r.title, r.mix),
 					status: r.status,
 					confidence: r.confidence,
 					match: trackId ? (matched.get(trackId) ?? null) : null,

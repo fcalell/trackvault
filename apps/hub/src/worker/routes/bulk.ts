@@ -122,7 +122,6 @@ export const bulk = {
 				entity: string;
 				entityId: string;
 				title: string | null;
-				mixName: string | null;
 				artist: string | null;
 				field: string;
 				before: string | null;
@@ -133,7 +132,6 @@ export const bulk = {
 				entity: "track",
 				entityId: row.id,
 				title: row.title,
-				mixName: row.mixName,
 				artist: row.artist,
 				field: key,
 			});

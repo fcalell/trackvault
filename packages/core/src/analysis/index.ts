@@ -1,4 +1,4 @@
-import { decodeMono } from "../audio/index.ts";
+import { decodeBudgetMs, decodeMono } from "../audio/index.ts";
 import { run } from "../exec/index.ts";
 import { energyScore } from "./energy.ts";
 import { estimateKey, type KeyEstimate } from "./key.ts";
@@ -68,15 +68,16 @@ export async function analyseTrack(
 		loudness: none("unavailable"),
 		durationSec: options.durationSec ?? null,
 	};
+	result.durationSec ??= await probeDuration(path, bin);
 	if (want.has("loudness"))
 		result.loudness = await measureLoudness(path, {
 			ffmpegPath: bin,
 			timeoutMs: options.timeoutMs,
+			...(result.durationSec ? { durationSec: result.durationSec } : {}),
 		});
 	if (!want.has("bpm") && !want.has("key") && !want.has("energy"))
 		return result;
 
-	result.durationSec ??= await probeDuration(path, bin);
 	const duration = result.durationSec;
 	const startSec =
 		windowSec && duration && duration > windowSec
@@ -87,7 +88,13 @@ export async function analyseTrack(
 		startSec,
 		durationSec: windowSec,
 		sampleRate: RATE,
-		timeoutMs: options.timeoutMs,
+		timeoutMs:
+			options.timeoutMs ??
+			decodeBudgetMs(
+				windowSec && duration
+					? Math.min(windowSec, duration)
+					: (windowSec ?? duration ?? 0),
+			),
 	});
 	if (!pcm.ok) {
 		const reason =

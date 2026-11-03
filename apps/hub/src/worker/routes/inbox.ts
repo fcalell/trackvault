@@ -95,7 +95,6 @@ const listRow = z.object({
 	sourceRef: z.string().nullable(),
 	artist: z.string().nullable(),
 	title: z.string(),
-	mixName: z.string().nullable(),
 	// The library track an approved item became.
 	trackId: z.string().nullable(),
 	state: z.enum([

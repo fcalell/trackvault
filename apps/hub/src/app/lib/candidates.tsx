@@ -19,18 +19,14 @@ const kind = (c: Candidate): string => {
 // A candidate whose artist and title are known can be wanted whatever its file.
 function wishEntry(
 	c: Candidate,
-	add: (want: {
-		artist: string;
-		title: string;
-		mix: string;
-	}) => Promise<unknown>,
+	add: (want: { artist: string; title: string }) => Promise<unknown>,
 ) {
 	const { artist, title } = c;
 	if (!artist || !title) return [];
 	return [
 		{
 			label: "Add to the wishlist",
-			onAct: () => add({ artist, title, mix: c.mixName ?? "" }),
+			onAct: () => add({ artist, title }),
 			done: "Added to the wishlist",
 		},
 	];
@@ -53,7 +49,7 @@ const COLUMNS: TableColumn<Candidate>[] = [
 	{
 		key: "title",
 		label: "Title",
-		cell: (c) => trackTitle({ title: c.title ?? c.name, mixName: c.mixName }),
+		cell: (c) => trackTitle({ title: c.title ?? c.name }),
 	},
 	{ key: "artist", label: "Artist", cell: (c) => c.artist },
 	{ key: "standing", label: "State", kind: "status", cell: standing },

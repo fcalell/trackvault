@@ -11,6 +11,12 @@ export interface DecodeOptions {
 	timeoutMs?: number;
 }
 
+// How long ffmpeg may take over `seconds` of audio: a floor for starting it and
+// opening the file, plus one second per second of audio, so a decoder running no
+// faster than real time (a busy, niced box) still finishes whatever the length.
+export const decodeBudgetMs = (seconds: number): number =>
+	120_000 + seconds * 1000;
+
 export type DecodeResult =
 	| { ok: true; samples: Float32Array; sampleRate: number }
 	| { ok: false; reason: "unavailable" | "timeout" | "failed" };
@@ -37,7 +43,7 @@ export async function decodeMono(
 		"-",
 	);
 	const r = await run(options.ffmpegPath ?? "ffmpeg", args, {
-		timeoutMs: options.timeoutMs ?? 60_000,
+		timeoutMs: options.timeoutMs ?? decodeBudgetMs(options.durationSec ?? 0),
 		maxStdoutBytes: options.durationSec
 			? rate * 4 * (options.durationSec + 2)
 			: undefined,

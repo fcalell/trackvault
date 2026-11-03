@@ -43,7 +43,7 @@ function Downloads() {
 	const clear = useMutation(orpc.soulseek.clear.mutationOptions());
 	const toRow = (t: TransferView): Row => ({
 		...trackRow(
-			{ title: t.title ?? t.name, mixName: t.mixName, artist: t.artist },
+			{ title: t.title ?? t.name, artist: t.artist },
 			{
 				key: t.id,
 				leading: { icon: "Download" },

@@ -1,7 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "@fcalell/plugin-db/orm";
 import type { InboxStepId, StepResult } from "@trackvault/core/inbox";
-import { fold, parseTitle, splitArtists } from "@trackvault/core/normalize";
+import {
+	composeTitle,
+	fold,
+	parseTitle,
+	splitArtists,
+} from "@trackvault/core/normalize";
 import { joinFeatures } from "@trackvault/core/rules";
 import type { TrackTags } from "@trackvault/core/tags";
 import { files, inboxItems, tracks } from "../../../schema/index.ts";
@@ -113,7 +118,6 @@ export function itemLabel(
 export function itemName(row: Pick<ItemRow, "tags" | "proposed" | "path">): {
 	artist: string | null;
 	title: string;
-	mixName: string | null;
 } {
 	const tags = effectiveTags(row);
 	const artist = typeof tags.artist === "string" ? tags.artist : null;
@@ -121,7 +125,6 @@ export function itemName(row: Pick<ItemRow, "tags" | "proposed" | "path">): {
 		return {
 			artist,
 			title: row.path.slice(row.path.lastIndexOf("/") + 1),
-			mixName: null,
 		};
 	const parsed = parseTitle(tags.title);
 	// The title's "feat." credit is shown with the artist, as the cleanup rule files it.
@@ -135,8 +138,7 @@ export function itemName(row: Pick<ItemRow, "tags" | "proposed" | "path">): {
 				: artist
 					? `${artist} feat. ${credit}`
 					: credit,
-		title: parsed.base || tags.title,
-		mixName: parsed.mixName,
+		title: composeTitle(parsed.base, parsed.mixName) || tags.title,
 	};
 }
 
@@ -151,7 +153,6 @@ export function libraryCopies(matches: readonly MatchView[]) {
 				id: tracks.id,
 				artist: tracks.artist,
 				title: tracks.title,
-				mixName: tracks.mixName,
 				sampleRate: tracks.sampleRate,
 				durationMs: tracks.durationMs,
 				size: tracks.size,
@@ -186,7 +187,6 @@ export function libraryCopies(matches: readonly MatchView[]) {
 						bitrate: match.bitrate,
 						artist: track.artist,
 						title: track.title ?? "Untitled",
-						mixName: track.mixName,
 						sampleRate: track.sampleRate,
 						durationMs: track.durationMs,
 						size: track.size,

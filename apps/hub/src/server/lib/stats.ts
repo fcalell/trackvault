@@ -133,7 +133,6 @@ export function addedPerMonth(months = 24) {
 export interface PlayedRow {
 	id: string;
 	title: string | null;
-	mixName: string | null;
 	artist: string | null;
 	playCount: number;
 	lastPlayedAt: number | null;
@@ -141,7 +140,7 @@ export interface PlayedRow {
 
 export function played(limit = 10) {
 	return cached("played", () => {
-		const base = `SELECT id, title, mix_name AS mixName, artist, play_count AS playCount, last_played_at AS lastPlayedAt FROM tracks`;
+		const base = `SELECT id, title, artist, play_count AS playCount, last_played_at AS lastPlayedAt FROM tracks`;
 		return {
 			most: statement(
 				`${base} WHERE play_count > 0 AND ${inLibrary()} ORDER BY play_count DESC, id LIMIT @n`,

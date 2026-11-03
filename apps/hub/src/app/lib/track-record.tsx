@@ -19,7 +19,7 @@ import {
 	ISSUE_LABELS,
 	type IssueFilter,
 } from "../../shared/library.ts";
-import { batchToast, namedBatch } from "../ui/batch.ts";
+import { batchToast, namedBatch, queuedBatch } from "../ui/batch.ts";
 import { age, bitrate, bpm, duration } from "../ui/figures.ts";
 import { fetchPeaks, trackRow } from "../ui/track.ts";
 import { orpc } from "./api.ts";
@@ -159,9 +159,10 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					icon: "AudioWaveform",
 					label: "Analyse",
 					onAct: () =>
-						analyse.mutateAsync({ tracks: { ids: [id] }, force: true }),
-					done: "Analysing",
-					to: "/jobs",
+						queuedBatch(
+							analyse.mutateAsync({ tracks: { ids: [id] }, force: true }),
+							"Analysing",
+						),
 				},
 				{
 					icon: "Search",

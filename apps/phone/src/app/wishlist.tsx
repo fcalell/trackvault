@@ -24,7 +24,7 @@ export default function Wishlist() {
 				items={wants.at((rows) =>
 					rows.map((w) => ({
 						key: String(w.id),
-						title: `${w.artist} · ${w.title}${w.mixName ? ` (${w.mixName})` : ""}`,
+						title: `${w.artist} · ${w.title}`,
 						facts: [STATUS[w.status]],
 						trailing: { age: w.createdAt.toISOString() },
 					})),

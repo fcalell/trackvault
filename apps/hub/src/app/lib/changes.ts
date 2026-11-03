@@ -61,7 +61,6 @@ export interface StoredChange {
 	entity: string;
 	entityId: string;
 	title: string | null;
-	mixName: string | null;
 	artist: string | null;
 	field: string;
 	before: string | null;

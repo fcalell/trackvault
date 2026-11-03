@@ -234,7 +234,6 @@ export const autotag = {
 							trackId: proposals.trackId,
 							title: tracks.title,
 							artist: tracks.artist,
-							mixName: tracks.mixName,
 							field: proposals.field,
 							before: proposals.before,
 							after: proposals.after,
@@ -257,7 +256,6 @@ export const autotag = {
 								id: trackId,
 								title: first.title,
 								artist: first.artist,
-								mixName: first.mixName,
 								proposals: own.map((row) => ({
 									field: row.field,
 									before: row.before,

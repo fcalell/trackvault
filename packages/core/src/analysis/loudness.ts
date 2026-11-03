@@ -1,3 +1,4 @@
+import { decodeBudgetMs } from "../audio/index.ts";
 import { run } from "../exec/index.ts";
 import { type Estimate, none } from "./types.ts";
 
@@ -13,6 +14,8 @@ export interface Loudness {
 export interface LoudnessOptions {
 	ffmpegPath?: string;
 	timeoutMs?: number;
+	// The track's length, which sets the time allowed when `timeoutMs` is not given.
+	durationSec?: number;
 }
 
 // Parses the summary ffmpeg's ebur128 filter prints on stderr.
@@ -55,7 +58,7 @@ export async function measureLoudness(
 			"-",
 		],
 		{
-			timeoutMs: options.timeoutMs ?? 120_000,
+			timeoutMs: options.timeoutMs ?? decodeBudgetMs(options.durationSec ?? 0),
 			maxStderrBytes: 8 * 1024 * 1024,
 		},
 	);

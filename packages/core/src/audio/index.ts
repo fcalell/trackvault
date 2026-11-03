@@ -1,6 +1,7 @@
 export {
 	type DecodeOptions,
 	type DecodeResult,
+	decodeBudgetMs,
 	decodeMono,
 	rms,
 } from "./decode.ts";

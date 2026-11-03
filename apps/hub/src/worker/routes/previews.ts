@@ -62,7 +62,6 @@ export const previews = {
 				.select({
 					row: previewsTable,
 					title: tracks.title,
-					mixName: tracks.mixName,
 					artist: tracks.artist,
 				})
 				.from(previewsTable)
@@ -72,12 +71,11 @@ export const previews = {
 				.limit(input.limit)
 				.offset(input.offset)
 				.all()
-				.map(({ row, title, mixName, artist }) => ({
+				.map(({ row, title, artist }) => ({
 					id: String(row.id),
 					entity: "track",
 					entityId: row.trackId,
 					title,
-					mixName,
 					artist,
 					field: row.field,
 					before: row.before,

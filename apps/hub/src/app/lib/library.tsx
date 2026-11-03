@@ -141,9 +141,11 @@ export function LibraryPane({
 							{
 								label: "Analyse",
 								blocked: nothing,
-								onAct: () => analyse.mutateAsync({ tracks: picked }),
-								done: "Analysing in the background",
-								to: "/jobs",
+								onAct: () =>
+									queuedBatch(
+										analyse.mutateAsync({ tracks: picked }),
+										"Analysing in the background",
+									),
 							},
 							{
 								label: "Find duplicates",

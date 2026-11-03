@@ -126,7 +126,6 @@ export const tracks = {
 					groupId: dupeMembers.groupId,
 					id: tracksTable.id,
 					title: tracksTable.title,
-					mixName: tracksTable.mixName,
 					artist: tracksTable.artist,
 					format: tracksTable.format,
 					bitrate: tracksTable.bitrate,
