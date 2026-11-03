@@ -1,10 +1,17 @@
+import { Dock } from "@fcalell/plugin-react-ui/components/dock";
 import { Shell } from "@fcalell/plugin-react-ui/components/shell";
+import {
+	audioOutput,
+	connectOutput,
+} from "@fcalell/plugin-react-ui/lib/player";
 import type { PlaceSpec } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
 import { useJobEffects } from "../../lib/jobs-effects.ts";
 import { useLibraryLive } from "../../lib/library-live.ts";
 import { usePlaylistPlaces } from "../../lib/playlists.tsx";
+
+connectOutput(audioOutput());
 
 // A session younger than this is not asked for again on the next navigation.
 const SESSION_FRESH_MS = 10_000;
@@ -114,7 +121,7 @@ function App() {
 		...PLACES.filter((place) => place.group !== "Library"),
 	];
 	return (
-		<Shell places={places}>
+		<Shell places={places} foot={<Dock />}>
 			<Outlet />
 		</Shell>
 	);
