@@ -123,6 +123,7 @@ function Inbox() {
 			<Pane
 				title="Inbox"
 				back={false}
+				wide
 				acts={[
 					{
 						icon: "CheckCheck",

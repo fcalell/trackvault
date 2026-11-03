@@ -96,6 +96,7 @@ function Wishlist() {
 			<Pane
 				title="Wishlist"
 				back={false}
+				wide
 				acts={[
 					{
 						icon: "Plus",

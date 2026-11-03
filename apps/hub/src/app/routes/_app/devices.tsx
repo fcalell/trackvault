@@ -141,6 +141,7 @@ function Devices() {
 			<Pane
 				title="Devices"
 				back={false}
+				wide
 				acts={[
 					{
 						icon: "Plus",

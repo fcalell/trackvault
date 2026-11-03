@@ -188,6 +188,7 @@ export function LibraryPane({
 		<Pane
 			title={title}
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "RefreshCw",
@@ -201,33 +202,6 @@ export function LibraryPane({
 				<ActionBar
 					chosen={chosen}
 					acts={[
-						{
-							label: "Add to playlist",
-							blocked: nothing,
-							sheet: sheetOf({
-								title: "Add to playlist",
-								description:
-									"The chosen tracks go to the end of the playlist. Drag rows onto a playlist in the sidebar to do the same.",
-								form: {
-									act: orpc.playlists.add,
-									given: { tracks: picked },
-									fields: {
-										playlistId: {
-											label: "Playlist",
-											options: playlists.at((rows) =>
-												pathsOf(rows)
-													.filter((each) => each.node.kind === "manual")
-													.map((each) => ({
-														value: each.node.id,
-														label: each.path,
-													})),
-											),
-										},
-									},
-									submit: { label: "Add", done: "Added to the playlist" },
-								},
-							}),
-						},
 						{
 							label: "Auto-tag",
 							blocked: nothing,
@@ -312,6 +286,33 @@ export function LibraryPane({
 									},
 								},
 								after: <EditPreview picked={picked} edit={edit} />,
+							}),
+						},
+						{
+							label: "Add to playlist",
+							blocked: nothing,
+							sheet: sheetOf({
+								title: "Add to playlist",
+								description:
+									"The chosen tracks go to the end of the playlist. Drag rows onto a playlist in the sidebar to do the same.",
+								form: {
+									act: orpc.playlists.add,
+									given: { tracks: picked },
+									fields: {
+										playlistId: {
+											label: "Playlist",
+											options: playlists.at((rows) =>
+												pathsOf(rows)
+													.filter((each) => each.node.kind === "manual")
+													.map((each) => ({
+														value: each.node.id,
+														label: each.path,
+													})),
+											),
+										},
+									},
+									submit: { label: "Add", done: "Added to the playlist" },
+								},
 							}),
 						},
 					]}

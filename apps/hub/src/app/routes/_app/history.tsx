@@ -66,7 +66,7 @@ function History() {
 	const open = useParams({ strict: false }).batchId;
 	return (
 		<>
-			<Pane title="History" back={false}>
+			<Pane title="History" back={false} wide>
 				<Table
 					label="Batches"
 					items={orpc.history.list.window({})}

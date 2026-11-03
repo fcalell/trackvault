@@ -163,6 +163,7 @@ function Playlists() {
 			<Pane
 				title="Playlists"
 				back={false}
+				wide
 				acts={[
 					{
 						icon: "Plus",
