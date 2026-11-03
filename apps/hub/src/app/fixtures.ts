@@ -651,6 +651,21 @@ const DEVICES = [
 	},
 ];
 
+const UNMATCHED = [
+	{
+		contentId: "rb-1",
+		path: "/Users/dj/Music/Old Crates/Kalomi - Midnight Echo.mp3",
+		title: "Midnight Echo",
+		artist: "Kalomi",
+	},
+	{
+		contentId: "rb-2",
+		path: "/Users/dj/Downloads/untitled export.wav",
+		title: null,
+		artist: null,
+	},
+];
+
 const CONFLICTS = [
 	{
 		id: 3,
@@ -658,7 +673,9 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "track" as const,
 		refId: "track-3",
-		label: "Sha & Tormar - Neon Drift (Extended Mix)",
+		title: "Neon Drift",
+		mixName: "Extended Mix",
+		artist: "Sha & Tormar",
 		field: "genre",
 		deviceValue: "Disco",
 		hubValue: "House",
@@ -671,7 +688,9 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "track" as const,
 		refId: "track-4",
-		label: "Elix - Lunar Ritual (Original Mix)",
+		title: "Lunar Ritual",
+		mixName: "Original Mix",
+		artist: "Elix",
 		field: "rating",
 		deviceValue: "5",
 		hubValue: "3",
@@ -684,10 +703,12 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "playlist" as const,
 		refId: "pl-peak",
-		label: "Peak time",
+		title: "Peak time",
+		mixName: null,
+		artist: null,
 		field: "order",
-		deviceValue: "214 tracks in order",
-		hubValue: "214 tracks in order",
+		deviceValue: "3 moved, 2 added, 1 removed",
+		hubValue: "213 tracks",
 		winner: "hub" as const,
 		at: new Date(Date.now() - 12 * 60_000),
 	},
@@ -1298,6 +1319,10 @@ export default defineFixtures<
 		},
 		devices: {
 			list: () => DEVICES,
+			get: ({ id }) =>
+				DEVICES.find((device) => device.id === id) ??
+				(DEVICES[0] as (typeof DEVICES)[number]),
+			unmatched: () => UNMATCHED,
 			forget: () => undefined,
 			wake: () => undefined,
 			conflicts: ({ offset = 0, limit = 200 }) => ({
@@ -1495,6 +1520,7 @@ export default defineFixtures<
 		itemId: "item-3",
 		wantId: "1",
 		importId: "imp-1",
+		deviceId: "dev-mac",
 	},
 	{
 		jobs: () => ({ jobs: JOBS }),

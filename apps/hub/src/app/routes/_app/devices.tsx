@@ -2,45 +2,23 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
-import type { Fact, Tone } from "@fcalell/ui-core/descriptors";
+import type { Fact } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
-import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import {
+	type Device,
+	deviceFix,
+	deviceState,
+	deviceWarning,
+	noun,
+	platformName,
+} from "../../ui/devices.ts";
 import { age, count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/devices")({
 	component: Devices,
 });
-
-type Device = AppRouter["devices"]["list"]["__output"][number];
-
-const STATE: Record<Device["state"], { tone: Tone; label: string }> = {
-	online: { tone: "done", label: "Online" },
-	idle: { tone: "waiting", label: "Idle" },
-	offline: { tone: "idle", label: "Offline" },
-	waiting: { tone: "waiting", label: "Waiting for the agent" },
-	revoked: { tone: "failed", label: "Revoked" },
-};
-
-// What a Rekordbox install's write support means for the owner.
-const WRITE: Record<string, string> = {
-	supported: "Rekordbox is written when it is closed",
-	"pending-verification": "Rekordbox writes wait for verification",
-	"unsupported-schema": "This Rekordbox version is not supported for writes",
-	"cloud-sync": "Turn Cloud Library Sync off to write Rekordbox",
-	unknown: "Rekordbox writes unknown",
-};
-
-// What the agent reports as `platform`, in words.
-const PLATFORMS: Record<string, string> = {
-	darwin: "macOS",
-	win32: "Windows",
-	linux: "Linux",
-};
-
-const noun = (n: number, word: string): string =>
-	`${count(n)} ${word}${n === 1 ? "" : "s"}`;
 
 // The agent's pairing command, with the key the hub has just made.
 const pairCommand = (key: string, name: string): string =>
@@ -59,36 +37,28 @@ function Devices() {
 
 	const toRow = (device: Device): Row => {
 		const rb = device.rekordbox;
-		const words = [
-			device.platform
-				? (PLATFORMS[device.platform] ?? device.platform)
-				: undefined,
-			device.hostname,
-			rb?.installed ? `Rekordbox ${rb.appVersion ?? ""}`.trim() : undefined,
-			device.unmatched
-				? `${noun(device.unmatched, "track")} not matched`
-				: undefined,
-		].filter((part): part is string => Boolean(part));
+		const warning = deviceWarning(device);
+		const conflicts = device.openConflicts;
 		const facts: Fact[] = [
-			STATE[device.state],
-			...(device.files.failed > 0
-				? [{ warning: `${noun(device.files.failed, "file")} failed` }]
-				: rb?.writeSupport === "cloud-sync"
-					? [{ warning: "Cloud Library Sync is on" }]
-					: []),
-			...words,
+			deviceState(device),
+			...(warning ? [warning] : []),
+			...(conflicts > 0
+				? [{ warning: `${noun(conflicts, "conflict")} to review` }]
+				: []),
+			...(device.platform ? [platformName(device.platform)] : []),
+			...(device.hostname ? [device.hostname] : []),
+			...(rb?.installed ? [`Rekordbox ${rb.appVersion ?? ""}`.trim()] : []),
 		];
-		const line = [
-			device.state === "waiting"
-				? `Key ${device.keyStart ?? ""}…`
-				: `${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
-			rb?.installed && rb.pendingExport > 0
-				? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
-				: undefined,
-			rb?.installed ? (WRITE[rb.writeSupport] ?? rb.writeSupport) : undefined,
-		]
-			.filter((sentence): sentence is string => Boolean(sentence))
-			.join(". ");
+		const line =
+			deviceFix(device) ??
+			[
+				`${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
+				rb?.installed && rb.pendingExport > 0
+					? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
+					: undefined,
+			]
+				.filter((sentence): sentence is string => Boolean(sentence))
+				.join(". ");
 		return {
 			key: device.id,
 			leading: {
@@ -97,28 +67,21 @@ function Devices() {
 			title: device.name,
 			facts,
 			line,
+			href: `/devices/${device.id}`,
 			...(device.lastSeenAt
 				? { trailing: { age: age(device.lastSeenAt) } }
 				: {}),
-			...(device.openConflicts > 0
+			...(device.state === "online"
 				? {
 						act: {
-							icon: "GitMerge" as const,
-							label: `${noun(device.openConflicts, "conflict")} to review`,
-							href: "/devices/conflicts",
+							icon: "RefreshCw" as const,
+							label: "Sync now",
+							onAct: () => wake.mutateAsync({ id: device.id }),
+							done: "Asked the device to sync",
 						},
 					}
 				: {}),
 			more: [
-				...(device.state === "online"
-					? [
-							{
-								label: "Sync now",
-								onAct: () => wake.mutateAsync({ id: device.id }),
-								done: "Asked the device to sync",
-							},
-						]
-					: []),
 				...(device.state === "revoked"
 					? [
 							{
