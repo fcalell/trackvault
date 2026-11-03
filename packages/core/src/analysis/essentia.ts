@@ -1,3 +1,4 @@
+/// <reference path="./essentia-js.d.ts" />
 import lib from "essentia.js";
 import {
 	camelotString,
