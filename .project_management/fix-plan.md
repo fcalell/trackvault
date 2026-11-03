@@ -324,6 +324,6 @@ A read-only check of the hand-written `useSyncExternalStore` sites, web and nati
 
 ### Phase 3: verification (T8)
 - Run `stack screens test --screen <the screens Phase 2 changed> --state data,empty --mode dark --width 320,1920 --shots shots`, never `--all`, and the 1920×1080 viewport shots of those screens.
-- Measure what Phase 1 left open: the selection bar beside a record at list width, the count at 2 ticked and at all ticked, the frozen title at 1100, the Banner glyph's centre with an act, a settings row's height (K2.14), and BarChart in its card.
+- Narrowed screens with shots at 320 and 1920 dark, a critic reading them against the first critique, and a seeded-hub run.
 - Run the critique again with `review/critique/CHECKLIST.md` over those screens, and compare with the first pass item by item. A screen outside the run is named as not re-checked.
 - Update `status.md`.

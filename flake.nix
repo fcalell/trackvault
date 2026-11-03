@@ -27,10 +27,7 @@
             pkgs.chromaprint
           ];
 
-          # Playwright's downloaded Chromium does not start on NixOS: `stack screens test`
-          # and the Playwright tools run nixpkgs' browsers.
-          PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
-          PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "1";
+          CHROME_PATH = pkgs.lib.getExe pkgs.chromium;
 
           shellHook = ''
             export COREPACK_HOME="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")/.corepack"

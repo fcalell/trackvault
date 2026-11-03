@@ -81,6 +81,10 @@ pnpm seed:bench                # 50k synthetic tracks into the dev database
 pnpm --filter hub exec stack db generate   # the migration for a schema change (commit src/migrations)
 ```
 
+## Verify
+
+`pnpm check` is the gate. A change that can move a look runs, from `apps/hub`, `pnpm exec stack screens test --screen <a,b> --mode dark --width 320,1920 --state data,empty --shots shots/<round>` (`--open <control text>` for an open layer), on changed routes only and never `--all`. A critic that did not build the screen judges the shots with stack's critique page and `.project_management/review/critique/CHECKLIST.md`; it returns `shot, finding, rule, severity`; blocking holds a screen, minor goes on the owner's list. A round is shoot, look, fix, at most two rounds. Nothing is measured by hand. Native is judged from source and said so.
+
 ## Rules
 
 - Before editing the hub, open the page of stack's guide that the step needs (the index above);

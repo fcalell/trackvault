@@ -1,7 +1,7 @@
 # TrackVault design critique: the checklist
 
-Shots: `~/projects/trackvault/apps/hub/shots/<screen>/<state>-dark-1920.png`, each the whole
-screen at 1920 wide, dark, desktop density. Every screen has `data` and `empty`; loading, error
+Shots: `~/projects/trackvault/apps/hub/shots/<round>/<screen>/<state>-dark-<width>.png`, each the whole
+screen at 320 or 1920 wide, dark, desktop density. Every screen has `data` and `empty`; loading, error
 and notFound are stack's frame forms (identical on every screen), so they were shot only for four
 representative screens (library, library/$trackId, settings, stats): answer C8a/C8c/D8/F9/F10 from
 those, and `n/a (state not shot)` elsewhere. The run's log names the
@@ -17,25 +17,21 @@ Sources:
   `src/app/lib/*.tsx` and `src/app/ui/*.ts`, fixtures in `src/app/fixtures.ts`.
 - Product: `~/projects/trackvault/.project_management/vision.md` (who uses it and for what).
 
-Every item is answered `yes`, `no` or `n/a (why)`. A `no` carries evidence: the shot file and the
-element (its visible text) or the source `file:line`, the observed value, the expected value from
-the rule, and a one-line fix, tagged **app** (TrackVault composition) or **stack** (a roster
-component: it looks wrong wherever it is used). Nothing is skipped silently. Only 1920 dark is shot:
-items about 320, touch or light mode are `n/a (not shot)`; say so once, not per item.
+Every item is answered `yes`, `no` or `n/a (why)`. A `no` carries evidence: the shot file (with its
+width) and the element (its visible text) or the source `file:line`, what the eye sees, what the
+rule expects, a one-line fix, tagged **app** (TrackVault composition) or **stack** (a roster
+component: it looks wrong wherever it is used), and a `severity` (blocking or minor). Nothing is
+skipped silently. Nothing is measured: answer from the shot. Light mode and touch density are not
+shot: `n/a (not shot)`, said once, not per item.
 
-## A. Stack's critique (C1a to C9a), at 1920 dark
+## A. Stack's critique (C1a to C9a), at 320 and 1920 dark
 
-Run every item of critique.md section 1 to 9 as written, except 3d and 8d (320) and the light half
-of 8e/8f. At 1920, 3a ("truncates at 1280") is asked at 1920: anything that still truncates at 1920
-is worse.
+Run every item of critique.md section 1 to 9 as written, except the light half of 8e/8f, at both
+widths. 3a ("truncates") is asked at 320 and at 1920.
 
-## B. Layout at 1920 (the widest desktop)
+## B. Layout (320 and 1920)
 
-- B1. Does a list page use the width (V17: "a list page is `wide`")? Measure the table/sheet's right
-  edge against the canvas: name any page whose content stops short and leaves a blank band, and how
-  wide it is.
-- B2. Does a record stand within 720 px (V17) and a Pane before another hold 340 to 520 px? With
-  a record open beside a list, do both panes read as one page (no gutter of dead canvas)?
+- B1. Does a list page use the width (V17: "a list page is `wide`"), or leave a blank band? Name any page that does.
 - B3. Is there exactly one horizontal scroller per wide table, inside its card, never the page?
 - B4. Does every sheet's left edge share one line per pane (page inset), and every section a
   sections gap apart (C7d)?
@@ -44,18 +40,14 @@ is worse.
   bar with a record open, "Find duplicates" over "0 of N chosen".)
 - B6. Does a chart fill its column, and is each bar named or every nth (R: BarChart `bar.label`),
   with the axis readable? Does a Stats row read as one band of figures?
-- B7. Is the sidebar 220 px, its first row on the bar's line (V2), and the dock (player) across the
-  foot without covering the last row of any list or the selection bar?
 
 ## C. Rhythm
 
-- C1. Rows 32 px, pills in rows compact 20 px, controls 32 px, bands at row height (V5, V9, V10, V12).
 - C2. The label column of every definition list in a Pane is one width (V11, C7b).
 - C3. Baselines: a count beside a heading, a meta beside a name, share a baseline (S21).
-- C4. Section heading form is one everywhere (C1d): uppercase 12, count faint, icon act at the end,
+- C4. Section heading form is one everywhere (C1d): uppercase, count faint, icon act at the end,
   one description sentence.
 - C5. Vertical rhythm between panes side by side: the first rows and headings line up (C7a).
-- C6. Type sizes: six at most per screen (S16), the record name 20 mono, figures 24.
 
 ## D. Interface best practice
 
@@ -135,7 +127,7 @@ Rekordbox on a Mac (vision.md). For each screen:
   (shift log)?
 - F9. **Section frames with reads**: in the per-read failure log lines, does each failed read draw
   in its own Section, and does the error shot show one form per frame, not the whole page gone?
-- F10. **Stats cells as frames**: figure 24 at 500, label, failed cell mark in error shot.
+- F10. **Stats cells as frames**: figure, label, failed cell mark in error shot.
 - F11. **BarChart `bar.label`** (stats, sets): every bar named or every nth, not first/last only on
   buckets; the bars fill the width (B6).
 - F12. **Device keys and MCP auth screens** (`connect.consent`, `connect.organization`, settings
