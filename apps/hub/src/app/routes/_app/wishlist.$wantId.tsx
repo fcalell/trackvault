@@ -29,6 +29,7 @@ function WantRecord() {
 			noun="want"
 			read={want}
 			back="/wishlist"
+			cover
 			wide
 			record={{
 				within: "Wishlist",

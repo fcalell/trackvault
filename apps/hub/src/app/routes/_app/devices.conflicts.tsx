@@ -76,6 +76,7 @@ function Conflicts() {
 		<Pane
 			title="Conflicts"
 			back="/devices"
+			cover
 			wide
 			foot={
 				<ActionBar
