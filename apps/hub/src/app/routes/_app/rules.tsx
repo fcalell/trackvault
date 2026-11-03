@@ -5,7 +5,7 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { PreviewSection } from "../../lib/preview.tsx";
+import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/rules")({
@@ -121,6 +121,23 @@ function Rules() {
 					done: "Previewing the rules",
 				},
 			]}
+			foot={
+				<PreviewFoot
+					kind="rules"
+					changes={(result) => result.tracks ?? 0}
+					apply={{
+						label: "Apply to the library",
+						confirm: {
+							title: "Apply the cleanup rules?",
+							sentence:
+								"The tags in the preview are rewritten in the library and in each file. Undo the batch in History.",
+						},
+						onAct: () => apply.mutateAsync(),
+						done: "Applying the rules",
+						to: "/jobs",
+					}}
+				/>
+			}
 		>
 			<Section
 				title="Rules"
@@ -149,18 +166,6 @@ function Rules() {
 						? `The rules change nothing in ${count(result.scanned ?? 0)} tracks.`
 						: `${count(result.tracks ?? 0)} tracks would change, ${count(result.fields ?? 0)} tags in all.`
 				}
-				changes={(result) => result.tracks ?? 0}
-				apply={{
-					label: "Apply to the library",
-					confirm: {
-						title: "Apply the cleanup rules?",
-						sentence:
-							"Every change shown is written to the library and to the files. Undo the batch in History.",
-					},
-					onAct: () => apply.mutateAsync(),
-					done: "Applying the rules",
-					to: "/jobs",
-				}}
 			/>
 		</Pane>
 	);

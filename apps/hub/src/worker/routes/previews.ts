@@ -6,11 +6,18 @@ import { db } from "../../server/lib/db.ts";
 import { toView } from "../../server/services/jobs.ts";
 
 const KINDS = ["rules", "unify", "organise"] as const;
+const FIELDS = ["genre", "artist", "label"] as const;
 
 export const previews = {
 	// The latest job of a kind that stored a preview: its progress and its counts.
+	// A unify preview is told apart by the fields it was run over.
 	latest: procedure({ auth: true, reads: ["jobs", "previews"] })
-		.input(z.object({ kind: z.enum(KINDS) }))
+		.input(
+			z.object({
+				kind: z.enum(KINDS),
+				fields: z.array(z.enum(FIELDS)).optional(),
+			}),
+		)
 		.query(({ input }) => {
 			const rows = db()
 				.select()
@@ -19,10 +26,17 @@ export const previews = {
 				.orderBy(desc(jobs.createdAt))
 				.limit(8)
 				.all();
-			const row = rows.find(
-				(each) =>
-					(each.payload as { mode?: string } | null)?.mode === "preview",
-			);
+			const row = rows.find((each) => {
+				const payload = each.payload as {
+					mode?: string;
+					fields?: string[];
+				} | null;
+				return (
+					payload?.mode === "preview" &&
+					(input.fields === undefined ||
+						JSON.stringify(payload.fields) === JSON.stringify(input.fields))
+				);
+			});
 			return row
 				? { job: toView(row), result: (row.result ?? null) as unknown }
 				: null;

@@ -1,4 +1,5 @@
 import { useRead } from "@fcalell/plugin-api/tanstack-query";
+import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Banner } from "@fcalell/plugin-react-ui/components/banner";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
@@ -10,6 +11,13 @@ import { orpc } from "./api.ts";
 import { CHANGE_COLUMNS, CHANGE_ROW } from "./changes.ts";
 
 type Kind = "rules" | "unify" | "organise";
+type Fields = ("genre" | "artist" | "label")[];
+
+interface Preview {
+	kind: Kind;
+	// A unify preview is of the fields it was run over.
+	fields?: Fields;
+}
 
 const TONES: Record<JobView["state"], Tone> = {
 	queued: "waiting",
@@ -37,8 +45,8 @@ function said(
 
 // A rows of one result window, paged by the hub: the last preview job of a kind,
 // its counts and its changes as before and after.
-function PreviewRows({ kind }: { kind: Kind }) {
-	const latest = useRead(orpc.previews.latest.read({ kind }));
+function PreviewRows({ kind, fields }: Preview) {
+	const latest = useRead(orpc.previews.latest.read({ kind, fields }));
 	if (latest?.job.state !== "done") return null;
 	return (
 		<Table
@@ -50,28 +58,48 @@ function PreviewRows({ kind }: { kind: Kind }) {
 	);
 }
 
+// What a preview's result says of itself: how many changes it holds.
+type Changes = (result: Record<string, number>) => number;
+
+// The act that does a previewed change for real, the page's one filled act: the Pane's
+// `foot`. It waits for a finished preview that holds changes.
+export function PreviewFoot({
+	kind,
+	fields,
+	apply,
+	changes,
+}: Preview & {
+	// The act that does it for real; its label says what it writes.
+	apply: Act;
+	changes: Changes;
+}) {
+	const latest = useRead(orpc.previews.latest.read({ kind, fields }));
+	const blocked = !latest
+		? "Preview first"
+		: latest.job.state !== "done"
+			? "Wait for the preview"
+			: changes((latest.result ?? {}) as Record<string, number>) > 0
+				? undefined
+				: "The preview changes nothing";
+	return <ActionBar acts={[{ ...apply, blocked }]} />;
+}
+
 // The preview of a bulk change on a screen: a banner with the job's progress or its
-// counts, the apply act once it is done, and the change table under them.
+// counts, and the change table under it.
 export function PreviewSection({
 	kind,
+	fields,
 	title,
-	apply,
 	none,
 	words,
-	changes,
-}: {
-	kind: Kind;
+}: Preview & {
 	title: string;
-	// The act that does it for real.
-	apply: Act;
 	// Under the title before any preview has run (a sentence).
 	none: string;
 	// The counts in words once the preview is done.
 	words: (result: Record<string, number>) => string;
-	// How many changes the result holds: none offers no apply.
-	changes: (result: Record<string, number>) => number;
 }) {
-	const latest = orpc.previews.latest.read({ kind });
+	const latest = orpc.previews.latest.read({ kind, fields });
 	return (
 		<Section title={title} read={latest} empty={{ sentence: none }}>
 			<Banner
@@ -85,14 +113,8 @@ export function PreviewSection({
 							)
 						: undefined,
 				)}
-				act={latest.at((each) =>
-					each?.job.state === "done" &&
-					changes((each.result ?? {}) as Record<string, number>) > 0
-						? apply
-						: undefined,
-				)}
 			/>
-			<PreviewRows kind={kind} />
+			<PreviewRows kind={kind} fields={fields} />
 		</Section>
 	);
 }

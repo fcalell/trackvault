@@ -5,7 +5,7 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { PreviewSection } from "../../lib/preview.tsx";
+import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/aliases")({
@@ -93,12 +93,30 @@ function Aliases() {
 			acts={[
 				{
 					icon: "Replace",
-					label: "Preview unify on the library",
+					label: "Preview tidying the spellings",
 					onAct: () =>
 						orpc.unifyTags.preview.call({ fields: ["artist", "label"] }),
 					done: "Previewing the aliases",
 				},
 			]}
+			foot={
+				<PreviewFoot
+					kind="unify"
+					fields={["artist", "label"]}
+					changes={(result) => result.tracks ?? 0}
+					apply={{
+						label: "Tidy the spellings",
+						confirm: {
+							title: "Tidy artist and label spellings?",
+							sentence:
+								"The artist and label of every track in the preview are rewritten to their canonical spelling, in the library and in each file's tags. Genres are not touched. Undo the batch in History.",
+						},
+						onAct: () => apply.mutateAsync({ fields: ["artist", "label"] }),
+						done: "Tidying the spellings",
+						to: "/jobs",
+					}}
+				/>
+			}
 		>
 			<Section
 				title="Artist spellings to merge"
@@ -124,21 +142,10 @@ function Aliases() {
 			/>
 			<PreviewSection
 				kind="unify"
-				title="Unify preview"
-				none="Preview the unify to see which names would be rewritten."
+				fields={["artist", "label"]}
+				title="Spelling preview"
+				none="Preview tidying the spellings to see which tracks would change."
 				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
-				changes={(result) => result.tracks ?? 0}
-				apply={{
-					label: "Unify the library",
-					confirm: {
-						title: "Unify artists and labels?",
-						sentence:
-							"Every change shown is written to the library and to the files. Undo the batch in History.",
-					},
-					onAct: () => apply.mutateAsync({ fields: ["artist", "label"] }),
-					done: "Unifying",
-					to: "/jobs",
-				}}
 			/>
 		</Pane>
 	);

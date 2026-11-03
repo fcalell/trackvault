@@ -45,7 +45,9 @@ export default defineJob<UnifyPayload, UnifyResult>({
 			scanned: 0,
 		};
 		const writer =
-			payload.mode === "preview" ? new PreviewWriter(id, "unify") : undefined;
+			payload.mode === "preview"
+				? new PreviewWriter(id, "unify", payload.fields)
+				: undefined;
 		progress(0, total, "Reading tracks");
 
 		function* patches(): Generator<{ id: string; patch: TagValues }> {

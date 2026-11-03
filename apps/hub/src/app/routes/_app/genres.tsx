@@ -5,7 +5,7 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { PreviewSection } from "../../lib/preview.tsx";
+import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/genres")({
@@ -119,11 +119,29 @@ function Genres() {
 			acts={[
 				{
 					icon: "Replace",
-					label: "Preview unify on the library",
+					label: "Preview tidying the genres",
 					onAct: () => orpc.unifyTags.preview.call({ fields: ["genre"] }),
 					done: "Previewing the genres",
 				},
 			]}
+			foot={
+				<PreviewFoot
+					kind="unify"
+					fields={["genre"]}
+					changes={(result) => result.tracks ?? 0}
+					apply={{
+						label: "Tidy the genres",
+						confirm: {
+							title: "Tidy the genres?",
+							sentence:
+								"The genre of every track in the preview is rewritten to its canonical spelling, in the library and in each file's tags. Artists and labels are not touched. Undo the batch in History.",
+						},
+						onAct: () => apply.mutateAsync({ fields: ["genre"] }),
+						done: "Tidying the genres",
+						to: "/jobs",
+					}}
+				/>
+			}
 		>
 			<Section
 				title="Not in the taxonomy"
@@ -150,21 +168,10 @@ function Genres() {
 			/>
 			<PreviewSection
 				kind="unify"
-				title="Unify preview"
-				none="Preview the unify to see which genres would be rewritten."
+				fields={["genre"]}
+				title="Genre preview"
+				none="Preview tidying the genres to see which tracks would change."
 				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
-				changes={(result) => result.tracks ?? 0}
-				apply={{
-					label: "Unify the library",
-					confirm: {
-						title: "Unify the genres?",
-						sentence:
-							"Every change shown is written to the library and to the files. Undo the batch in History.",
-					},
-					onAct: () => apply.mutateAsync({ fields: ["genre"] }),
-					done: "Unifying",
-					to: "/jobs",
-				}}
 			/>
 		</Pane>
 	);
