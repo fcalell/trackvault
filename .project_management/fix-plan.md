@@ -135,6 +135,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
   - the showcase `library.tsx`, `crates.tsx` and the Camelot fixtures. The player showcase keeps a generic audio example;
   - `rules.md:432`'s `noun` inside `choose` and the stale row `meta:` at showcase `crates.tsx:30,51`, which are wrong as well as DJ.
 - **K6.2** rules.md stays as it is (owner's decision).
+- **K6.3** `voice.md` states a length by its token, with px only as the value at the default `size` knob. A ui-core test fails a bare px value in it.
 
 ## TrackVault
 
@@ -322,7 +323,7 @@ A read-only check of the hand-written `useSyncExternalStore` sites, web and nati
 3. **T-analysis** runs alongside from the start of phase 2 (A1–A5), in `packages/core/src/analysis`, `server/jobs/analyse.ts`, the agent report and `scripts/`. T2.2's record half waits for T-library.
 
 ### Phase 3: verification (T8)
-- Run `stack screens test --all --state data,empty --mode dark --width 1920 --shots shots` and the 1920×1080 viewport shots again.
+- Run `stack screens test --screen <the screens Phase 2 changed> --state data,empty --mode dark --width 320,1920 --shots shots`, never `--all`, and the 1920×1080 viewport shots of those screens.
 - Measure what Phase 1 left open: the selection bar beside a record at list width, the count at 2 ticked and at all ticked, the frozen title at 1100, the Banner glyph's centre with an act, a settings row's height (K2.14), and BarChart in its card.
-- Run the critique again with `review/critique/CHECKLIST.md`, and compare with the first pass item by item.
+- Run the critique again with `review/critique/CHECKLIST.md` over those screens, and compare with the first pass item by item. A screen outside the run is named as not re-checked.
 - Update `status.md`.
