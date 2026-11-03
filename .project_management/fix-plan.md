@@ -52,7 +52,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K1.2 (2a)** Built on stack's local `196b8914`, unpushed. The Table chooses grid or list rows by the input device, not by its own width. It draws the grid at every width from `tablet` up when the pointer is fine. List rows are for coarse pointers or below `tablet`. A narrow container scrolls sideways under the frozen title column, which already exists. This replaces `useWide` and its measure, and takes "the Table's own width" off rule 7's list.
 - **K1.3 (2b)** Built on stack's local `3f4e2b9f`, unpushed. In the Place's row, a `wide` Pane takes all the spare room and the record beside it holds the list width (`w-list`, floor 340). Today the pane before the last holds the list width. The order is fixed by role (the list stays first and wide), and narrow viewports still `cover`.
 - **K1.4** *Mobbin, changed.* The frozen ground exists. The last frozen cell gets a hairline edge by CSS, and the title's sticky offset is the tick column's width (`left-target`), so scrolled text stops leaking through 4 px. An acts cell rises to body ink on row hover and focus-within.
-- **K1.5** *Default:* the `age` figure width fits the longest relative word the density's `Words` produce ("5 seconds ago", "11 months ago"), measured once from the words, not per app. *Mobbin:* text columns share by content class, so a short-value column stops taking Genre's width.
+- **K1.5** *Default:* the `age` figure width fits the longest relative word the density's `Words` produce ("5 seconds ago", "11 months ago"), measured once from the words, not per app. *Mobbin:* `chip` and `status` columns stand at the short measure. A Table cannot tell a short text from a long one, so an app sets `width: "measure-short"` on a short text column (T2.5).
 - **K1.6** *Mobbin, changed.* The selection bar is form a, the docked foot. It holds:
   - the count keeps its width;
   - no bar over an empty table;
@@ -61,7 +61,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
   - the acts fold: the filled primary stands and the rest are in the more menu.
 - **K1.7** `columnsKey` keys by the Table's `label` alone when it has one, falling back to a hash of the sorted keys when it has none, so adding a column keeps the viewer's choice.
 - **K1.8** The roster marks `Picked` and the row `act`, `more` and `drop` slots web-only; native types already refuse them.
-- **K1.9** The list form names a bare figure in its facts by the column's `label` ("Added 1 day", "29 days left"), so columns stay told apart without headers.
+- **K1.9** The list form tells columns apart without headers: a number carries its column's `label` ("Days left 29"), the row's first age trails it live ("1 day ago"), and a further age is a fact with its label ("Seen: 1 day ago").
 - **K1.10** *Mobbin.* One row height: the tick cell drops its `py-gap`, so a grid row is 32 px (37 today, 35 ticked) and ticking moves nothing.
 - **K1.11** *Mobbin.* A ticked row carries the neutral `wash-selected` at rest, on the row and its frozen cells; never the accent.
 - **K1.12** *Mobbin.* The frozen title's floor is `measure-short`.
@@ -80,10 +80,10 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
   - a Section's missing form is the sentence alone: Back is the Pane's;
 - **K2.7** Loading shape: a Section paints as many rows as it last loaded, or `PAINT_ROWS` when it has never loaded. The screens test's shift check covers loading → data.
 - **K2.8** In a submit form, an untouched saved `secret` is left out of the input, not sent as `null`.
-- **K2.9** Form `onChange` fires once when `values` land.
+- **K2.9** A Form takes `after`, a function of its current input, in place of `onChange` and the Sheet's own `after`. A prefilled preview draws before any keystroke and a reopened sheet starts from its first values, because the draft has one owner.
 - **K2.10** `lift` takes the nesting key as a parameter.
 - **K2.11** Drop `read` from a Section with `items`, together with its frame code, roster entry, the showcase `crates.tsx:44-60` use (a real second read, which moves to an enclosing frame) and the docs (`rules.md` frame paragraph, `content.md`).
-- **K2.12** A row's leading tone mark draws its word beside the dot. Re-measure the list band against a one-line row, and a Section heading's description beside an icon act, before changing either. The Section count already counts items.
+- **K2.12** A row's `{ tone }` leading is the dot alone, its `label` its accessible name, so titles keep one start. A list whose rows say the state nowhere else gives it as a status fact, and `rules.md` says so. The list band and a Section heading measured right: 32 px against a 32 px row, and a 36 px head holding a description and an icon act.
 - **K2.13** A blocked submit over an invalid value names the field, from its label. The generic "Type a value" goes; an empty field already names itself.
 - **K2.14** *Mobbin.* A field-commit row is its label over its description, beside the control at its own measure, so the row is as tall as those two lines and a short value stops filling the row. Voice 3 says so.
 - **K2.15** *Mobbin.* When a sheet's form has `after`, the form's bar stands after it in the sheet's foot, pinned, so Apply never ends above the preview.
@@ -96,8 +96,8 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K3.2** The menu and keyboard floor offer every spec's drop, folded branches included. Drops register from the place specs, not from mounted rows.
 - **K3.3** `Q` runs through `RowItem.drop`, `PlaceSpec.drop` and `TableRowSlots.drop`, which removes the `as never` casts.
 - **K3.4** Space does nothing on a tree row (WAI-ARIA); Enter navigates and arrows fold.
-- **K3.5** When two drops share a label, the drop menu names each by its path and drops none. `rules.md:464`, `ui-core.md:304` and the `useOffers` JSDoc change with it.
-- **K3.6** *Mobbin.* The Shell draws every run through `PlaceTree`, so the sidebar is one tab stop (22 flat stops plus the tree today).
+- **K3.5** When two drops share a label, the drop menu names each by its path and drops none. A row and a place are one target only where the row's `href` is the place's route. `rules.md:464`, `ui-core.md:304` and the `useOffers` JSDoc change with it.
+- **K3.6** *Mobbin.* The Shell draws every run through `PlaceTree`, so each run is one tab stop (22 flat stops plus the tree today). A group holds its own read and can hold a switcher or a Retry, controls that cannot stand inside one `role=tree`.
 - **K3.7** *Mobbin.* A short hold of an accepted drag opens a folded branch. The tree owns the fold; `lib/drag` exposes the hold.
 - **K3.9** *Mobbin.* A drag carries the scroller under the pointer, whichever list holds it, drag-only lists included.
 
@@ -174,7 +174,8 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **T2.5** Library:
   - the total and the active sort and filters are visible;
   - BPM and key filters are one press away;
-  - Recently added becomes the Added sort, and the `/recent` routes go.
+  - Recently added becomes the Added sort, and the `/recent` routes go;
+  - Key and other short text columns set `width: "measure-short"` (K1.5), so Genre keeps its room.
 - **T2.6** The library selection bar follows the K1.6 design.
 - **T2.7** Playlists is the manage page: create, rename, folders, smart rules and counts, not the sidebar tree again.
 - **T2.8** One queue mechanism (`windowQueue`); the 200-row slice in `lib/queue.ts` goes.
@@ -272,7 +273,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 ### T7 Adopting stack
 - **T7.1** `<Shell foot={<Dock />}>` in the hub and the phone, with the outputs injected and the `artwork` rename (`ui/track.ts`, phone `lib/play.ts`).
 - **T7.2** The phone adds `expo-audio` and its config plugin itself and imports `@fcalell/plugin-native-ui/audio/expo`. The `link:` into stack's `apps/phone/node_modules/expo-audio` goes.
-- **T7.3** The phone's `server` moves to `api({ server })`. The hub's two `as never` casts go (`playlists.tsx:117`, `lib/playlists.tsx:70`, K3.3). The redundant Section `read=` go (K2.11), recounted first: 18 lines stand near a `<Section`.
+- **T7.3** The phone's `server` moves to `api({ server })`. The screens test's `table-pane` check (K1.1) passes on the hub: aliases, devices/conflicts, genres, history/$batchId, import/$importId, inbox/$itemId, organiser, playlists/$playlistId, quarantine, review, rules and wishlist/$wantId. A list page's Pane takes `wide`; a record Pane stands beside a wide list and draws rows in place of a Table.
 - **T7.4** `pnpm check` is green in both repos, with `tsc -b --force` in `apps/hub` and `apps/phone`, because plain `tsc -b` passes on a stale cache after a stack rebuild. `stack screens test` passes on every changed screen.
 - **T7.5** The row vocabulary is put right. A sentence is a row's `line`, a fact is a badge: devices' "47,900 files in the replica, 310 waiting", duplicates' "Keeper: kept higher bitrate…", genres' "Closest: …", the wishlist's "Wants a better copy" and candidates' "Another version in the library" move out of the badges. The joined `·` strings split (candidates' Peer and Why, inbox's overline, import's `match · NN%`). Raw `darwin` and `win32` (`devices.tsx:57`) become words.
 
@@ -322,5 +323,6 @@ A read-only check of the hand-written `useSyncExternalStore` sites, web and nati
 
 ### Phase 3: verification (T8)
 - Run `stack screens test --all --state data,empty --mode dark --width 1920 --shots shots` and the 1920×1080 viewport shots again.
+- Measure what Phase 1 left open: the selection bar beside a record at list width, the count at 2 ticked and at all ticked, the frozen title at 1100, the Banner glyph's centre with an act, a settings row's height (K2.14), and BarChart in its card.
 - Run the critique again with `review/critique/CHECKLIST.md`, and compare with the first pass item by item.
 - Update `status.md`.
