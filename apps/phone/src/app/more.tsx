@@ -1,7 +1,6 @@
 import { Pane } from "@fcalell/plugin-native-ui/components/pane";
 import { Section } from "@fcalell/plugin-native-ui/components/section";
 import { forget, useHub } from "../lib/hub";
-import { queryClient } from "../lib/query";
 
 export default function More() {
 	const { url } = useHub();
@@ -33,10 +32,7 @@ export default function More() {
 						act: {
 							icon: "LogOut",
 							label: "Disconnect",
-							onAct: async () => {
-								await forget();
-								queryClient.clear();
-							},
+							onAct: forget,
 						},
 					},
 				]}

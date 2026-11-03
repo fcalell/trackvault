@@ -17,11 +17,5 @@
 		".stack/entry.tsx",
 		".stack/routes.d.ts",
 		".stack/expo-env.d.ts"
-	],
-	"exclude": ["src/worker"],
-	"references": [
-		{
-			"path": "./tsconfig.worker.json"
-		}
 	]
 }

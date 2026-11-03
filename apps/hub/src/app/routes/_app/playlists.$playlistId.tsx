@@ -93,7 +93,7 @@ function Playlist() {
 										onChange: setRule,
 										submit: { label: "Save", done: "Rule saved" },
 									},
-									children: <SmartPreview rule={rule} />,
+									after: <SmartPreview rule={rule} />,
 								}),
 							},
 						]

@@ -186,7 +186,7 @@ function Backups() {
 			/>
 			<Section
 				title="Offsite"
-				description="Database backups in the bucket. To restore from them, run scripts/restore-offsite.ts with the hub stopped."
+				description="Database backups in the bucket. To restore from them, run restore-offsite.mjs from the bundle with the hub stopped."
 				read={remote}
 				items={remote.at((each) =>
 					!each.configured

@@ -3,12 +3,11 @@ import * as SecureStore from "expo-secure-store";
 import { cookiePrefix, scheme } from "../../.stack/native-auth";
 import { hub } from "./hub";
 
-// The provider stack nativeUi() wires needs an auth client. The phone signs in with a
-// device key (lib/hub.ts), not a Better Auth session, so this client only exists to
-// satisfy the entry; it is pointed at the stored hub. Email-code sign-in would need
-// `auth({ expo: true })` on the hub (a recorded gap).
+// The email-code sign-in's client: it talks to whichever hub the Gate pointed the phone at
+// (`baseURL` is read on every use). It holds a session only until the sign-in has traded
+// it for a device key (lib/sign-in.tsx); every later request carries the key.
 export const authClient: AuthClient = createAuthClient({
-	baseURL: hub().url ?? "http://localhost:8788",
+	baseURL: () => hub().url ?? "http://localhost:8788",
 	scheme,
 	cookiePrefix,
 	storage: SecureStore,

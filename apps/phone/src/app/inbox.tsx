@@ -6,7 +6,6 @@ import type { StatusMark } from "@fcalell/ui-core/descriptors";
 import { useState } from "react";
 import { orpc } from "../lib/api";
 import { duration } from "../lib/format";
-import { refresh } from "../lib/refresh";
 import type { InboxRow } from "../lib/types";
 
 type Group = "ready" | "review" | "processing" | "done";
@@ -31,18 +30,9 @@ const OPEN: ReadonlySet<InboxRow["state"]> = new Set([
 export default function Inbox() {
 	const [group, setGroup] = useState<Group>("ready");
 	const items = orpc.inbox.list.window({ group, limit: 50 });
-	const approve = useMutation({
-		...orpc.inbox.approve.mutationOptions(),
-		onSuccess: refresh,
-	});
-	const reject = useMutation({
-		...orpc.inbox.reject.mutationOptions(),
-		onSuccess: refresh,
-	});
-	const keep = useMutation({
-		...orpc.inbox.keep.mutationOptions(),
-		onSuccess: refresh,
-	});
+	const approve = useMutation(orpc.inbox.approve.mutationOptions());
+	const reject = useMutation(orpc.inbox.reject.mutationOptions());
+	const keep = useMutation(orpc.inbox.keep.mutationOptions());
 	return (
 		<Pane title="Inbox" back={false}>
 			<Toolbar

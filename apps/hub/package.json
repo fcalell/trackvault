@@ -9,8 +9,8 @@
 	"scripts": {
 		"generate": "stack generate",
 		"dev": "stack dev",
-		"build": "stack build",
-		"start": "stack db apply && node .stack/server.ts",
+		"build": "stack build && node scripts/bundle-extras.ts",
+		"start": "node dist/server/server.mjs",
 		"seed:bench": "stack db apply && node scripts/seed-bench.ts",
 		"check-types": "stack generate && tsc -b",
 		"lint": "biome check --write --unsafe",
@@ -53,6 +53,7 @@
 		"@vitejs/plugin-react": "^5.2.0",
 		"@vitest/browser-playwright": "^5.0.3",
 		"babel-plugin-react-compiler": "^1.0.0",
+		"esbuild": "link:../../../stack/plugins/node/node_modules/esbuild",
 		"msw": "^2.15.0",
 		"msw-storybook-addon": "^3.0.3",
 		"playwright": "^1.63.0",

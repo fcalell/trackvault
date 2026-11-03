@@ -1,6 +1,7 @@
 import { availableParallelism } from "node:os";
 import { Worker } from "node:worker_threads";
 import { analyzeFile, type FileAnalysis } from "@trackvault/core/analyze";
+import { workerFile } from "../worker-file.ts";
 
 export interface AnalyzeItem {
 	path: string;
@@ -96,7 +97,10 @@ export async function analyzeAll(
 		const lanes: Array<Promise<void>> = [];
 		for (let i = 0; i < size; i++) {
 			const worker = new Worker(
-				new URL("./analyze-worker.ts", import.meta.url),
+				workerFile(
+					"analyze-worker",
+					new URL("./analyze-worker.ts", import.meta.url),
+				),
 			);
 			workers.push(worker);
 			lanes.push(lane(worker));

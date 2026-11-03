@@ -84,7 +84,7 @@ export function PreviewSection({
 								each.result as Record<string, number> | null,
 								words,
 							)
-						: "",
+						: undefined,
 				)}
 				act={latest.at((each) =>
 					each?.job.state === "done" &&

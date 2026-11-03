@@ -31,8 +31,14 @@ export const Route = createFileRoute("/_app/settings")({
 	component: Settings,
 });
 
-// A saved secret is never read back into its field, so a row says it is set and
-// takes it away (an empty field left alone sends nothing).
+// A saved secret is never read back into its field: the field's description says it
+// is held (its last characters), and typing a new one replaces it.
+const held = (masked: string | null | undefined, unset: string): string =>
+	masked
+		? `Saved, ends in ${masked.slice(-4)}. Type a new one to replace it.`
+		: unset;
+
+// An empty field left alone sends nothing, so taking a saved secret away is a row.
 const savedRow = (
 	key: string,
 	label: string,
@@ -45,7 +51,7 @@ const savedRow = (
 					key,
 					leading: { icon: "KeyRound" },
 					title: label,
-					meta: [`Saved, ends in ${masked.slice(-4)}`],
+					meta: ["Saved. Remove it to stop using it."],
 					act: {
 						icon: "Trash2",
 						label: `Remove ${label}`,
@@ -164,10 +170,6 @@ function Settings() {
 					commit="field"
 					values={soulseek.at((each) => ({
 						slskdUrl: each.slskdUrl ?? "",
-						// A secret field is always empty: it holds a blank, never the saved
-						// value (a key missing from a selection's values flips the input
-						// from controlled to uncontrolled as the read lands).
-						slskdApiKey: "",
 						slskdDownloadsDir: each.slskdDownloadsDir ?? "",
 						wantedQuality: each.wantedQuality,
 						slskdMaxQueue: each.slskdMaxQueue,
@@ -183,8 +185,12 @@ function Settings() {
 						slskdApiKey: {
 							label: "slskd API key",
 							control: "secret",
-							description:
-								"Made in slskd's options (web.authentication.api_keys). Type a new one to replace the saved one.",
+							description: soulseek.at((each) =>
+								held(
+									each.slskdApiKey,
+									"Made in slskd's options (web.authentication.api_keys).",
+								),
+							),
 						},
 						slskdDownloadsDir: {
 							label: "slskd downloads folder",
@@ -286,11 +292,8 @@ function Settings() {
 						autotagMusicbrainz: each.autotagMusicbrainz,
 						autotagMusicbrainzAgent: each.autotagMusicbrainzAgent ?? "",
 						autotagAcoustid: each.autotagAcoustid,
-						autotagAcoustidKey: "",
 						autotagDiscogs: each.autotagDiscogs,
-						autotagDiscogsToken: "",
 						autotagBeatport: each.autotagBeatport,
-						autotagBeatportToken: "",
 						autotagDeezer: each.autotagDeezer,
 						autotagPolicy: each.autotagPolicy,
 						autotagMinConfidence: each.autotagMinConfidence,
@@ -309,21 +312,34 @@ function Settings() {
 						autotagAcoustidKey: {
 							label: "AcoustID key",
 							control: "secret",
-							description:
-								"A free application key (acoustid.org/new-application). Needs fpcalc on the hub to fingerprint files.",
+							description: autotag.at((each) =>
+								held(
+									each.autotagAcoustidKey,
+									"A free application key (acoustid.org/new-application). Needs fpcalc on the hub to fingerprint files.",
+								),
+							),
 						},
 						autotagDiscogs: { label: "Discogs" },
 						autotagDiscogsToken: {
 							label: "Discogs token",
 							control: "secret",
-							description:
-								"A personal access token (discogs.com/settings/developers).",
+							description: autotag.at((each) =>
+								held(
+									each.autotagDiscogsToken,
+									"A personal access token (discogs.com/settings/developers).",
+								),
+							),
 						},
 						autotagBeatport: { label: "Beatport" },
 						autotagBeatportToken: {
 							label: "Beatport access token",
 							control: "secret",
-							description: "Genre, key and tempo for dance music.",
+							description: autotag.at((each) =>
+								held(
+									each.autotagBeatportToken,
+									"Genre, key and tempo for dance music.",
+								),
+							),
 						},
 						autotagDeezer: {
 							label: "Deezer",
@@ -417,7 +433,6 @@ function Settings() {
 					commit="field"
 					values={spotify.at((each) => ({
 						spotifyClientId: each.spotifyClientId ?? "",
-						spotifyClientSecret: "",
 					}))}
 					submit={{ done: "Saved" }}
 					fields={{
@@ -425,7 +440,9 @@ function Settings() {
 						spotifyClientSecret: {
 							label: "Spotify client secret",
 							control: "secret",
-							description: "Type a new one to replace the saved one.",
+							description: spotify.at((each) =>
+								held(each.spotifyClientSecret, "From your Spotify app."),
+							),
 						},
 					}}
 				/>
@@ -525,8 +542,6 @@ function Settings() {
 						offsiteEndpoint: each.offsiteEndpoint ?? "",
 						offsiteBucket: each.offsiteBucket ?? "",
 						offsiteRegion: each.offsiteRegion,
-						offsiteAccessKey: "",
-						offsiteSecretKey: "",
 						offsitePrefix: each.offsitePrefix ?? "",
 						offsiteVirtualHosted: each.offsiteVirtualHosted,
 						offsiteDatabases: each.offsiteDatabases,
@@ -555,12 +570,16 @@ function Settings() {
 						offsiteAccessKey: {
 							label: "Access key id",
 							control: "secret",
-							description: "Type a new one to replace the saved one.",
+							description: backups.at((each) =>
+								held(each.offsiteAccessKey, "The bucket's access key."),
+							),
 						},
 						offsiteSecretKey: {
 							label: "Secret access key",
 							control: "secret",
-							description: "Type a new one to replace the saved one.",
+							description: backups.at((each) =>
+								held(each.offsiteSecretKey, "The bucket's secret key."),
+							),
 						},
 						offsitePrefix: {
 							label: "Folder in the bucket",

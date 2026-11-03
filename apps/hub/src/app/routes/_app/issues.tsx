@@ -1,4 +1,4 @@
-import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
+import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Banner } from "@fcalell/plugin-react-ui/components/banner";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
@@ -35,7 +35,6 @@ const WHY: Record<IssueFilter, string> = {
 function Issues() {
 	const run = useMutation(orpc.health.run.mutationOptions());
 	const summary = orpc.health.summary.read();
-	const ffmpeg = useRead(summary)?.ffmpeg;
 	const toRow = (issue: Issue): Row => ({
 		key: issue.value,
 		leading: { status: issue.count > 0 ? "attention" : "done" },
@@ -47,12 +46,14 @@ function Issues() {
 	});
 	return (
 		<Pane title="Issues" back={false}>
-			{ffmpeg === false && (
-				<Banner
-					tone="attention"
-					sentence="The corrupt and fake bitrate checks need ffmpeg on the hub's PATH."
-				/>
-			)}
+			<Banner
+				tone="attention"
+				sentence={summary.at((each) =>
+					each.ffmpeg === false
+						? "The corrupt and fake bitrate checks need ffmpeg on the hub's PATH."
+						: undefined,
+				)}
+			/>
 			<Section
 				title="By issue"
 				items={summary.at((each) => each.issues.map(toRow))}

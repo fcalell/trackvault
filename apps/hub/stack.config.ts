@@ -32,6 +32,8 @@ export default defineConfig({
 			// Claude and other MCP clients connect as the owner (src/worker/mcp.ts lists
 			// the procedures they may call).
 			mcp: true,
+			// The phone signs in with an email code too: trust its deep-link scheme.
+			expo: { scheme: "trackvault" },
 		}),
 		api(),
 		vite(),

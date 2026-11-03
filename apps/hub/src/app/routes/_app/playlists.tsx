@@ -201,7 +201,7 @@ function Playlists() {
 								onChange: setRule,
 								submit: { label: "Add", done: "Smart playlist added" },
 							},
-							children: <SmartPreview rule={rule} />,
+							after: <SmartPreview rule={rule} />,
 						}),
 					},
 				]}

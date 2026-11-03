@@ -1,13 +1,15 @@
 import { Pane } from "@fcalell/plugin-native-ui/components/pane";
 import { Section } from "@fcalell/plugin-native-ui/components/section";
+import { usePlayer } from "@fcalell/plugin-native-ui/lib/player";
 import { useLocalSearchParams } from "expo-router";
 import { orpc } from "../../lib/api";
-import { duration, trackMeta } from "../../lib/format";
+import { trackItems } from "../../lib/rows";
 
 export default function PlaylistRecord() {
 	const { id } = useLocalSearchParams<{ id: string }>();
 	const playlist = orpc.playlists.get.read({ id });
 	const tracks = orpc.playlists.tracks.window({ playlistId: id, limit: 50 });
+	const playing = usePlayer().track?.key;
 	return (
 		<Pane
 			read={playlist}
@@ -26,15 +28,7 @@ export default function PlaylistRecord() {
 		>
 			<Section
 				title="Tracks"
-				items={tracks.at((rows) =>
-					rows.map((t) => ({
-						key: t.id,
-						title: t.title ?? "Untitled",
-						meta: trackMeta(t),
-						trailing: { value: duration(t.durationMs) },
-						href: `/track/${t.id}` as const,
-					})),
-				)}
+				items={tracks.at((rows) => trackItems(tracks, rows, playing))}
 				empty={{ sentence: "Nothing in this playlist." }}
 			/>
 		</Pane>

@@ -33,7 +33,6 @@ function Duplicates() {
 	const keep = useMutation(orpc.dupes.keep.mutationOptions());
 	const groups = orpc.dupes.groups.read({ limit });
 	const status = orpc.dupes.status.read();
-	const fpcalc = useRead(status)?.fpcalc;
 	const found = useRead(groups);
 	const total = found?.total ?? 0;
 
@@ -119,12 +118,16 @@ function Duplicates() {
 				},
 			]}
 		>
-			{fpcalc === false && (
-				<Banner
-					tone="attention"
-					sentence="Without fpcalc on the hub's PATH the search compares audio hashes and names only."
-				/>
-			)}
+			<Banner
+				tone="attention"
+				sentence={status
+					.at((each) =>
+						each.fpcalc === false
+							? "Without fpcalc on the hub's PATH the search compares audio hashes and names only."
+							: undefined,
+					)
+					.or(undefined)}
+			/>
 			<Section
 				items={groups.at(rowsOf)}
 				groups={groups.at((data) => data.groups.map(band))}

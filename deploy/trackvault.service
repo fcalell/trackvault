@@ -1,5 +1,5 @@
 # /etc/systemd/system/trackvault.service
-# The hub as a systemd service, running as its own user from the checkout.
+# The hub as a systemd service, running as its own user from the built bundle.
 # See docs/deploy.md.
 [Unit]
 Description=TrackVault hub
@@ -9,12 +9,12 @@ Wants=network-online.target
 [Service]
 User=trackvault
 Group=trackvault
-WorkingDirectory=/opt/trackvault/trackvault/apps/hub
+# The bundle: `dist/` copied here from the machine that built it (docs/deploy.md).
+WorkingDirectory=/opt/trackvault
 EnvironmentFile=/etc/trackvault/hub.env
-# Migrations first (they read DB_FILE), then the server. Node strips the types on
-# load: there is no compile step beyond `pnpm build` once per update.
-ExecStartPre=/opt/trackvault/trackvault/apps/hub/node_modules/.bin/stack db apply
-ExecStart=/usr/bin/node .stack/server.ts
+# Migrations are applied by the server before it listens, so there is no step before it.
+# PORT and HOST (in the env file) move where it listens.
+ExecStart=/usr/bin/node dist/server/server.mjs
 Restart=on-failure
 RestartSec=5
 # SIGTERM stops the services (a running job stays `running` and resumes on the next start).

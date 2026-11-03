@@ -5,7 +5,6 @@ import { Toolbar } from "@fcalell/plugin-native-ui/components/toolbar";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { orpc } from "../lib/api";
-import { refresh } from "../lib/refresh";
 
 type Direction = "up" | "flat" | "down";
 
@@ -18,10 +17,7 @@ export default function Next() {
 	const [direction, setDirection] = useState<Direction>("flat");
 	const found = orpc.sets.find.read({ q });
 	const suggestions = orpc.sets.suggest.read({ from, direction, limit: 20 });
-	const append = useMutation({
-		...orpc.sets.append.mutationOptions(),
-		onSuccess: refresh,
-	});
+	const append = useMutation(orpc.sets.append.mutationOptions());
 	return (
 		<Pane title="Next track" back={false}>
 			<Toolbar

@@ -424,7 +424,7 @@ export function LibraryPane({
 										to: "/jobs",
 									},
 								},
-								children: <EditPreview picked={picked} edit={edit} />,
+								after: <EditPreview picked={picked} edit={edit} />,
 							}),
 						},
 					],
