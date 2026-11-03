@@ -8,7 +8,7 @@ import type { Tone } from "@fcalell/ui-core/tokens";
 import type { JobView } from "../../shared/channels.ts";
 import { count } from "../ui/figures.ts";
 import { orpc } from "./api.ts";
-import { CHANGE_COLUMNS, CHANGE_ROW } from "./changes.ts";
+import { STORED_CHANGE_COLUMNS, STORED_CHANGE_ROW } from "./changes.ts";
 
 type Kind = "rules" | "unify" | "organise";
 type Fields = ("genre" | "artist" | "label")[];
@@ -52,8 +52,8 @@ function PreviewRows({ kind, fields }: Preview) {
 		<Table
 			label="Changes"
 			items={orpc.previews.list.window({ jobId: latest.job.id })}
-			columns={CHANGE_COLUMNS}
-			row={CHANGE_ROW}
+			columns={STORED_CHANGE_COLUMNS}
+			row={STORED_CHANGE_ROW}
 		/>
 	);
 }

@@ -1,7 +1,17 @@
 import { procedure } from "virtual:stack-procedure";
 import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
-import { asc, count, desc, eq, inArray } from "@fcalell/plugin-db/orm";
+import {
+	and,
+	asc,
+	count,
+	desc,
+	eq,
+	inArray,
+	isNotNull,
+	isNull,
+	like,
+} from "@fcalell/plugin-db/orm";
 import { batches, changes, playlists, tracks } from "../../schema/index.ts";
 import undo from "../../server/jobs/undo.ts";
 import { db } from "../../server/lib/db.ts";
@@ -58,25 +68,41 @@ const asView = (row: typeof batches.$inferSelect) => ({
 });
 
 export const history = {
-	// The batches, newest first, windowed.
+	// The batches, newest first, windowed; `origin` is what made them (a prefix, so
+	// "rekordbox" holds every install's), `q` a word of the label.
 	list: procedure({
 		auth: true,
 		paginated: "window",
 		maxLimit: 200,
 		reads: ["batches"],
 	})
-		.input(z.object({}))
+		.input(
+			z.object({
+				q: z.string().trim().max(100).optional(),
+				origin: z.string().optional(),
+				state: z.enum(["applied", "undone"]).optional(),
+			}),
+		)
 		.query(({ input }) => {
 			const database = db();
+			const where = and(
+				input.q ? like(batches.label, `%${input.q}%`) : undefined,
+				input.origin ? like(batches.origin, `${input.origin}%`) : undefined,
+				input.state === "undone" ? isNotNull(batches.undoneBy) : undefined,
+				input.state === "applied" ? isNull(batches.undoneBy) : undefined,
+			);
 			const data = database
 				.select()
 				.from(batches)
+				.where(where)
 				.orderBy(desc(batches.at), desc(batches.id))
 				.limit(input.limit)
 				.offset(input.offset)
 				.all()
 				.map(asView);
-			const total = database.select({ n: count() }).from(batches).get()?.n ?? 0;
+			const total =
+				database.select({ n: count() }).from(batches).where(where).get()?.n ??
+				0;
 			return { data, total, offset: input.offset };
 		}),
 
@@ -112,6 +138,7 @@ export const history = {
 					before: changes.before,
 					after: changes.after,
 					title: tracks.title,
+					mixName: tracks.mixName,
 					artist: tracks.artist,
 					playlist: playlists.name,
 				})
@@ -150,13 +177,15 @@ export const history = {
 			);
 			const data = rows.map((row) => ({
 				id: String(row.seq),
-				trackId: row.entityId,
-				label:
+				entity: row.entity,
+				entityId: row.entityId,
+				// A playlist's change is titled by the playlist.
+				title:
 					row.entity === "playlist"
 						? (row.playlist ?? "Deleted playlist")
-						: row.title
-							? [row.artist, row.title].filter(Boolean).join(" - ")
-							: row.entityId,
+						: row.title,
+				mixName: row.entity === "playlist" ? null : row.mixName,
+				artist: row.entity === "playlist" ? null : row.artist,
 				field: row.field,
 				before: describe(row.field, row.before, titles),
 				after: describe(row.field, row.after, titles),

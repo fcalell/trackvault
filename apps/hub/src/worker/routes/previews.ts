@@ -1,7 +1,7 @@
 import { procedure } from "virtual:stack-procedure";
 import { z } from "@fcalell/plugin-api/schema";
 import { asc, count, desc, eq } from "@fcalell/plugin-db/orm";
-import { jobs, previews as previewsTable } from "../../schema/index.ts";
+import { jobs, previews as previewsTable, tracks } from "../../schema/index.ts";
 import { db } from "../../server/lib/db.ts";
 import { toView } from "../../server/services/jobs.ts";
 
@@ -53,17 +53,26 @@ export const previews = {
 		.query(({ input }) => {
 			const database = db();
 			const data = database
-				.select()
+				.select({
+					row: previewsTable,
+					title: tracks.title,
+					mixName: tracks.mixName,
+					artist: tracks.artist,
+				})
 				.from(previewsTable)
+				.leftJoin(tracks, eq(tracks.id, previewsTable.trackId))
 				.where(eq(previewsTable.jobId, input.jobId))
 				.orderBy(asc(previewsTable.pos))
 				.limit(input.limit)
 				.offset(input.offset)
 				.all()
-				.map((row) => ({
+				.map(({ row, title, mixName, artist }) => ({
 					id: String(row.id),
-					trackId: row.trackId,
-					label: row.label ?? row.trackId,
+					entity: "track",
+					entityId: row.trackId,
+					title,
+					mixName,
+					artist,
 					field: row.field,
 					before: row.before,
 					after: row.after,
