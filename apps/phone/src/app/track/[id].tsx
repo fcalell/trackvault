@@ -33,7 +33,7 @@ export default function TrackRecord() {
 					track.at((t) => duration(t.durationMs)),
 				],
 			}}
-			actions={[
+			acts={[
 				track.at((t) => ({
 					icon: "Play" as const,
 					label: "Play",

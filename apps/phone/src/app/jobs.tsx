@@ -23,8 +23,8 @@ export default function Jobs() {
 					rows.map((j) => ({
 						key: j.id,
 						title: j.kind,
-						status: STATUS[j.state],
-						meta: [j.error ?? j.message ?? ""].filter(Boolean),
+						facts: [STATUS[j.state]],
+						line: j.error ?? j.message ?? undefined,
 						trailing:
 							j.state === "running" && j.total > 0
 								? { value: `${j.done}/${j.total}` }

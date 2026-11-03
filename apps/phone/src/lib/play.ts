@@ -57,7 +57,7 @@ async function toTrack(row: Playable): Promise<Track> {
 		src: `${at}?t=${token}`,
 		key: row.id,
 		title: row.title ?? "Untitled",
-		meta: row.artist ?? undefined,
+		line: row.artist ?? undefined,
 		artwork: `${at}/art?size=128&t=${token}`,
 		duration: row.durationMs ? row.durationMs / 1000 : undefined,
 	};

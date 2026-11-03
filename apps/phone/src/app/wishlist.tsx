@@ -19,13 +19,13 @@ const STATUS: Record<WantRow["status"], StatusMark> = {
 export default function Wishlist() {
 	const wants = orpc.wishlist.list.window({ limit: 50 });
 	return (
-		<Pane title="Wishlist" back="/more" actions={[wishAct]}>
+		<Pane title="Wishlist" back="/more" acts={[wishAct]}>
 			<Section
 				items={wants.at((rows) =>
 					rows.map((w) => ({
 						key: String(w.id),
 						title: `${w.artist} · ${w.title}${w.mix ? ` (${w.mix})` : ""}`,
-						status: STATUS[w.status],
+						facts: [STATUS[w.status]],
 						trailing: { age: w.createdAt.toISOString() },
 					})),
 				)}

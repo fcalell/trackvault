@@ -6,8 +6,8 @@ export const duration = (ms: number | null | undefined): string => {
 	return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 };
 
-/** The parts a track's meta line shows, the empty ones left out. */
-export function trackMeta(t: {
+/** The parts a track row's facts show, the empty ones left out. */
+export function trackFacts(t: {
 	artist: string | null;
 	bpm: number | null;
 	key: string | null;

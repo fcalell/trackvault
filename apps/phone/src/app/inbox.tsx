@@ -58,13 +58,13 @@ export default function Inbox() {
 						return {
 							key: item.id,
 							title: item.label,
-							status: STATUS[item.state],
-							meta: [
+							facts: [
+								STATUS[item.state],
 								...(item.format ? [item.format.toUpperCase()] : []),
 								...(item.bitrate ? [`${item.bitrate} kbps`] : []),
 								...(item.durationMs ? [duration(item.durationMs)] : []),
-								...(item.reason ? [item.reason] : []),
 							],
+							line: item.reason ?? undefined,
 							trailing: { age: item.createdAt.toISOString() },
 							act: open
 								? {

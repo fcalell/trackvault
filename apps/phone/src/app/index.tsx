@@ -17,7 +17,7 @@ export default function Library() {
 	});
 	const playing = usePlayer().track?.key;
 	return (
-		<Pane title="Library" back={false} actions={[wishAct]}>
+		<Pane title="Library" back={false} acts={[wishAct]}>
 			<Toolbar
 				search={{ value: q, onChange: setQ, placeholder: "Artist, title, tag" }}
 			/>

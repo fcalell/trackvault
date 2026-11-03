@@ -18,7 +18,7 @@ function nest(rows: readonly TreeRow[], parent: string | null): RowItem[] {
 						r.kind === "folder" ? ("Folder" as const) : ("ListMusic" as const),
 				},
 				trailing: r.kind === "folder" ? undefined : { count: r.tracks },
-				meta: r.kind === "smart" ? ["Smart"] : undefined,
+				facts: r.kind === "smart" ? ["Smart"] : undefined,
 				href: r.kind === "folder" ? undefined : (`/playlist/${r.id}` as const),
 				children,
 			};

@@ -47,7 +47,7 @@ export default function Next() {
 						rows.map((t) => ({
 							key: t.id,
 							title: t.title ?? "Untitled",
-							meta: [
+							facts: [
 								t.artist ?? "Unknown artist",
 								...(t.bpm ? [`${Math.round(t.bpm)} BPM`] : []),
 								...(t.key ? [t.key] : []),
@@ -67,13 +67,13 @@ export default function Next() {
 					rows.map((t) => ({
 						key: t.id,
 						title: t.title ?? "Untitled",
-						meta: [
+						facts: [
 							t.artist ?? "Unknown artist",
 							...(t.bpm ? [`${Math.round(t.bpm)} BPM`] : []),
 							...(t.key ? [t.key] : []),
 							...(t.energy ? [`Energy ${t.energy}`] : []),
-							t.why,
 						],
+						line: t.why,
 						trailing: { value: `${t.score}%` },
 						href: `/track/${t.id}` as const,
 						act: {

@@ -1,5 +1,5 @@
 import type { RowItem } from "@fcalell/plugin-native-ui/components/section";
-import { duration, trackMeta } from "./format";
+import { duration, trackFacts } from "./format";
 import { type Playable, playFrom } from "./play";
 
 type Window = Parameters<typeof playFrom>[0];
@@ -17,7 +17,7 @@ export function trackItems(
 	return rows.map((t, at) => ({
 		key: t.id,
 		title: t.title ?? "Untitled",
-		meta: trackMeta(t),
+		facts: trackFacts(t),
 		leading: playing === t.id ? { icon: "Volume2" as const } : undefined,
 		trailing: { value: duration(t.durationMs) },
 		href: `/track/${t.id}` as const,
