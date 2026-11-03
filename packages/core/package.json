@@ -6,11 +6,19 @@
 	"description": "Pure domain code shared by the hub and the agent: tag IO, audio identity, text normalisation, path safety. Plain Node 24 TypeScript, run from source.",
 	"exports": {
 		"./analyze": "./src/analyze.ts",
+		"./dedupe": "./src/dedupe/index.ts",
 		"./hash": "./src/hash/index.ts",
 		"./issues": "./src/issues.ts",
 		"./normalize": "./src/normalize/index.ts",
+		"./organize": "./src/organize/index.ts",
 		"./paths": "./src/paths/index.ts",
-		"./tags": "./src/tags/index.ts"
+		"./quality": "./src/quality/index.ts",
+		"./rekordbox": "./src/rekordbox/index.ts",
+		"./rekordbox/anlz": "./src/rekordbox/anlz.ts",
+		"./rekordbox/sync": "./src/rekordbox/sync.ts",
+		"./rules": "./src/rules/index.ts",
+		"./tags": "./src/tags/index.ts",
+		"./taxonomy": "./src/taxonomy/index.ts"
 	},
 	"scripts": {
 		"check": "tsc --noEmit && biome check ."
@@ -19,5 +27,8 @@
 		"@fcalell/typescript-config": "link:../../../stack/packages/typescript-config",
 		"@types/node": "^25.5.0",
 		"typescript": "^5.9.3"
+	},
+	"dependencies": {
+		"better-sqlite3-multiple-ciphers": "13.0.3"
 	}
 }
