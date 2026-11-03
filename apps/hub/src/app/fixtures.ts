@@ -1095,7 +1095,9 @@ export default defineFixtures<
 					collisions: 1,
 					unchanged: 48_000,
 					skipped: 0,
+					rules: 2,
 				},
+				apply: null,
 			}),
 			list: ({ offset = 0, limit = 200 }) => ({
 				data: CHANGE_ROWS.slice(offset, offset + limit),
@@ -1107,7 +1109,6 @@ export default defineFixtures<
 			get: () => ({
 				template: "{genre|Unknown}/{artist|Unknown} - {title}",
 			}),
-			save: () => undefined,
 			preview: () => job("organise", "running", 1),
 			apply: () => job("organise", "running", 1),
 		},

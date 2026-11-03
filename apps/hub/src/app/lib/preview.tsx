@@ -4,12 +4,16 @@ import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { Act } from "@fcalell/plugin-react-ui/lib/act";
 import type { Tone } from "@fcalell/ui-core/tokens";
+import type { AppRouter } from "../../../.stack/worker";
 import type { JobView } from "../../shared/channels.ts";
-import { count } from "../ui/figures.ts";
+import { count, date } from "../ui/figures.ts";
 import { orpc } from "./api.ts";
 import { CHANGE_COLUMNS, CHANGE_ROW } from "./changes.ts";
 
 type Kind = "rules" | "unify" | "organise";
+
+type Latest = NonNullable<AppRouter["previews"]["latest"]["__output"]>;
+type Counts = Record<string, number>;
 
 const TONES: Record<JobView["state"], Tone> = {
 	queued: "waiting",
@@ -19,27 +23,57 @@ const TONES: Record<JobView["state"], Tone> = {
 	cancelled: "idle",
 };
 
-// The sentence a preview job's state and counts make.
-function said(
-	job: JobView,
-	result: Record<string, number> | null,
-	words: (result: Record<string, number>) => string,
-): string {
-	if (job.state === "failed") return job.error ?? "The preview failed.";
-	if (job.state === "cancelled") return "The preview was cancelled.";
-	if (job.state !== "done" || !result) {
-		return job.total > 0
-			? `${job.message ?? "Working"}: ${count(job.done)} of ${count(job.total)}`
-			: (job.message ?? "Waiting for the preview to start.");
+const progress = (job: JobView, idle: string): string =>
+	job.total > 0
+		? `${job.message ?? "Working"}: ${count(job.done)} of ${count(job.total)}`
+		: (job.message ?? idle);
+
+const when = (job: JobView): string =>
+	job.finishedAt ? date(new Date(job.finishedAt)) : "";
+
+// What a preview and the apply after it say together: a plan waiting to be applied
+// is a caution, and only an apply that finished reads as done.
+function verdict(
+	latest: Latest,
+	words: (result: Counts) => string,
+	changes: (result: Counts) => number,
+): { tone: Tone; sentence: string } {
+	const { job, apply } = latest;
+	if (apply) {
+		if (apply.state === "done")
+			return { tone: "done", sentence: `Applied ${when(apply)}.` };
+		if (apply.state === "failed")
+			return { tone: "failed", sentence: apply.error ?? "The apply failed." };
+		if (apply.state === "cancelled")
+			return { tone: "idle", sentence: "The apply was cancelled." };
+		return {
+			tone: TONES[apply.state],
+			sentence: progress(apply, "Waiting to apply."),
+		};
 	}
-	return words(result);
+	if (job.state === "failed")
+		return { tone: "failed", sentence: job.error ?? "The preview failed." };
+	if (job.state === "cancelled")
+		return { tone: "idle", sentence: "The preview was cancelled." };
+	if (job.state !== "done" || !latest.result)
+		return {
+			tone: TONES[job.state],
+			sentence: progress(job, "Waiting for the preview to start."),
+		};
+	const result = latest.result as Counts;
+	return changes(result) > 0
+		? {
+				tone: "attention",
+				sentence: `${words(result)} Planned ${when(job)}, not applied yet.`,
+			}
+		: { tone: "idle", sentence: `${words(result)} Planned ${when(job)}.` };
 }
 
-// A rows of one result window, paged by the hub: the last preview job of a kind,
-// its counts and its changes as before and after.
+// The rows of the plan the last preview stored, paged by the hub, until it is applied.
 function PreviewRows({ kind }: { kind: Kind }) {
 	const latest = useRead(orpc.previews.latest.read({ kind }));
-	if (latest?.job.state !== "done") return null;
+	if (latest?.job.state !== "done" || latest.apply?.state === "done")
+		return null;
 	return (
 		<Table
 			label="Changes"
@@ -50,8 +84,9 @@ function PreviewRows({ kind }: { kind: Kind }) {
 	);
 }
 
-// The preview of a bulk change on a screen: a banner with the job's progress or its
-// counts, the apply act once it is done, and the change table under them.
+// The preview of a bulk change on a screen: a banner with the plan's progress, its
+// counts and when it was made, the apply act while the plan waits, and the change
+// table under it.
 export function PreviewSection({
 	kind,
 	title,
@@ -67,27 +102,23 @@ export function PreviewSection({
 	// Under the title before any preview has run (a sentence).
 	none: string;
 	// The counts in words once the preview is done.
-	words: (result: Record<string, number>) => string;
+	words: (result: Counts) => string;
 	// How many changes the result holds: none offers no apply.
-	changes: (result: Record<string, number>) => number;
+	changes: (result: Counts) => number;
 }) {
 	const latest = orpc.previews.latest.read({ kind });
+	const said = latest.at((each) =>
+		each ? verdict(each, words, changes) : undefined,
+	);
 	return (
 		<Section title={title} read={latest} empty={{ sentence: none }}>
 			<Banner
-				tone={latest.at((each) => (each ? TONES[each.job.state] : "idle"))}
-				sentence={latest.at((each) =>
-					each
-						? said(
-								each.job,
-								each.result as Record<string, number> | null,
-								words,
-							)
-						: undefined,
-				)}
+				tone={said.at((each) => each?.tone ?? "idle")}
+				sentence={said.at((each) => each?.sentence)}
 				act={latest.at((each) =>
 					each?.job.state === "done" &&
-					changes((each.result ?? {}) as Record<string, number>) > 0
+					!each.apply &&
+					changes((each.result ?? {}) as Counts) > 0
 						? apply
 						: undefined,
 				)}

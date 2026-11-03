@@ -14,6 +14,7 @@ import {
 import { rules } from "../../schema/index.ts";
 import rulesJob from "../../server/jobs/rules.ts";
 import { db } from "../../server/lib/db.ts";
+import { rerunPreview } from "../../server/lib/preview-rerun.ts";
 import { enqueue } from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
 
@@ -156,7 +157,7 @@ export const cleanup = {
 			}),
 	),
 
-	save: procedure({ auth: true, writes: ["rules"] })
+	save: procedure({ auth: true, writes: ["rules", "previews", "jobs"] })
 		.input(ruleInput)
 		.mutation(({ input }) => {
 			const id = input.id ?? `rule.${randomUUID()}`;
@@ -204,10 +205,11 @@ export const cleanup = {
 					set: { name: input.name, definition: rule, updatedAt: new Date() },
 				})
 				.run();
+			rerunPreview(rulesJob, { mode: "preview" });
 			return { id };
 		}),
 
-	toggle: procedure({ auth: true, writes: ["rules"] })
+	toggle: procedure({ auth: true, writes: ["rules", "previews", "jobs"] })
 		.input(z.object({ id: z.string(), enabled: z.boolean() }))
 		.mutation(({ input }) => {
 			db()
@@ -215,9 +217,10 @@ export const cleanup = {
 				.set({ enabled: input.enabled, updatedAt: new Date() })
 				.where(eq(rules.id, input.id))
 				.run();
+			rerunPreview(rulesJob, { mode: "preview" });
 		}),
 
-	remove: procedure({ auth: true, writes: ["rules"] })
+	remove: procedure({ auth: true, writes: ["rules", "previews", "jobs"] })
 		.input(z.object({ id: z.string() }))
 		.mutation(({ input }) => {
 			const row = db().select().from(rules).where(eq(rules.id, input.id)).get();
@@ -226,13 +229,14 @@ export const cleanup = {
 					message: "A built-in rule can only be switched off",
 				});
 			db().delete(rules).where(eq(rules.id, input.id)).run();
+			rerunPreview(rulesJob, { mode: "preview" });
 		}),
 
 	// What the enabled rules would change across the library: a job that stores the
-	// rows for the screen to page through.
+	// rows for the screen to page through. Every change to the rules plans again.
 	preview: procedure({ auth: true, writes: ["previews", "jobs"] })
 		.output(jobViewSchema)
-		.mutation(() => enqueue(rulesJob, { mode: "preview" })),
+		.mutation(() => rerunPreview(rulesJob, { mode: "preview" })),
 
 	apply: procedure({ auth: true, writes: ["tracks", "jobs"] })
 		.output(jobViewSchema)

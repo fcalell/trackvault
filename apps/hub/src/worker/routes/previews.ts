@@ -8,7 +8,8 @@ import { toView } from "../../server/services/jobs.ts";
 const KINDS = ["rules", "unify", "organise"] as const;
 
 export const previews = {
-	// The latest job of a kind that stored a preview: its progress and its counts.
+	// The latest job of a kind that stored a preview: its progress and its counts,
+	// and the apply job queued after it, if any, which says whether the plan was carried out.
 	latest: procedure({ auth: true, reads: ["jobs", "previews"] })
 		.input(z.object({ kind: z.enum(KINDS) }))
 		.query(({ input }) => {
@@ -19,13 +20,19 @@ export const previews = {
 				.orderBy(desc(jobs.createdAt))
 				.limit(8)
 				.all();
-			const row = rows.find(
-				(each) =>
-					(each.payload as { mode?: string } | null)?.mode === "preview",
-			);
-			return row
-				? { job: toView(row), result: (row.result ?? null) as unknown }
-				: null;
+			const modeOf = (row: (typeof rows)[number]) =>
+				(row.payload as { mode?: string } | null)?.mode;
+			const planned = rows.findIndex((each) => modeOf(each) === "preview");
+			const row = rows[planned];
+			if (!row) return null;
+			const applying = rows
+				.slice(0, planned)
+				.find((each) => modeOf(each) === "apply");
+			return {
+				job: toView(row),
+				result: (row.result ?? null) as unknown,
+				apply: applying ? toView(applying) : null,
+			};
 		}),
 
 	// The rows a preview job stored, in the order it found them, windowed.
