@@ -6,6 +6,7 @@ import { skipToken } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import type { AppRouter } from "../../../.stack/worker";
 import type { PlaylistSource } from "../../server/lib/playlist-selection.ts";
+import { namedBatch } from "../ui/batch.ts";
 import { bpm, count } from "../ui/figures.ts";
 import { trackRow } from "../ui/track.ts";
 import { orpc } from "./api.ts";
@@ -71,12 +72,15 @@ export function usePlaylistPlaces(): PlaceSpec<PlaylistSource>[] {
 						drop: {
 							accepts: "track",
 							label: `Add to ${node.name}`,
-							onDrop: (drag) =>
-								add.mutateAsync({
-									playlistId: node.id,
-									tracks: drag.picked,
-								}),
-							done: `Added to ${node.name}`,
+							onDrop: async (drag) =>
+								namedBatch(
+									await add.mutateAsync({
+										playlistId: node.id,
+										tracks: drag.picked,
+									}),
+									`Added to ${node.name}`,
+									`They are already in ${node.name}`,
+								),
 						},
 					}
 				: {}),
@@ -156,9 +160,15 @@ export function AddTracks({ playlistId }: { playlistId: string }) {
 								act: {
 									icon: "Plus",
 									label: `Add ${each.title ?? "Untitled"}`,
-									onAct: () =>
-										add.mutateAsync({ playlistId, tracks: { ids: [each.id] } }),
-									done: "Added to the playlist",
+									onAct: async () =>
+										namedBatch(
+											await add.mutateAsync({
+												playlistId,
+												tracks: { ids: [each.id] },
+											}),
+											"Added to the playlist",
+											"It is already in the playlist",
+										),
 								},
 							}),
 					),

@@ -1,5 +1,5 @@
 import { applyRules, compileRules } from "@trackvault/core/rules";
-import { applyPatches, flushTagWrites } from "../lib/changes.ts";
+import { applyPatches, flushTagWrites, openBatch } from "../lib/changes.ts";
 import { defineJob } from "../lib/job.ts";
 import { PreviewWriter, text } from "../lib/previews.ts";
 import { activeRules, patchOf, ruleTrack } from "../lib/rules.ts";
@@ -98,14 +98,16 @@ export default defineJob<RulesPayload, RulesResult>({
 			progress(total, total, `${result.tracks} tracks would change`);
 			return result;
 		}
-		const applied = applyPatches(
-			patches(),
-			{ batchId: id, origin: "rule", label: "Cleanup rules" },
-			{
-				signal,
-				progress: (handled) => progress(handled, total, "Applying rules"),
-			},
-		);
+		const info = {
+			batchId: id,
+			origin: "rule" as const,
+			label: "Cleanup rules",
+		};
+		openBatch(info);
+		const applied = applyPatches(patches(), info, {
+			signal,
+			progress: (handled) => progress(handled, total, "Applying rules"),
+		});
 		result.tracks = applied.tracks;
 		result.fields = applied.fields;
 		const written = await flushTagWrites(id, {

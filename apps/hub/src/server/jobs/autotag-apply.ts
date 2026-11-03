@@ -1,4 +1,4 @@
-import { applyPatches, flushTagWrites } from "../lib/changes.ts";
+import { applyPatches, flushTagWrites, openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { defineJob } from "../lib/job.ts";
 import { statement } from "../lib/raw.ts";
@@ -52,15 +52,13 @@ export default defineJob<Record<string, never>, AutotagApplyResult>({
 			}
 			if (Object.keys(patch).length > 0) entries.push({ id: row.id, patch });
 		}
+		const info = { batchId: id, origin: "autotag" as const, label: "Auto-tag" };
+		openBatch(info);
 		progress(0, entries.length, "Applying tags");
-		const result = applyPatches(
-			entries,
-			{ batchId: id, origin: "autotag", label: "Auto-tag" },
-			{
-				signal,
-				progress: (done) => progress(done, entries.length, "Applying tags"),
-			},
-		);
+		const result = applyPatches(entries, info, {
+			signal,
+			progress: (done) => progress(done, entries.length, "Applying tags"),
+		});
 		const written = await flushTagWrites(id, {
 			signal,
 			progress: (done, of, message) => progress(done, of, message),

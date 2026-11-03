@@ -26,7 +26,7 @@ const batchView = z.object({
 	count: z.number(),
 	at: z.date(),
 	undone: z.boolean(),
-	// A scan only reads the disk; its changes are not undone.
+	// A scan only reads the disk, and a run that changed nothing has nothing to put back.
 	undoable: z.boolean(),
 });
 
@@ -81,7 +81,7 @@ const asView = (row: typeof batches.$inferSelect) => ({
 	count: row.count,
 	at: row.at,
 	undone: row.undoneBy !== null,
-	undoable: row.origin !== "scan" && row.undoneBy === null,
+	undoable: row.origin !== "scan" && row.undoneBy === null && row.count > 0,
 });
 
 export const history = {

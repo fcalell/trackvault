@@ -15,6 +15,7 @@ import { orpc } from "../../lib/api.ts";
 import { useChosen } from "../../lib/chosen.ts";
 import { AddTracks, SmartPreview } from "../../lib/playlists.tsx";
 import { ListSource, useListPlay } from "../../lib/queue.ts";
+import { namedBatch } from "../../ui/batch.ts";
 import { count, span } from "../../ui/figures.ts";
 import { TRACK_COLUMNS } from "../../ui/track.ts";
 import { SMART_FIELDS } from "./playlists.tsx";
@@ -60,7 +61,7 @@ function Playlist() {
 		{ playlistId },
 		"tracks",
 	);
-	const { act } = useListPlay(tracks);
+	const { act, playing } = useListPlay(tracks);
 	const manual = kind === "manual";
 	const shared = {
 		label: "Tracks",
@@ -71,6 +72,7 @@ function Playlist() {
 			act,
 		},
 		selected: open,
+		current: playing,
 		drag: { kind: "track" },
 	};
 
@@ -185,9 +187,15 @@ function Playlist() {
 										sentence:
 											"They leave this playlist and stay in the library. Undo the batch in History.",
 									},
-									onAct: () =>
-										removeTracks.mutateAsync({ playlistId, tracks: picked }),
-									done: "Removed from the playlist",
+									onAct: async () =>
+										namedBatch(
+											await removeTracks.mutateAsync({
+												playlistId,
+												tracks: picked,
+											}),
+											"Removed from the playlist",
+											"They were not in the playlist",
+										),
 								},
 							]}
 						/>

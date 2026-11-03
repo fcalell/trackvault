@@ -10,6 +10,7 @@ import { useParams } from "@tanstack/react-router";
 import { type ReactNode, useMemo, useState } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
 import { type ISSUE_FILTERS, ISSUE_LABELS } from "../../shared/library.ts";
+import { batchToast, namedBatch, queuedBatch } from "../ui/batch.ts";
 import { count } from "../ui/figures.ts";
 import { TRACK_COLUMNS } from "../ui/track.ts";
 import { orpc } from "./api.ts";
@@ -102,7 +103,7 @@ export function LibraryPane({
 		"tracks",
 	);
 
-	const { act } = useListPlay(tracks);
+	const { act, playing } = useListPlay(tracks);
 
 	return (
 		<ListSource value={tracks}>
@@ -159,9 +160,11 @@ export function LibraryPane({
 									sentence:
 										"Their files move to the folders the Organiser's template names. Undo the batch in History.",
 								},
-								onAct: () => organise.mutateAsync({ tracks: picked }),
-								done: "Organising",
-								to: "/jobs",
+								onAct: () =>
+									queuedBatch(
+										organise.mutateAsync({ tracks: picked }),
+										"Organising",
+									),
 							},
 							{
 								label: "Apply rules",
@@ -171,9 +174,11 @@ export function LibraryPane({
 									sentence:
 										"Every enabled rule runs over the chosen tracks and their tags are rewritten. Undo the batch in History.",
 								},
-								onAct: () => rules.mutateAsync({ tracks: picked }),
-								done: "Applying rules",
-								to: "/jobs",
+								onAct: () =>
+									queuedBatch(
+										rules.mutateAsync({ tracks: picked }),
+										"Applying rules",
+									),
 							},
 							{
 								label: "Edit tags",
@@ -189,11 +194,8 @@ export function LibraryPane({
 										after: (input) => (
 											<EditPreview picked={picked} edit={input} />
 										),
-										submit: {
-											label: "Apply",
-											done: "Editing tags",
-											to: "/jobs",
-										},
+										submit: { label: "Apply" },
+										onDone: (job) => batchToast(job, "Editing tags"),
 									},
 								}),
 							},
@@ -206,9 +208,11 @@ export function LibraryPane({
 									sentence:
 										"Their files move to the quarantine and the tracks leave the library. Restore them from Quarantine, or undo the batch in History.",
 								},
-								onAct: () => quarantine.mutateAsync({ tracks: picked }),
-								done: "Moving files to the quarantine",
-								to: "/jobs",
+								onAct: () =>
+									queuedBatch(
+										quarantine.mutateAsync({ tracks: picked }),
+										"Moving files to the quarantine",
+									),
 							},
 							{
 								label: "Add to playlist",
@@ -233,7 +237,13 @@ export function LibraryPane({
 												),
 											},
 										},
-										submit: { label: "Add", done: "Added to the playlist" },
+										submit: { label: "Add" },
+										onDone: (answer) =>
+											namedBatch(
+												answer,
+												"Added to the playlist",
+												"They are already in the playlist",
+											),
 									},
 								}),
 							},
@@ -349,6 +359,7 @@ export function LibraryPane({
 						act,
 					}}
 					selected={open}
+					current={playing}
 					drag={{ kind: "track" }}
 					choose={{ picked, onPick: setPicked }}
 				/>

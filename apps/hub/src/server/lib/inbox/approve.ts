@@ -7,7 +7,12 @@ import { files, tracks, trackTags, wishlist } from "../../../schema/index.ts";
 import peaks from "../../jobs/peaks.ts";
 import { enqueue } from "../../services/jobs.ts";
 import { bumpVersion, notifyChanged } from "../../services/library.ts";
-import { applyPatches, type BatchInfo, flushTagWrites } from "../changes.ts";
+import {
+	applyPatches,
+	type BatchInfo,
+	flushTagWrites,
+	openBatch,
+} from "../changes.ts";
 import { db } from "../db.ts";
 import { type FileMove, moveTracked } from "../file-ops.ts";
 import { acquireFs } from "../fs-lock.ts";
@@ -67,6 +72,7 @@ export async function approveItems(
 		origin: options.origin,
 		label: "Inbox approval",
 	};
+	openBatch(info);
 	const result: ApproveResult = {
 		approved: 0,
 		replaced: 0,

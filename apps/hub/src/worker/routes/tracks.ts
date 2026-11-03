@@ -180,8 +180,10 @@ export const tracks = {
 
 	// Edits tags in the library and queues the file write. The database is the
 	// truth the moment this answers; the tag-write job follows on disk.
+	// The batch the edit wrote, or none when every field was already as given.
 	update: procedure({ auth: true, writes: ["tracks"] })
 		.input(edit)
+		.output(z.object({ batch: z.string().nullable() }))
 		.mutation(({ input }) => {
 			const database = db();
 			const before = database
@@ -197,7 +199,7 @@ export const tracks = {
 				if (value !== undefined) Object.assign(wanted, { [key]: value });
 			}
 			const edits = diffFields(before, { ...before, ...wanted }, TAG_KEYS);
-			if (edits.length === 0) return before;
+			if (edits.length === 0) return { batch: null };
 
 			const merged = { ...before, ...wanted } as TrackRow;
 			const derived = derivedText({
@@ -212,14 +214,12 @@ export const tracks = {
 			const batchId = randomUUID();
 			const now = new Date();
 
-			const { row, version } = database.transaction((tx) => {
+			const version = database.transaction((tx) => {
 				const version = bumpVersion(tx);
-				const row = tx
-					.update(tracksTable)
+				tx.update(tracksTable)
 					.set({ ...wanted, ...derived, issues, updatedAt: now, version })
 					.where(eq(tracksTable.id, input.id))
-					.returning()
-					.get();
+					.run();
 				tx.insert(batches)
 					.values({
 						id: batchId,
@@ -243,7 +243,7 @@ export const tracks = {
 						})),
 					)
 					.run();
-				return { row, version };
+				return version;
 			});
 
 			const patch: TagPatch = {};
@@ -251,6 +251,6 @@ export const tracks = {
 				Object.assign(patch, { [edit.field]: edit.after });
 			enqueue(tagWrite, { items: [{ trackId: input.id, patch }] });
 			notifyChanged([input.id], version);
-			return row;
+			return { batch: batchId };
 		}),
 };

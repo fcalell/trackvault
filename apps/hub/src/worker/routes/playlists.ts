@@ -23,6 +23,7 @@ import {
 	moveMember,
 	moveNode,
 	PlaylistError,
+	removeMembers,
 	removeNode,
 	renameNode,
 	setRule,
@@ -30,7 +31,6 @@ import {
 } from "../../server/lib/playlists.ts";
 import { notifyPlaylists } from "../../server/lib/sync/wake.ts";
 import { enqueue } from "../../server/services/jobs.ts";
-import { jobViewSchema } from "../../shared/channels.ts";
 import {
 	SMART_SORTS,
 	type SmartSort,
@@ -328,7 +328,7 @@ export const playlists = {
 		.input(
 			z.object({ playlistId: z.string(), tracks: selector(playlistSource) }),
 		)
-		.output(z.object({ added: z.number(), job: jobViewSchema.nullable() }))
+		.output(z.object({ added: z.number(), batch: z.string().nullable() }))
 		.mutation(({ input }) =>
 			guard(() => {
 				const playlist = getPlaylist(input.playlistId);
@@ -341,23 +341,18 @@ export const playlists = {
 					);
 				if ("ids" in input.tracks && input.tracks.ids.length <= CHUNK) {
 					const ids = input.tracks.ids;
+					const batch = info(`Add to ${playlist.name}`);
 					const added = db().transaction((tx) =>
-						addMembers(
-							tx,
-							info(`Add to ${playlist.name}`),
-							input.playlistId,
-							ids,
-							new Date(),
-						),
+						addMembers(tx, batch, input.playlistId, ids, new Date()),
 					);
 					if (added > 0) notifyPlaylists();
-					return { added, job: null };
+					return { added, batch: added > 0 ? batch.batchId : null };
 				}
 				const job = enqueue(playlistAdd, {
 					playlistId: input.playlistId,
 					tracks: input.tracks,
 				});
-				return { added: 0, job };
+				return { added: 0, batch: job.id };
 			}),
 		),
 
@@ -369,22 +364,18 @@ export const playlists = {
 				tracks: selector(z.object({ playlistId: z.string() })),
 			}),
 		)
-		.output(z.object({ removed: z.number(), job: jobViewSchema.nullable() }))
+		.output(z.object({ removed: z.number(), batch: z.string().nullable() }))
 		.mutation(({ input }) =>
 			guard(() => {
 				const picked = input.tracks;
 				if ("ids" in picked && picked.ids.length <= CHUNK) {
 					const playlist = getPlaylist(input.playlistId);
+					const batch = info(`Remove from ${playlist?.name ?? ""}`);
 					const removed = db().transaction((tx) =>
-						removeMembersFor(
-							tx,
-							input.playlistId,
-							picked.ids,
-							playlist?.name ?? "",
-						),
+						removeMembers(tx, batch, input.playlistId, picked.ids, new Date()),
 					);
 					if (removed > 0) notifyPlaylists();
-					return { removed, job: null };
+					return { removed, batch: removed > 0 ? batch.batchId : null };
 				}
 				const job = enqueue(
 					playlistRemove,
@@ -392,7 +383,7 @@ export const playlists = {
 						? { playlistId: input.playlistId, ids: picked.ids }
 						: { playlistId: input.playlistId, except: picked.except },
 				);
-				return { removed: 0, job };
+				return { removed: 0, batch: job.id };
 			}),
 		),
 
@@ -439,21 +430,3 @@ export const playlists = {
 				.all(),
 		),
 };
-
-import type { Tx } from "../../server/lib/db.ts";
-import { removeMembers } from "../../server/lib/playlists.ts";
-
-function removeMembersFor(
-	tx: Tx,
-	playlistId: string,
-	ids: string[],
-	name: string,
-): number {
-	return removeMembers(
-		tx,
-		info(`Remove from ${name}`),
-		playlistId,
-		ids,
-		new Date(),
-	);
-}

@@ -7,7 +7,12 @@ import {
 	tracks,
 	trackTags,
 } from "../../schema/index.ts";
-import { applyPatches, clean, flushTagWrites } from "../lib/changes.ts";
+import {
+	applyPatches,
+	clean,
+	flushTagWrites,
+	openBatch,
+} from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { type FileMove, type FileValue, moveTracked } from "../lib/file-ops.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
@@ -155,6 +160,7 @@ export default defineJob<UndoPayload, UndoResult>({
 			origin: "ui" as const,
 			label: `Undo: ${batch.label}`,
 		};
+		openBatch(info);
 		const applied = applyPatches(patches, info, {
 			signal,
 			progress: (handled) => progress(handled, total, "Restoring values"),

@@ -20,6 +20,7 @@ import {
 	STEP_TONE,
 	VERSION,
 } from "../../ui/acquire.ts";
+import { queuedBatch } from "../../ui/batch.ts";
 import { bitrate, bpm, duration, size } from "../../ui/figures.ts";
 import { toTrack, trackRow, trackTitle } from "../../ui/track.ts";
 
@@ -183,8 +184,8 @@ function Item() {
 					blocked: item.at((each) =>
 						each.state === "awaiting-approval" ? undefined : "Not ready yet",
 					),
-					onAct: () => approve.mutateAsync({ items }),
-					done: "Filing the track",
+					onAct: () =>
+						queuedBatch(approve.mutateAsync({ items }), "Filing the track"),
 				},
 				{
 					icon: "ListRestart",
