@@ -28,6 +28,7 @@ function WantRecord() {
 			noun="want"
 			read={want}
 			back="/wishlist"
+			wide
 			record={{
 				within: "Wishlist",
 				overline: [want.at((each) => WANT_SOURCES[each.source] ?? each.source)],

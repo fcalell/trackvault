@@ -72,6 +72,7 @@ function ImportResult() {
 			noun="import"
 			read={imported}
 			back="/wishlist"
+			wide
 			record={{
 				within: "Wishlist",
 				overline: [

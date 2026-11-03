@@ -55,6 +55,7 @@ function Playlist() {
 			noun="playlist"
 			read={playlist}
 			back="/playlists"
+			wide
 			acts={[
 				{
 					icon: "Pencil",

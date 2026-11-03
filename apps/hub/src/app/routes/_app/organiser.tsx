@@ -20,7 +20,7 @@ function Organiser() {
 	const organiser = orpc.organiser.get.read();
 	const save = useMutation(orpc.organiser.save.mutationOptions());
 	return (
-		<Pane title="Organiser" back={false}>
+		<Pane title="Organiser" back={false} wide>
 			<Section
 				title="Template"
 				description="Where each file lives under the library folder."

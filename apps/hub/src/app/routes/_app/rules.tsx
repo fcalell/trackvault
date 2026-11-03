@@ -113,6 +113,7 @@ function Rules() {
 		<Pane
 			title="Cleanup rules"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "Eye",

@@ -117,6 +117,7 @@ function Genres() {
 		<Pane
 			title="Genres"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "Replace",

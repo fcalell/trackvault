@@ -91,6 +91,7 @@ function Review() {
 		<Pane
 			title="Review"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "CheckCheck",

@@ -43,6 +43,7 @@ function Quarantine() {
 		<Pane
 			title="Quarantine"
 			back={false}
+			wide
 			acts={[
 				{
 					icon: "ArchiveRestore",

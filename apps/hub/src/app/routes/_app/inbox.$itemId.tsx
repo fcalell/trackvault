@@ -1,7 +1,6 @@
 import { preload, useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
-import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { ChipMark } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
@@ -192,33 +191,19 @@ function Item() {
 					})),
 				)}
 			/>
-			<Section title="Tags">
-				<Table
-					label="Tags"
-					items={item.at((each) =>
-						each.tags.map((tag) => ({
-							id: tag.field,
-							field: tag.field,
-							before: tag.before,
-							after: tag.after,
-						})),
-					)}
-					columns={[
-						{
-							key: "field",
-							label: "Tag",
-							cell: (row) => fieldLabel(row.field),
-						},
-						{
-							key: "change",
-							label: "In the file, and filed as",
-							kind: "change",
-							cell: (row) => ({ before: row.before, after: row.after }),
-						},
-					]}
-					row={{ id: (row) => row.id }}
-				/>
-			</Section>
+			<Section
+				title="Tags"
+				items={item.at((each) =>
+					each.tags.map((tag) => ({
+						key: tag.field,
+						label: fieldLabel(tag.field),
+						change: tag.before === null ? "added" : "changed",
+						title: tag.after ?? { absent: "None" },
+						line:
+							tag.before === null ? undefined : `In the file: ${tag.before}`,
+					})),
+				)}
+			/>
 			<Section
 				title="In the library"
 				description="Tracks this file matches. Replace one to swap this copy in: playlists, tags and rating move over."

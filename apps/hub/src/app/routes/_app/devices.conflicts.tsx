@@ -75,6 +75,7 @@ function Conflicts() {
 		<Pane
 			title="Conflicts"
 			back="/devices"
+			wide
 			foot={
 				<ActionBar
 					chosen={chosen}

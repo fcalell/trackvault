@@ -23,6 +23,7 @@ function Batch() {
 			noun="batch"
 			read={batch}
 			back="/history"
+			wide
 			acts={[
 				{
 					icon: "Undo2",
