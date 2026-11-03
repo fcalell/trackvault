@@ -1,10 +1,11 @@
 import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Card } from "@fcalell/plugin-react-ui/components/card";
+import { Columns } from "@fcalell/plugin-react-ui/components/columns";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Image } from "@fcalell/plugin-react-ui/components/image";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Picker } from "@fcalell/plugin-react-ui/components/picker";
-import { Section } from "@fcalell/plugin-react-ui/components/section";
+import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { Text } from "@fcalell/plugin-react-ui/components/text";
 import { Waveform } from "@fcalell/plugin-react-ui/components/waveform";
 import {
@@ -14,15 +15,16 @@ import {
 } from "@fcalell/plugin-react-ui/lib/player";
 import { useQuery } from "@tanstack/react-query";
 import { ISSUE } from "@trackvault/core/issues";
+import { use } from "react";
 import {
 	ISSUE_FILTERS,
 	ISSUE_LABELS,
 	type IssueFilter,
 } from "../../shared/library.ts";
-import { bitrate, bpm, duration } from "../ui/figures.ts";
-import { fetchPeaks, toTrack } from "../ui/track.ts";
+import { age, bitrate, bpm, duration } from "../ui/figures.ts";
+import { fetchPeaks, trackRow } from "../ui/track.ts";
 import { orpc } from "./api.ts";
-import { queueFrom } from "./queue.ts";
+import { ListSource, useListPlay } from "./queue.ts";
 
 // The issue bits (core/issues) in the order the record lists them.
 const ISSUES: Array<[IssueFilter, number]> = ISSUE_FILTERS.map((name) => [
@@ -37,23 +39,11 @@ type Track =
 			: never
 		: never;
 
-// Plays the track from the start, with the list it was opened from as the queue.
-function playTrack(row: Track, peaks?: Float32Array): void {
-	const queue = queueFrom(row.id);
-	player.play(
-		toTrack(row, peaks),
-		queue.length > 0
-			? queue.map((each) =>
-					each.id === row.id ? toTrack(row, peaks) : toTrack(each),
-				)
-			: undefined,
-	);
-}
-
 // The waveform of the track once the hub has drawn it, the playhead following
 // the player while this track is the one playing; a press seeks, and starts the
 // track if it is not playing.
 function TrackWaveform({ id, track }: { id: string; track: Track }) {
+	const { play } = useListPlay(use(ListSource));
 	const peaks = useQuery({
 		queryKey: ["peaks", id],
 		queryFn: () => fetchPeaks(id),
@@ -78,7 +68,7 @@ function TrackWaveform({ id, track }: { id: string; track: Track }) {
 			duration={track.durationMs / 1000}
 			at={playing ? time : 0}
 			onSeek={(seconds) => {
-				if (!playing) playTrack(track, peaks.data);
+				if (!playing) play(track, peaks.data);
 				player.seek(seconds);
 			}}
 		/>
@@ -91,19 +81,31 @@ function RecordWaveform({ id }: { id: string }) {
 	return track ? <TrackWaveform id={id} track={track} /> : null;
 }
 
-// A track's record: its name and facts, the waveform, its issues and its tags to
-// edit. A tag saves as the field is left; the hub writes it to the file in the
-// background.
+// "albumArtist" as "Album artist".
+const named = (field: string): string => {
+	const words = field.replace(/([A-Z])/g, " $1").toLowerCase();
+	return words.charAt(0).toUpperCase() + words.slice(1);
+};
+
+// A track's record: its name and facts, the waveform, the tags to edit (a tag saves
+// as the field is left; the hub writes it to the file in the background), what the
+// analysis measured beside them, and where the track is: its playlists, duplicates and
+// history.
 export function TrackRecord({ id, within }: { id: string; within: string }) {
 	const track = orpc.tracks.get.read({ id });
 	const assigned = orpc.tags.forTrack.read({ trackId: id });
 	const everyTag = orpc.tags.list.read();
+	const playlists = orpc.playlists.forTrack.read({ trackId: id });
+	const duplicates = orpc.tracks.duplicates.read({ id });
+	const history = orpc.tracks.history.read({ id });
 	const assign = useMutation(orpc.tags.assign.mutationOptions());
+	const update = useMutation(orpc.tracks.update.mutationOptions());
 	const better = useMutation(orpc.wishlist.addFromTrack.mutationOptions());
 	const autotag = useMutation(orpc.bulk.autotag.mutationOptions());
 	const fetchArt = useMutation(orpc.bulk.art.mutationOptions());
 	const analyse = useMutation(orpc.bulk.analyse.mutationOptions());
 	const addToSet = useMutation(orpc.sets.append.mutationOptions());
+	const { play } = useListPlay(use(ListSource));
 	const hasArt = useRead(track)?.hasArt;
 	return (
 		<Pane
@@ -125,11 +127,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 				{
 					icon: "Play",
 					label: "Play",
-					onAct: async () => {
-						const row = await orpc.tracks.get.call({ id });
-						const peaks = row.peaks ? await fetchPeaks(id) : undefined;
-						playTrack(row, peaks);
-					},
+					onAct: async () => play(await orpc.tracks.get.call({ id })),
 				},
 				{
 					icon: "ListPlus",
@@ -175,91 +173,6 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					<RecordWaveform id={id} />
 				</Card>
 			</Section>
-			<Section title="Cover" read={track}>
-				<Card>
-					{hasArt ? (
-						<Image
-							src={`/media/${encodeURIComponent(id)}/art?size=640`}
-							alt="Cover art"
-							aspect={1}
-						/>
-					) : (
-						<Text kind="meta">
-							No cover is embedded. Fetch art looks one up.
-						</Text>
-					)}
-				</Card>
-			</Section>
-			<Section
-				title="Analysis"
-				items={track.at((each) =>
-					each.analysis
-						? [
-								{
-									key: "bpm",
-									label: "Tempo",
-									title: each.analysis.bpm
-										? `${each.analysis.bpm} BPM`
-										: "Not measured",
-									facts:
-										each.analysis.bpmConfidence === null
-											? []
-											: [`${each.analysis.bpmConfidence}% sure`],
-								},
-								{
-									key: "key",
-									label: "Key",
-									title: each.analysis.key ?? "Not measured",
-									facts:
-										each.analysis.keyConfidence === null
-											? []
-											: [`${each.analysis.keyConfidence}% sure`],
-								},
-								{
-									key: "energy",
-									label: "Energy",
-									title: each.analysis.energy
-										? String(each.analysis.energy)
-										: "Not measured",
-									facts:
-										each.analysis.energyConfidence === null
-											? []
-											: [`${each.analysis.energyConfidence}% sure`],
-								},
-								{
-									key: "lufs",
-									label: "Loudness",
-									title:
-										each.analysis.lufs === null
-											? "Not measured"
-											: `${Math.round(each.analysis.lufs * 10) / 10} LUFS`,
-									facts:
-										each.analysis.loudnessRange === null
-											? []
-											: [
-													`range ${Math.round(each.analysis.loudnessRange * 10) / 10} LU`,
-												],
-								},
-							]
-						: [],
-				)}
-				empty={{
-					sentence:
-						"Not analysed yet. Analyse measures tempo, key, energy and loudness.",
-				}}
-			/>
-			<Section
-				title="Issues"
-				items={track.at((each) =>
-					ISSUES.filter(([, bit]) => (each.issues & bit) !== 0).map(
-						([name]) => ({
-							key: name,
-							title: ISSUE_LABELS[name],
-						}),
-					),
-				)}
-				empty={{ sentence: "Nothing to fix." }}
-			/>
 			<Section title="Tags">
 				<Form
 					act={orpc.tracks.update}
@@ -300,6 +213,119 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					}}
 				/>
 			</Section>
+			<Columns fit="half">
+				<Section title="Cover" read={track}>
+					<Card>
+						{hasArt ? (
+							<Image
+								src={`/media/${encodeURIComponent(id)}/art?size=320`}
+								alt="Cover art"
+								fit="thumb"
+							/>
+						) : (
+							<Text kind="meta">
+								No cover is embedded. Fetch art looks one up.
+							</Text>
+						)}
+					</Card>
+				</Section>
+				<Section
+					title="Analysis"
+					items={track.at((each): Row[] => {
+						const found = each.analysis;
+						if (!found) return [];
+						const sure = (value: number | null): string[] =>
+							value === null ? [] : [`${value}% sure`];
+						const bpmDiffers =
+							found.bpm !== null &&
+							(each.bpm === null ||
+								Math.round(each.bpm) !== Math.round(found.bpm));
+						const keyDiffers =
+							found.key !== null &&
+							(each.key === null ||
+								each.key.toLowerCase() !== found.key.toLowerCase());
+						return [
+							{
+								key: "bpm",
+								label: "Tempo",
+								title: found.bpm ? `${bpm(found.bpm)} BPM` : "Not measured",
+								facts: [
+									...(bpmDiffers
+										? [each.bpm === null ? "No tag" : `Tag ${bpm(each.bpm)}`]
+										: []),
+									...sure(found.bpmConfidence),
+								],
+								...(bpmDiffers && found.bpm !== null
+									? {
+											act: {
+												icon: "Check" as const,
+												label: "Use analysis",
+												onAct: () =>
+													update.mutateAsync({ id, bpm: bpm(found.bpm) }),
+												done: "Tempo set. Undo the batch in History.",
+											},
+										}
+									: {}),
+							},
+							{
+								key: "key",
+								label: "Key",
+								title: found.key ?? "Not measured",
+								facts: [
+									...(keyDiffers
+										? [each.key ? `Tag ${each.key}` : "No tag"]
+										: []),
+									...sure(found.keyConfidence),
+								],
+								...(keyDiffers && found.key !== null
+									? {
+											act: {
+												icon: "Check" as const,
+												label: "Use analysis",
+												onAct: () => update.mutateAsync({ id, key: found.key }),
+												done: "Key set. Undo the batch in History.",
+											},
+										}
+									: {}),
+							},
+							{
+								key: "energy",
+								label: "Energy",
+								title: found.energy ? String(found.energy) : "Not measured",
+								facts: sure(found.energyConfidence),
+							},
+							{
+								key: "lufs",
+								label: "Loudness",
+								title:
+									found.lufs === null
+										? "Not measured"
+										: `${Math.round(found.lufs * 10) / 10} LUFS`,
+								facts:
+									found.loudnessRange === null
+										? []
+										: [`range ${Math.round(found.loudnessRange * 10) / 10} LU`],
+							},
+						];
+					})}
+					empty={{
+						sentence:
+							"Not analysed yet. Analyse measures tempo, key, energy and loudness.",
+					}}
+				/>
+			</Columns>
+			<Section
+				title="Issues"
+				items={track.at((each) =>
+					ISSUES.filter(([, bit]) => (each.issues & bit) !== 0).map(
+						([name]) => ({
+							key: name,
+							title: ISSUE_LABELS[name],
+						}),
+					),
+				)}
+				empty={{ sentence: "Nothing to fix." }}
+			/>
 			<Section title="Custom tags" read={assigned}>
 				<Card>
 					<Picker
@@ -314,6 +340,54 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					/>
 				</Card>
 			</Section>
+			<Section
+				title="Playlists"
+				items={playlists.at((rows) =>
+					rows.map(
+						(row): Row => ({
+							key: row.id,
+							leading: { icon: "ListMusic" },
+							title: row.name,
+							href: `/playlists/${row.id}`,
+						}),
+					),
+				)}
+				empty={{ sentence: "In no playlist." }}
+			/>
+			<Section
+				title="Duplicates"
+				items={duplicates.at((rows) =>
+					rows.map(
+						(row): Row =>
+							trackRow(row, {
+								key: row.id,
+								leading: { icon: "Copy" },
+								facts: [
+									bitrate(row.format, row.bitrate),
+									`${row.reason}, ${row.confidence}% sure`,
+								],
+								href: `/library/${row.id}`,
+							}),
+					),
+				)}
+				empty={{ sentence: "No duplicates found." }}
+			/>
+			<Section
+				title="History"
+				items={history.at((rows) =>
+					rows.map(
+						(row): Row => ({
+							key: String(row.seq),
+							title: named(row.field),
+							line: `${row.before ?? "Empty"} to ${row.after ?? "Empty"}`,
+							facts: [row.label, ...(row.undone ? ["Undone"] : [])],
+							trailing: { age: age(row.at) },
+							href: `/history/${row.batchId}`,
+						}),
+					),
+				)}
+				empty={{ sentence: "Nothing changed on this track yet." }}
+			/>
 		</Pane>
 	);
 }

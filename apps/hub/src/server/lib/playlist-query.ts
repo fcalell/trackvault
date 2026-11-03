@@ -1,7 +1,7 @@
 import { paginateWindow } from "@fcalell/plugin-api/lib/window";
 import { count, eq, inArray, sql } from "@fcalell/plugin-db/orm";
 import { playlistTracks, tracks } from "../../schema/index.ts";
-import type { ListRow, SortColumn } from "../../shared/library.ts";
+import type { PlaylistRow, SortColumn } from "../../shared/library.ts";
 import type { StoredSmart } from "../../shared/playlists.ts";
 import type { db as database } from "./db.ts";
 import { ORDER, OTHER_COLUMNS } from "./library-query.ts";
@@ -17,13 +17,14 @@ export interface PlaylistWindowInput {
 	limit: number;
 }
 
-// One window of a playlist as library rows. A manual playlist reads its slice of
+// One window of a playlist as library rows, each with its place in the playlist's order
+// (a smart playlist has none). A manual playlist reads its slice of
 // `playlist_tracks` in position order (a range scan of one index; a column sort replaces
 // the order); a smart one is the library under its rule.
 export async function playlistPage(
 	database: Db,
 	input: PlaylistWindowInput,
-): Promise<{ data: ListRow[]; total: number; offset: number } | null> {
+): Promise<{ data: PlaylistRow[]; total: number; offset: number } | null> {
 	const playlist = getPlaylist(input.playlistId);
 	if (!playlist || playlist.kind === "folder") return null;
 	if (playlist.kind === "smart") {
@@ -39,7 +40,10 @@ export async function playlistPage(
 			limit: input.limit,
 			db: database,
 		});
-		return page as { data: ListRow[]; total: number; offset: number };
+		return {
+			...page,
+			data: page.data.map((row) => ({ ...row, position: null })),
+		} as { data: PlaylistRow[]; total: number; offset: number };
 	}
 	// In its own order the page needs nothing of `tracks` to find its ids: one index range
 	// of `playlist_tracks` (a deep offset of 50k rows reads in about a millisecond), then
@@ -65,8 +69,11 @@ export async function playlistPage(
 				})
 			: [];
 		const byId = new Map(rows.map((row) => [row.id, row]));
-		const data = ids.flatMap((id) => (byId.has(id) ? [byId.get(id)] : []));
-		return { data: data as unknown as ListRow[], total, offset };
+		const data = ids.flatMap((id, at) => {
+			const row = byId.get(id);
+			return row ? [{ ...row, position: offset + at + 1 }] : [];
+		});
+		return { data: data as unknown as PlaylistRow[], total, offset };
 	}
 	const page = await paginateWindow(database.query.tracks, {
 		where: eq(playlistTracks.playlistId, input.playlistId),
@@ -81,7 +88,24 @@ export async function playlistPage(
 		limit: input.limit,
 		db: database,
 	});
-	return page as { data: ListRow[]; total: number; offset: number };
+	// A column sort keeps each track's place in the playlist's own order.
+	const places = new Map(
+		(
+			statement(
+				"SELECT id, n FROM (SELECT track_id AS id, row_number() OVER (ORDER BY position, track_id) AS n FROM playlist_tracks WHERE playlist_id = @p) WHERE id IN (SELECT value FROM json_each(@ids))",
+			).all({
+				p: input.playlistId,
+				ids: JSON.stringify(page.data.map((row) => row.id)),
+			}) as { id: string; n: number }[]
+		).map((row) => [row.id, row.n]),
+	);
+	return {
+		...page,
+		data: page.data.map((row) => ({
+			...row,
+			position: places.get(row.id) ?? null,
+		})),
+	} as { data: PlaylistRow[]; total: number; offset: number };
 }
 
 // How many tracks a smart rule matches (the preview and the tree's count).

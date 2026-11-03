@@ -261,6 +261,7 @@ const PLAYLISTS = [
 		kind: "folder" as const,
 		name: "House",
 		position: 1024,
+		rule: null,
 		tracks: 0,
 	},
 	{
@@ -269,6 +270,7 @@ const PLAYLISTS = [
 		kind: "manual" as const,
 		name: "Peak time",
 		position: 1024,
+		rule: null,
 		tracks: 214,
 	},
 	{
@@ -277,6 +279,7 @@ const PLAYLISTS = [
 		kind: "manual" as const,
 		name: "Deep and late",
 		position: 2048,
+		rule: null,
 		tracks: 96,
 	},
 	{
@@ -285,6 +288,7 @@ const PLAYLISTS = [
 		kind: "smart" as const,
 		name: "Fresh 124 to 128",
 		position: 2048,
+		rule: "bpm between 124 128; added within 30",
 		tracks: 1320,
 	},
 ];
@@ -897,6 +901,30 @@ export default defineFixtures<
 				total: TOTAL,
 			}),
 			get: ({ id }) => record(Number(id.replace("track-", "")) || 0),
+			duplicates: () => [
+				{
+					id: "track-7",
+					title: "Midnight Echo",
+					mixName: "Original Mix",
+					artist: "Kalomi",
+					format: "mp3",
+					bitrate: 192,
+					reason: "exact" as const,
+					confidence: 100,
+				},
+			],
+			history: () => [
+				{
+					seq: 2,
+					field: "bpm",
+					before: "123",
+					after: "126",
+					at: new Date(Date.now() - 1_800_000),
+					batchId: "batch-1",
+					label: "Edit tags",
+					undone: false,
+				},
+			],
 			update: ({ id }) => record(Number(id.replace("track-", "")) || 0),
 		},
 		autotag: {
@@ -1260,6 +1288,8 @@ export default defineFixtures<
 					parentId: row.parentId,
 					kind: row.kind,
 					name: row.name,
+					tracks: row.tracks,
+					durationMs: row.tracks * 330_000,
 					rule:
 						row.kind === "smart"
 							? {
@@ -1274,8 +1304,9 @@ export default defineFixtures<
 				};
 			},
 			tracks: ({ offset = 0, limit = 200 }) => ({
-				data: Array.from({ length: Math.min(limit, 214 - offset) }, (_, at) =>
-					track(offset + at),
+				data: Array.from(
+					{ length: Math.min(limit, 214 - offset) },
+					(_, at) => ({ ...track(offset + at), position: offset + at + 1 }),
 				),
 				total: 214,
 				offset,

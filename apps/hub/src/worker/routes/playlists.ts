@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { procedure } from "virtual:stack-procedure";
 import { ApiError } from "@fcalell/plugin-api/error";
 import { selector, z } from "@fcalell/plugin-api/schema";
-import { asc, count, eq, sql } from "@fcalell/plugin-db/orm";
+import { asc, count, eq, sql, sum } from "@fcalell/plugin-db/orm";
 import {
 	playlists as playlistsTable,
 	playlistTracks,
@@ -117,6 +117,12 @@ export const playlists = {
 			kind: row.kind,
 			name: row.name,
 			position: row.position,
+			// A smart playlist's conditions, one sentence.
+			rule:
+				row.kind === "smart" && isSmart(row.rule)
+					? (formatLines((row.rule as StoredSmart).rule)?.lines.join("; ") ??
+						null)
+					: null,
 			tracks:
 				row.kind === "manual"
 					? (counts.get(row.id) ?? 0)
@@ -126,7 +132,7 @@ export const playlists = {
 		}));
 	}),
 
-	// One playlist, with a smart one's rule in the editor's words.
+	// One playlist, with its track count and length, and a smart one's rule in the editor's words.
 	get: procedure({ auth: true, reads: ["playlists", "playlistTracks"] })
 		.input(z.object({ id: z.string() }))
 		.query(({ input }) => {
@@ -134,11 +140,25 @@ export const playlists = {
 			if (!row) throw new ApiError("NOT_FOUND");
 			const def = isSmart(row.rule) ? (row.rule as StoredSmart) : null;
 			const lines = def ? formatLines(def.rule) : null;
+			const held = def
+				? db()
+						.select({ n: count(), ms: sum(tracks.durationMs) })
+						.from(tracks)
+						.where(smartWhere(def))
+						.get()
+				: db()
+						.select({ n: count(), ms: sum(tracks.durationMs) })
+						.from(playlistTracks)
+						.innerJoin(tracks, eq(tracks.id, playlistTracks.trackId))
+						.where(eq(playlistTracks.playlistId, row.id))
+						.get();
 			return {
 				id: row.id,
 				parentId: row.parentId,
 				kind: row.kind,
 				name: row.name,
+				tracks: held?.n ?? 0,
+				durationMs: Number(held?.ms ?? 0),
 				rule: def
 					? {
 							editable: lines !== null,

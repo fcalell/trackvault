@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { procedure } from "virtual:stack-procedure";
 import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
-import { eq } from "@fcalell/plugin-db/orm";
+import { and, desc, eq, inArray, ne } from "@fcalell/plugin-db/orm";
 import type { TagPatch } from "@trackvault/core/tags";
 import {
 	analysisResults,
 	batches,
 	changes,
+	dupeGroups,
+	dupeMembers,
 	tracks as tracksTable,
 } from "../../schema/index.ts";
 import tagWrite from "../../server/jobs/tag-write.ts";
@@ -30,6 +32,7 @@ import {
 import { enqueue } from "../../server/services/jobs.ts";
 import { bumpVersion, notifyChanged } from "../../server/services/library.ts";
 import { tagPatch } from "../../shared/patch.ts";
+import { describe } from "./history.ts";
 
 const pct = (v: number | null): number | null =>
 	v === null ? null : Math.round(v * 100);
@@ -94,6 +97,86 @@ export const tracks = {
 					: null,
 			};
 		}),
+
+	// The other tracks of the open duplicate groups this track is in, each with why it was
+	// grouped.
+	duplicates: procedure({
+		auth: true,
+		reads: ["dupeGroups", "dupeMembers", "tracks"],
+	})
+		.input(z.object({ id: z.string() }))
+		.query(({ input }) => {
+			const database = db();
+			const groups = database
+				.select({
+					id: dupeGroups.id,
+					reason: dupeGroups.reason,
+					confidence: dupeGroups.confidence,
+				})
+				.from(dupeMembers)
+				.innerJoin(dupeGroups, eq(dupeGroups.id, dupeMembers.groupId))
+				.where(
+					and(eq(dupeMembers.trackId, input.id), eq(dupeGroups.state, "open")),
+				)
+				.all();
+			if (groups.length === 0) return [];
+			const why = new Map(groups.map((group) => [group.id, group]));
+			return database
+				.select({
+					groupId: dupeMembers.groupId,
+					id: tracksTable.id,
+					title: tracksTable.title,
+					mixName: tracksTable.mixName,
+					artist: tracksTable.artist,
+					format: tracksTable.format,
+					bitrate: tracksTable.bitrate,
+				})
+				.from(dupeMembers)
+				.innerJoin(tracksTable, eq(tracksTable.id, dupeMembers.trackId))
+				.where(
+					and(
+						inArray(dupeMembers.groupId, [...why.keys()]),
+						ne(dupeMembers.trackId, input.id),
+					),
+				)
+				.all()
+				.map(({ groupId, ...track }) => ({
+					...track,
+					reason: why.get(groupId)?.reason ?? "exact",
+					confidence: pct(why.get(groupId)?.confidence ?? 0) ?? 0,
+				}));
+		}),
+
+	// What was changed on this track, newest first: the log's rows with the batch each
+	// belongs to (undone in History).
+	history: procedure({ auth: true, reads: ["changes", "batches"] })
+		.input(z.object({ id: z.string() }))
+		.query(({ input }) =>
+			db()
+				.select({
+					seq: changes.seq,
+					field: changes.field,
+					before: changes.before,
+					after: changes.after,
+					at: changes.at,
+					batchId: changes.batchId,
+					label: batches.label,
+					undone: batches.undoneBy,
+				})
+				.from(changes)
+				.innerJoin(batches, eq(batches.id, changes.batchId))
+				.where(and(eq(changes.entity, "track"), eq(changes.entityId, input.id)))
+				.orderBy(desc(changes.seq))
+				.limit(50)
+				.all()
+				.map(({ before, after, field, undone, ...row }) => ({
+					...row,
+					field,
+					before: describe(field, before),
+					after: describe(field, after),
+					undone: undone !== null,
+				})),
+		),
 
 	// Edits tags in the library and queues the file write. The database is the
 	// truth the moment this answers; the tag-write job follows on disk.
