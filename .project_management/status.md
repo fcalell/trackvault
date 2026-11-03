@@ -5,7 +5,7 @@ The revamp onto `@fcalell/stack` replaces the earlier Electron/SolidJS phases. V
 | Phase | Name | Status | Goal |
 |---|---|---|---|
 | R0 | Foundation | In progress | Stack pagination/player/waveform; hub on stack, scanner and jobs, library at 50k within budget |
-| R1 | Curation | Not started | Change log and undo, bulk edit, taxonomy, rules, organiser, health, dedupe |
+| R1 | Curation | Built, in review | Change log and undo, bulk edit, taxonomy, rules, organiser, quarantine, health, dedupe |
 | R2 | Playlists, sync, Rekordbox | Not started | Playlists, the agent with Mac replica, Rekordbox read and write |
 | R3 | Acquisition | Not started | Inbox pipeline, Soulseek (slskd), wishlist, playlist import |
 | R4 | Intelligence | Not started | Auto-tag, analysis, set builder, MCP, stats |
@@ -20,3 +20,20 @@ Done: stack work (window pagination S1–S6, player G1, waveform G2, Table at sc
 Left: hub on the homelab (step 7); budgets that need a browser (first paint, keystroke to rows) measured on the real hub; bulk-edit acts on the library selection (R1).
 
 Measured at 50k tracks on the build sandbox (`pnpm --filter hub seed:bench`, then `scripts/bench-queries.ts`): window query plus total, 200 rows: unfiltered any sort and offset 2 to 5 ms; one facet (genre, key) with the common sorts 2 to 7 ms; issue filters on title or newest 2 to 5 ms; search by two words 3 to 6 ms. Over 10 ms: a BPM range (about 10k matches) 13 to 20 ms, a facet sorted by time or bitrate 10 to 15 ms, an issue filter sorted by a column with no partial index 20 to 40 ms at deep offsets, a one or two letter search prefix 9 to 14 ms.
+
+## R1 progress
+
+Built (hub, migration `0004_wise_cannonball`):
+- **Change log and undo.** Every write goes through `server/lib/changes.ts` (`applyPatches`: 500-row chunks, prepared statements that set only the columns that changed, each field in `changes` under a batch id; `flushTagWrites` puts a batch's tag fields into the files from the log itself, so a job resumed after a stop finishes). `batches` lists them; the History place pages them (window) and a batch opens beside the list as a table of `change` cells with Undo batch. The `undo` job puts back only the fields still at the batch's value (conflicts are skipped and counted), tags the files and moves moved or quarantined files back; the undo is a batch of its own.
+- **Bulk acts on the library selection** (`choose` over the window read, `selector(libraryQuery)` resolved by `libraryWhere`): Edit tags (a sheet with a live preview table of before and after for the first 40 tracks, then the `edit` job), Apply rules, Organise (with the saved template), Find duplicates of these, Quarantine.
+- **Taxonomy.** `genres`, `genreAliases`, `artistAliases`, `labelAliases`; genres seeded from core's seed taxonomy on first start. Genres (taxonomy, unknown values with the closest names, map in a click), Aliases (spellings that differ by case or punctuation grouped for a merge, aliases), library-wide Unify (`unify` job, preview then apply).
+- **Custom tags.** `tags`, `trackTags`; the Custom tags place, the record's Tags list, the Edit tags sheet (add or take off), and a Tag filter with counts in the library.
+- **Cleanup rules.** `rules` (core `Rule` as JSON, core's built-ins seeded off); the screen lists, switches, adds and edits (one action per rule, a Form with fields per action kind) and previews on the library (`rules` job in preview mode stores rows in `previews`, read in windows) before the apply job.
+- **Organiser.** Template field with presets, `organise` job: preview (moves, numbered collisions, unchanged; a table of path before and after) and apply (core's `orderMoves`, cycles through a temporary name, `files.path` updated with each move so the scanner reads nothing again, emptied folders removed). Undo through History.
+- **Quarantine.** `files.state = quarantined`, files moved under `<libraryRoot>/.quarantine/<batch>/`, tracks hidden from the library (issue bit 2048, which the list leaves out only while some exist); Quarantine place with restore, delete now, restore all and empty; `purge` runs every 6 hours for files older than `settings.quarantineDays` (30).
+- **Health.** Jobs `integrity` (ffmpeg decode) and `bitrate` (spectral cutoff, core quality), each degrading to a "needs ffmpeg" result; issue bits `corrupt` (512) and `fakeBitrate` (1024) with partial indexes; the Issues place lists every issue with its count and a link into the filtered library.
+- **Dedupe.** Jobs `fingerprint` (fpcalc, stored in `fingerprints`), `dedupe` (core `groupDuplicates`, keeper and reason from `pickKeeper`, stored in `dupeGroups` and `dupeMembers`; a dismissed group stays dismissed by its member-set key) and `merge` (core `mergePlan`: tags filled, custom tags moved, other files quarantined, one batch). The Duplicates place shows groups as bands, keeper first with its reason, Merge on the band, "Not duplicates" and "Keep this one instead" on a row.
+
+Measured at 50k tracks on the build sandbox (`scripts/bench-queries.ts`, `scripts/bench-jobs.ts`): window query plus total 1.6 to 6 ms unfiltered, search and facets unchanged (after moving the list onto stack's `paginateWindow`); jobs over the whole library: rules preview 1.8 s, unify preview 0.8 s, organise preview 3.8 s, dedupe (exact and fuzzy) 1.5 s, edit of every track 7 s in the database (50k changes logged) plus the file writes, undo of that batch similar.
+
+Left: the hub on the homelab (R0 step 7); the acoustic tier is untested here (no `fpcalc` on the sandbox); Rekordbox-aware merge (cues, playlists) waits for R2 (`TrackFacts.cueCount` and `playlistIds` are empty).

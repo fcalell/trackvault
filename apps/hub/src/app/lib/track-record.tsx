@@ -1,7 +1,8 @@
-import { useRead } from "@fcalell/plugin-api/tanstack-query";
+import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Card } from "@fcalell/plugin-react-ui/components/card";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
+import { Picker } from "@fcalell/plugin-react-ui/components/picker";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Text } from "@fcalell/plugin-react-ui/components/text";
 import { Waveform } from "@fcalell/plugin-react-ui/components/waveform";
@@ -11,23 +12,21 @@ import {
 	usePlayerTime,
 } from "@fcalell/plugin-react-ui/lib/player";
 import { useQuery } from "@tanstack/react-query";
-import type { IssueFilter } from "../../shared/library.ts";
+import { ISSUE } from "@trackvault/core/issues";
+import {
+	ISSUE_FILTERS,
+	ISSUE_LABELS,
+	type IssueFilter,
+} from "../../shared/library.ts";
 import { clock, fetchPeaks, quality, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { queueFrom } from "./queue.ts";
 
-// The issue bits (core/issues) and what the record says of each.
-const ISSUES: Array<[IssueFilter, number, string]> = [
-	["lowBitrate", 1, "Low bitrate"],
-	["noTitle", 2, "No title"],
-	["noArtist", 4, "No artist"],
-	["noGenre", 8, "No genre"],
-	["noBpm", 16, "No BPM"],
-	["noKey", 32, "No key"],
-	["noArt", 64, "No artwork"],
-	["undecodable", 128, "Unreadable audio"],
-	["missingFile", 256, "File missing"],
-];
+// The issue bits (core/issues) in the order the record lists them.
+const ISSUES: Array<[IssueFilter, number]> = ISSUE_FILTERS.map((name) => [
+	name,
+	ISSUE[name],
+]);
 
 type Track =
 	ReturnType<typeof orpc.tracks.get.read> extends infer R
@@ -63,8 +62,7 @@ function TrackWaveform({ id, track }: { id: string; track: Track }) {
 	const { time } = usePlayerTime();
 	if (!peaks.data || !track.durationMs) {
 		return (
-			// biome-ignore lint/a11y/useValidAriaRole: `Text`'s role is its type role, not an ARIA one
-			<Text role="meta">
+			<Text kind="meta">
 				{track.peaks
 					? "Drawing the waveform."
 					: "The waveform is drawn after a scan, with ffmpeg on the hub."}
@@ -96,6 +94,9 @@ function RecordWaveform({ id }: { id: string }) {
 // background.
 export function TrackRecord({ id, within }: { id: string; within: string }) {
 	const track = orpc.tracks.get.read({ id });
+	const assigned = orpc.tags.forTrack.read({ trackId: id });
+	const everyTag = orpc.tags.list.read();
+	const assign = useMutation(orpc.tags.assign.mutationOptions());
 	return (
 		<Pane
 			title={track.at((each) => each.title ?? "Untitled")}
@@ -135,10 +136,10 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 				title="Issues"
 				items={track.at((each) =>
 					ISSUES.filter(([, bit]) => (each.issues & bit) !== 0).map(
-						([name, , words]) => ({
+						([name]) => ({
 							key: name,
 							leading: { status: "attention" as const },
-							title: words,
+							title: ISSUE_LABELS[name],
 						}),
 					),
 				)}
@@ -183,6 +184,20 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 						comment: { label: "Comment", control: "prose" },
 					}}
 				/>
+			</Section>
+			<Section title="Custom tags" read={assigned}>
+				<Card>
+					<Picker
+						fit="list"
+						label="Tags"
+						items={everyTag}
+						option={{ value: (row) => row.name, label: (row) => row.name }}
+						value={assigned.at((rows) => rows.map((row) => row.name))}
+						onChange={(names: string[]) =>
+							assign.mutateAsync({ trackId: id, names })
+						}
+					/>
+				</Card>
 			</Section>
 		</Pane>
 	);

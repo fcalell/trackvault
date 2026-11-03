@@ -1,5 +1,4 @@
 {
 	"root": false,
-	"extends": ["../../biome.json", "./.stack/biome.json"],
-	"files": { "includes": ["**", "!src/migrations"] }
+	"extends": ["../../biome.json", "./.stack/biome.json"]
 }

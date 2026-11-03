@@ -1,8 +1,10 @@
 import {
+	blob,
 	check,
 	ftsTable,
 	index,
 	integer,
+	primaryKey,
 	real,
 	sql,
 	sqliteTable,
@@ -23,6 +25,9 @@ const ISSUE_BITS = [
 	["noBpm", 16],
 	["noKey", 32],
 	["noArt", 64],
+	["corrupt", 512],
+	["fakeBitrate", 1024],
+	["quarantined", 2048],
 ] as const;
 
 const at = (name: string) => integer(name, { mode: "timestamp_ms" });
@@ -164,6 +169,10 @@ export const files = sqliteTable(
 		state: text("state", { enum: FILE_STATES }).notNull().default("ok"),
 		error: text("error"),
 		scannedAt: at("scanned_at").notNull(),
+		// A quarantined file: where it lay (relative, "/" separated) and when it moved
+		// under `.quarantine/<batch>/`.
+		originalPath: text("original_path"),
+		quarantinedAt: at("quarantined_at"),
 	},
 	(t) => [
 		uniqueIndex("files_path_idx").on(t.path),
@@ -235,6 +244,7 @@ export const changes = sqliteTable(
 	(t) => [
 		index("changes_entity_idx").on(t.entity, t.entityId, t.seq),
 		index("changes_batch_idx").on(t.batchId),
+		index("changes_batch_seq_idx").on(t.batchId, t.seq),
 		index("changes_at_idx").on(t.at),
 	],
 );
@@ -252,7 +262,200 @@ export const settings = sqliteTable(
 			.default(256),
 		// Bumped by every committed batch of library changes.
 		libraryVersion: integer("library_version").notNull().default(0),
+		// Quarantined files are deleted for good after this many days (0 keeps them).
+		quarantineDays: integer("quarantine_days").notNull().default(30),
+		// The organiser's folder and file template (core/organize).
+		organiseTemplate: text("organise_template")
+			.notNull()
+			.default("{genre|Unknown}/{artist|Unknown} - {title}"),
 		updatedAt: at("updated_at").notNull(),
 	},
 	(t) => [check("settings_single_row", sql`${t.id} = 1`)],
 );
+
+// -- R1 curation ----------------------------------------------------------
+
+// One row per batch of changes (a scan, a bulk edit, an undo): the History list.
+// `count` is the changes it holds; `undoneBy` the batch that reverted it.
+export const batches = sqliteTable(
+	"batches",
+	{
+		id: text("id").primaryKey(),
+		origin: text("origin", { enum: CHANGE_ORIGINS }).notNull(),
+		// What it was, in a short phrase ("Edit tags", "Cleanup rules").
+		label: text("label").notNull(),
+		count: integer("count").notNull().default(0),
+		undoneBy: text("undone_by"),
+		at: at("at").notNull(),
+	},
+	(t) => [index("batches_at_idx").on(t.at)],
+);
+
+// The genre taxonomy: canonical names, and the spellings that mean each.
+export const genres = sqliteTable(
+	"genres",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		name: text("name").notNull(),
+		createdAt: at("created_at").notNull(),
+	},
+	(t) => [uniqueIndex("genres_name_idx").on(nocase(t.name))],
+);
+
+export const genreAliases = sqliteTable(
+	"genre_aliases",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		alias: text("alias").notNull(),
+		genreId: integer("genre_id")
+			.notNull()
+			.references(() => genres.id, { onDelete: "cascade" }),
+	},
+	(t) => [
+		uniqueIndex("genre_aliases_alias_idx").on(nocase(t.alias)),
+		index("genre_aliases_genre_idx").on(t.genreId),
+	],
+);
+
+export const artistAliases = sqliteTable(
+	"artist_aliases",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		alias: text("alias").notNull(),
+		canonical: text("canonical").notNull(),
+	},
+	(t) => [uniqueIndex("artist_aliases_alias_idx").on(nocase(t.alias))],
+);
+
+export const labelAliases = sqliteTable(
+	"label_aliases",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		alias: text("alias").notNull(),
+		canonical: text("canonical").notNull(),
+	},
+	(t) => [uniqueIndex("label_aliases_alias_idx").on(nocase(t.alias))],
+);
+
+// Custom tags (vibe, set position, venue): free names a track can carry any of.
+export const tags = sqliteTable(
+	"tags",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		name: text("name").notNull(),
+		createdAt: at("created_at").notNull(),
+	},
+	(t) => [uniqueIndex("tags_name_idx").on(nocase(t.name))],
+);
+
+export const trackTags = sqliteTable(
+	"track_tags",
+	{
+		trackId: text("track_id")
+			.notNull()
+			.references(() => tracks.id, { onDelete: "cascade" }),
+		tagId: integer("tag_id")
+			.notNull()
+			.references(() => tags.id, { onDelete: "cascade" }),
+	},
+	(t) => [
+		primaryKey({ columns: [t.trackId, t.tagId] }),
+		// The filter facet: the tracks of a tag, and the tag counts, from the index alone.
+		index("track_tags_tag_idx").on(t.tagId, t.trackId),
+	],
+);
+
+// Cleanup rules: `definition` is core/rules' `Rule` as JSON.
+export const rules = sqliteTable(
+	"rules",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+		builtin: integer("builtin", { mode: "boolean" }).notNull().default(false),
+		position: integer("position").notNull().default(0),
+		definition: text("definition", { mode: "json" }).notNull(),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [index("rules_position_idx").on(t.position)],
+);
+
+// What a preview job found, one row per field it would change, read in windows by
+// the screen. A new preview of a kind replaces the last; old ones age out.
+export const previews = sqliteTable(
+	"previews",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		jobId: text("job_id").notNull(),
+		pos: integer("pos").notNull(),
+		trackId: text("track_id").notNull(),
+		label: text("label"),
+		field: text("field").notNull(),
+		before: text("before"),
+		after: text("after"),
+	},
+	(t) => [index("previews_job_idx").on(t.jobId, t.pos)],
+);
+
+// Dedupe: a found group, its pre-picked keeper and why; `state` keeps a dismissal.
+export const dupeGroups = sqliteTable(
+	"dupe_groups",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		// The member ids sorted and hashed: the same set is the same group on a rerun.
+		key: text("key").notNull(),
+		reason: text("reason", { enum: ["exact", "acoustic", "fuzzy"] }).notNull(),
+		confidence: real("confidence").notNull(),
+		keeperId: text("keeper_id").notNull(),
+		keeperReason: text("keeper_reason").notNull(),
+		size: integer("size").notNull(),
+		state: text("state", { enum: ["open", "dismissed", "merged"] })
+			.notNull()
+			.default("open"),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [
+		uniqueIndex("dupe_groups_key_idx").on(t.key),
+		index("dupe_groups_state_idx").on(t.state, t.confidence, t.id),
+	],
+);
+
+export const dupeMembers = sqliteTable(
+	"dupe_members",
+	{
+		groupId: integer("group_id")
+			.notNull()
+			.references(() => dupeGroups.id, { onDelete: "cascade" }),
+		trackId: text("track_id").notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.groupId, t.trackId] }),
+		index("dupe_members_track_idx").on(t.trackId),
+	],
+);
+
+// Chromaprint fingerprints (little-endian int32 bytes), one per track.
+export const fingerprints = sqliteTable("fingerprints", {
+	trackId: text("track_id")
+		.primaryKey()
+		.references(() => tracks.id, { onDelete: "cascade" }),
+	data: blob("data", { mode: "buffer" }).notNull(),
+	fileHash: text("file_hash"),
+	createdAt: at("created_at").notNull(),
+});
+
+// What the health jobs found, per track, so a check runs only for what changed.
+export const healthChecks = sqliteTable("health_checks", {
+	trackId: text("track_id")
+		.primaryKey()
+		.references(() => tracks.id, { onDelete: "cascade" }),
+	fileHash: text("file_hash"),
+	// ok | warnings | corrupt | timeout | unavailable
+	integrity: text("integrity"),
+	integrityErrors: text("integrity_errors", { mode: "json" }),
+	cutoffHz: integer("cutoff_hz"),
+	// ok | suspect | fake | unknown
+	bitrateVerdict: text("bitrate_verdict"),
+	bitrateNote: text("bitrate_note"),
+	checkedAt: at("checked_at").notNull(),
+});

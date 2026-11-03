@@ -16,12 +16,14 @@ import { libraryRootChanged } from "../../server/services/scanner.ts";
 const view = z.object({
 	libraryRoot: z.string().nullable(),
 	lowBitrateThreshold: z.number(),
+	quarantineDays: z.number(),
 	libraryVersion: z.number(),
 });
 
 const asView = (row: ReturnType<typeof readSettings>) => ({
 	libraryRoot: row.libraryRoot,
 	lowBitrateThreshold: row.lowBitrateThreshold,
+	quarantineDays: row.quarantineDays,
 	libraryVersion: row.libraryVersion,
 });
 
@@ -41,6 +43,12 @@ export const settings = {
 					.int("Enter a whole number")
 					.min(0, "Enter 0 or more")
 					.max(2000, "Enter 2000 or less")
+					.optional(),
+				quarantineDays: z
+					.number("Enter a number")
+					.int("Enter a whole number")
+					.min(0, "Enter 0 or more")
+					.max(3650, "Enter 3650 or less")
 					.optional(),
 			}),
 		)
@@ -73,6 +81,9 @@ export const settings = {
 					...(root !== undefined && { libraryRoot: root }),
 					...(input.lowBitrateThreshold !== undefined && {
 						lowBitrateThreshold: input.lowBitrateThreshold,
+					}),
+					...(input.quarantineDays !== undefined && {
+						quarantineDays: input.quarantineDays,
 					}),
 					updatedAt: new Date(),
 				})

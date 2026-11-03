@@ -1,0 +1,147 @@
+import { useMutation } from "@fcalell/plugin-api/tanstack-query";
+import { Pane } from "@fcalell/plugin-react-ui/components/pane";
+import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
+import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
+import { createFileRoute } from "@tanstack/react-router";
+import type { AppRouter } from "../../../../.stack/worker";
+import { orpc } from "../../lib/api.ts";
+import { PreviewSection } from "../../lib/preview.tsx";
+
+export const Route = createFileRoute("/_app/aliases")({
+	component: Aliases,
+});
+
+type Kind = "artist" | "label";
+type Alias = AppRouter["aliases"]["list"]["__output"][number];
+type Suggestion = AppRouter["aliases"]["suggest"]["__output"][number];
+
+const count = new Intl.NumberFormat("en");
+
+const NOUN: Record<Kind, string> = { artist: "artist", label: "label" };
+
+// Artist and label aliases: spellings that differ by case, spacing or punctuation
+// grouped for a one-click merge, the aliases kept, and the unify that applies them.
+function Aliases() {
+	const map = useMutation(orpc.aliases.map.mutationOptions());
+	const remove = useMutation(orpc.aliases.remove.mutationOptions());
+	const apply = useMutation(orpc.unifyTags.apply.mutationOptions());
+
+	const toSuggestion =
+		(kind: Kind) =>
+		(row: Suggestion): Row => ({
+			key: `${kind}-${row.canonical}`,
+			leading: { icon: "Merge" },
+			title: row.canonical,
+			meta: row.variants.map(
+				(variant) => `${variant.value} (${count.format(variant.count)})`,
+			),
+			act: {
+				icon: "Check",
+				label: `Merge into ${row.canonical}`,
+				onAct: () =>
+					map.mutateAsync({
+						kind,
+						items: row.variants.map((variant) => ({
+							alias: variant.value,
+							canonical: row.canonical,
+						})),
+					}),
+				done: "Spellings mapped",
+			},
+		});
+
+	const toAlias =
+		(kind: Kind) =>
+		(row: Alias): Row => ({
+			key: `${kind}-alias-${row.id}`,
+			leading: { icon: "ArrowRight" },
+			title: row.alias,
+			meta: [`is ${row.canonical}`],
+			act: {
+				icon: "X",
+				label: `Remove ${row.alias}`,
+				onAct: () => remove.mutateAsync({ kind, id: row.id }),
+			},
+		});
+
+	const artistSuggestions = orpc.aliases.suggest.read({ kind: "artist" });
+	const labelSuggestions = orpc.aliases.suggest.read({ kind: "label" });
+	const artistAliases = orpc.aliases.list.read({ kind: "artist" });
+	const labelAliases = orpc.aliases.list.read({ kind: "label" });
+
+	const add = (kind: Kind) => ({
+		icon: "Plus" as const,
+		label: `Add a ${NOUN[kind]} alias`,
+		sheet: sheetOf({
+			title: `Add a ${NOUN[kind]} alias`,
+			form: {
+				act: orpc.aliases.add,
+				given: { kind },
+				fields: {
+					alias: { label: "Spelling" },
+					canonical: { label: `Name to use` },
+				},
+				submit: { label: "Add", done: "Alias added" },
+			},
+		}),
+	});
+
+	return (
+		<Pane
+			title="Aliases"
+			back={false}
+			actions={[
+				{
+					icon: "Replace",
+					label: "Preview unify on the library",
+					onAct: () =>
+						orpc.unifyTags.preview.call({ fields: ["artist", "label"] }),
+					done: "Previewing the aliases",
+				},
+			]}
+		>
+			<Section
+				title="Artist spellings to merge"
+				items={artistSuggestions.at((rows) => rows.map(toSuggestion("artist")))}
+				empty={{ sentence: "No artist is spelled two ways." }}
+			/>
+			<Section
+				title="Artist aliases"
+				items={artistAliases.at((rows) => rows.map(toAlias("artist")))}
+				act={add("artist")}
+				empty={{ sentence: "No artist aliases yet." }}
+			/>
+			<Section
+				title="Label spellings to merge"
+				items={labelSuggestions.at((rows) => rows.map(toSuggestion("label")))}
+				empty={{ sentence: "No label is spelled two ways." }}
+			/>
+			<Section
+				title="Label aliases"
+				items={labelAliases.at((rows) => rows.map(toAlias("label")))}
+				act={add("label")}
+				empty={{ sentence: "No label aliases yet." }}
+			/>
+			<PreviewSection
+				kind="unify"
+				title="Unify preview"
+				none="Preview the unify to see which names would be rewritten."
+				words={(result) =>
+					`${count.format(result.tracks ?? 0)} tracks would change.`
+				}
+				changes={(result) => result.tracks ?? 0}
+				apply={{
+					label: "Unify the library",
+					confirm: {
+						title: "Unify artists and labels?",
+						sentence:
+							"Every change shown is written to the library and to the files. Undo the batch in History.",
+					},
+					onAct: () => apply.mutateAsync({ fields: ["artist", "label"] }),
+					done: "Unifying",
+					to: "/jobs",
+				}}
+			/>
+		</Pane>
+	);
+}

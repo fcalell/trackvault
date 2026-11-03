@@ -1,9 +1,5 @@
-import { stat } from "node:fs/promises";
-import { and, eq } from "@fcalell/plugin-db/orm";
-import { safeJoin } from "@trackvault/core/paths";
-import { type TagPatch, writeTags } from "@trackvault/core/tags";
-import { files } from "../../schema/index.ts";
-import { db } from "../lib/db.ts";
+import type { TagPatch } from "@trackvault/core/tags";
+import { type WriteResult, writeTrackFiles } from "../lib/changes.ts";
 import { defineJob } from "../lib/job.ts";
 import { readSettings } from "../lib/settings.ts";
 
@@ -11,11 +7,7 @@ export interface TagWritePayload {
 	items: Array<{ trackId: string; patch: TagPatch }>;
 }
 
-export interface TagWriteResult {
-	written: number;
-	failed: number;
-	errors: string[];
-}
+export type TagWriteResult = WriteResult;
 
 // Writes tag edits made in the library into the files of the tracks. The patch
 // travels with the job, so a repeat after a restart writes the same values; the
@@ -29,43 +21,9 @@ export default defineJob<TagWritePayload, TagWriteResult>({
 		if (!root) throw new Error("The library folder is not set");
 		const result: TagWriteResult = { written: 0, failed: 0, errors: [] };
 		const total = payload.items.length;
-		const database = db();
-
 		for (const [index, item] of payload.items.entries()) {
 			signal.throwIfAborted();
-			const rows = database
-				.select({ id: files.id, path: files.path })
-				.from(files)
-				.where(and(eq(files.trackId, item.trackId), eq(files.state, "ok")))
-				.all();
-			if (rows.length === 0) {
-				result.failed++;
-				result.errors.push(`${item.trackId}: no file on disk`);
-			}
-			for (const row of rows) {
-				try {
-					const absolute = safeJoin(root, row.path);
-					await writeTags(absolute, item.patch);
-					const info = await stat(absolute);
-					database
-						.update(files)
-						.set({
-							size: info.size,
-							mtimeMs: Math.floor(info.mtimeMs),
-							inode: info.ino,
-						})
-						.where(eq(files.id, row.id))
-						.run();
-					result.written++;
-				} catch (error) {
-					result.failed++;
-					if (result.errors.length < 20) {
-						result.errors.push(
-							`${row.path}: ${error instanceof Error ? error.message : String(error)}`,
-						);
-					}
-				}
-			}
+			await writeTrackFiles(root, item.trackId, item.patch, result);
 			progress(index + 1, total, "Writing tags");
 		}
 		progress(

@@ -4,7 +4,7 @@ import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
 import { eq } from "@fcalell/plugin-db/orm";
 import type { TagPatch } from "@trackvault/core/tags";
-import { changes, tracks as tracksTable } from "../../schema/index.ts";
+import { batches, changes, tracks as tracksTable } from "../../schema/index.ts";
 import tagWrite from "../../server/jobs/tag-write.ts";
 import { db } from "../../server/lib/db.ts";
 import {
@@ -19,55 +19,14 @@ import {
 	derivedText,
 	diffFields,
 	issuesAfterEdit,
+	TAG_KEYS,
 	type TrackRow,
 } from "../../server/lib/track-fields.ts";
 import { enqueue } from "../../server/services/jobs.ts";
 import { bumpVersion, notifyChanged } from "../../server/services/library.ts";
+import { tagPatch } from "../../shared/patch.ts";
 
-const text = z
-	.string()
-	.nullable()
-	.transform((value) => {
-		const trimmed = value?.trim();
-		return trimmed ? trimmed : null;
-	});
-
-// The fields an edit may carry. A key left out is left alone; null clears it.
-const edit = z.object({
-	id: z.string(),
-	title: text.optional(),
-	artist: text.optional(),
-	albumArtist: text.optional(),
-	album: text.optional(),
-	remixer: text.optional(),
-	label: text.optional(),
-	genre: text.optional(),
-	isrc: text.optional(),
-	key: text.optional(),
-	comment: text.optional(),
-	year: z.number().int().min(1000).max(9999).nullable().optional(),
-	bpm: z.number().min(1).max(999).nullable().optional(),
-	energy: z.number().int().min(1).max(10).nullable().optional(),
-	rating: z.number().int().min(0).max(5).optional(),
-});
-
-// The edit's fields that live in the file's tags: what the tag-write job carries.
-const TAG_KEYS = [
-	"title",
-	"artist",
-	"albumArtist",
-	"album",
-	"remixer",
-	"label",
-	"genre",
-	"isrc",
-	"key",
-	"comment",
-	"year",
-	"bpm",
-	"energy",
-	"rating",
-] as const satisfies ReadonlyArray<keyof TagPatch & keyof TrackRow>;
+const edit = tagPatch.extend({ id: z.string() });
 
 export const tracks = {
 	// The library's windowed read: search, facet and issue filters and the sort go
@@ -147,6 +106,15 @@ export const tracks = {
 					.where(eq(tracksTable.id, input.id))
 					.returning()
 					.get();
+				tx.insert(batches)
+					.values({
+						id: batchId,
+						origin: "ui",
+						label: "Edit tags",
+						count: edits.length,
+						at: now,
+					})
+					.run();
 				tx.insert(changes)
 					.values(
 						edits.map((edit) => ({

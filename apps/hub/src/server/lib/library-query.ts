@@ -1,7 +1,7 @@
+import { paginateWindow } from "@fcalell/plugin-api/lib/window";
 import { type Selector, z } from "@fcalell/plugin-api/schema";
 import {
 	and,
-	asc,
 	between,
 	bm25,
 	count,
@@ -9,7 +9,6 @@ import {
 	eq,
 	ftsQuery,
 	gte,
-	inArray,
 	lte,
 	notInArray,
 	type SQL,
@@ -17,7 +16,7 @@ import {
 	sql,
 } from "@fcalell/plugin-db/orm";
 import { ISSUE } from "@trackvault/core/issues";
-import { trackSearch, tracks } from "../../schema/index.ts";
+import { tags, trackSearch, tracks, trackTags } from "../../schema/index.ts";
 import {
 	ISSUE_FILTERS,
 	type IssueFilter,
@@ -42,6 +41,8 @@ export const libraryQuery = z.object({
 	bpmMin: z.number().optional(),
 	bpmMax: z.number().optional(),
 	issue: z.enum(ISSUE_FILTERS).optional(),
+	// A custom tag's id: the tracks that carry it.
+	tag: z.number().int().optional(),
 	// The view's own order when the caller sorts nothing: newest first.
 	recent: z.boolean().optional(),
 });
@@ -106,7 +107,34 @@ export function filtersOf(query: LibraryQuery): SQL | undefined {
 		// Written as the partial indexes write it, so they answer it.
 		conditions.push(sql.raw(issueSql(query.issue)));
 	}
+	if (query.tag !== undefined)
+		conditions.push(
+			sql`${tracks.id} IN (SELECT ${trackTags.trackId} FROM ${trackTags} WHERE ${trackTags.tagId} = ${query.tag})`,
+		);
+	// Quarantined tracks are out of the library until they are restored. Only when
+	// some exist: the partial index answers that, and the condition costs nothing
+	// while there are none.
+	if (hidden > 0)
+		conditions.push(sql.raw(`("tracks"."issues" & ${QUARANTINED}) = 0`));
 	return and(...conditions);
+}
+
+const QUARANTINED = ISSUE.quarantined;
+
+// How many tracks are quarantined, as of the last query prepared (by library
+// version): the library list leaves them out only while there are some.
+let hidden = 0;
+let hiddenAt = -1;
+
+export function refreshHidden(database: Db, version: number): void {
+	if (hiddenAt === version) return;
+	hidden =
+		database
+			.select({ n: count() })
+			.from(tracks)
+			.where(sql.raw(`("tracks"."issues" & ${QUARANTINED}) != 0`))
+			.get()?.n ?? 0;
+	hiddenAt = version;
 }
 
 export const issueSql = (issue: IssueFilter): string =>
@@ -163,6 +191,7 @@ export function prepareQuery<T extends LibraryQuery>(
 	query: T,
 	version: number,
 ): T {
+	refreshHidden(database, version);
 	if (query.format === undefined) return query;
 	const everyone = facetsOf(database, version).formats.find(
 		(each) => each.value === query.format,
@@ -175,139 +204,82 @@ export function prepareQuery<T extends LibraryQuery>(
 	return query;
 }
 
-// The rows of `ids`, in that order.
-function rowsInOrder(database: Db, ids: string[]): ListRow[] {
-	if (ids.length === 0) return [];
-	const byId = new Map<string, ListRow>();
-	for (const row of database
-		.select(LIST_COLUMNS)
-		.from(tracks)
-		.where(inArray(tracks.id, ids))
-		.all())
-		byId.set(row.id, row);
-	return ids.flatMap((id) => {
-		const row = byId.get(id);
-		return row ? [row] : [];
-	});
-}
+// What a window draws is the list columns: every other column of a track is left out
+// of the page's rows (the full record loads on open).
+const OTHER_COLUMNS = {
+	seq: false,
+	audioHash: false,
+	fingerprint: false,
+	artists: false,
+	remixer: false,
+	album: false,
+	albumArtist: false,
+	label: false,
+	genreId: false,
+	year: false,
+	releaseDate: false,
+	isrc: false,
+	energy: false,
+	loudness: false,
+	colour: false,
+	comment: false,
+	sampleRate: false,
+	size: false,
+	hasArt: false,
+	blockKey: false,
+	updatedAt: false,
+	version: false,
+} as const;
 
-// The rows of the tracks numbered `seqs`, in that order.
-function rowsBySeq(database: Db, seqs: number[]): ListRow[] {
-	if (seqs.length === 0) return [];
-	const bySeq = new Map<number, ListRow>();
-	for (const row of database
-		.select({ ...LIST_COLUMNS, seq: tracks.seq })
-		.from(tracks)
-		.where(inArray(tracks.seq, seqs))
-		.all()) {
-		const { seq, ...rest } = row;
-		bySeq.set(seq, rest);
-	}
-	return seqs.flatMap((seq) => {
-		const row = bySeq.get(seq);
-		return row ? [row] : [];
-	});
-}
+const RANK = {
+	title: 10,
+	artist: 6,
+	remixer: 3,
+	mixName: 2,
+	album: 2,
+	label: 1,
+	genre: 1,
+} as const;
 
-// One window of the library: `limit` rows from `offset` in the order asked, and
-// the total the filter matches. A search with no sort ranks by relevance (bm25);
-// every other order is an index range scan (schema), the id the last tiebreak.
-export function listPage(
+// One window of the library: `limit` rows from `offset` in the order asked, and the
+// total the filter matches (stack's `paginateWindow`: the ids are ordered and paged
+// alone, then the rows are read by id). A search with no sort ranks by relevance
+// (bm25) over a join of the full-text index; every other order is an index range
+// scan (schema), the id the last tiebreak.
+export async function listPage(
 	database: Db,
 	given: ListInput,
 	version: number,
-): {
+): Promise<{
 	data: ListRow[];
 	total: number;
 	offset: number;
-} {
+}> {
 	const input = prepareQuery(database, given, version);
-	const offset = Math.max(0, Math.trunc(input.offset ?? 0));
 	const fts = searchOf(input.q);
 	const filters = filtersOf(input);
-
-	if (fts && !input.sort) {
-		const rank = bm25(trackSearch, {
-			title: 10,
-			artist: 6,
-			remixer: 3,
-			mixName: 2,
-			album: 2,
-			label: 1,
-			genre: 1,
-		});
-		const matches = sql`${trackSearch} MATCH ${fts}`;
-		// The order is decided on the ids alone, then the page's rows are read.
-		const data = filters
-			? rowsInOrder(
-					database,
-					database
-						.select({ id: tracks.id })
-						.from(trackSearch)
-						.innerJoin(tracks, eq(tracks.seq, trackSearch.rowid))
-						.where(and(matches, filters))
-						.orderBy(rank, asc(trackSearch.rowid))
-						.limit(input.limit)
-						.offset(offset)
-						.all()
-						.map((row) => row.id),
-				)
-			: rowsBySeq(
-					database,
-					database
-						.select({ seq: trackSearch.rowid })
-						.from(trackSearch)
-						.where(matches)
-						.orderBy(rank, asc(trackSearch.rowid))
-						.limit(input.limit)
-						.offset(offset)
-						.all()
-						.map((row) => row.seq),
-				);
-		const where = and(matches, filters);
-		// With no other filter the matches count in the index alone, no join.
-		const total =
-			(filters
-				? database
-						.select({ n: count() })
-						.from(trackSearch)
-						.innerJoin(tracks, eq(tracks.seq, trackSearch.rowid))
-						.where(where)
-						.get()
-				: database
-						.select({ n: count() })
-						.from(trackSearch)
-						.where(sql`${trackSearch} MATCH ${fts}`)
-						.get()
-			)?.n ?? 0;
-		return { data, total, offset };
-	}
-
-	const where = and(filters, fts ? searchIn(fts) : undefined);
-	const by = (expression: SQL, way: "asc" | "desc") =>
-		way === "desc" ? desc(expression) : asc(expression);
-	const first = input.sort
-		? { expression: ORDER[input.sort.column], way: input.sort.direction }
+	const matches = fts ? sql`${trackSearch} MATCH ${fts}` : undefined;
+	const dflt = fts
+		? { column: bm25(trackSearch, RANK), direction: "asc" as const }
 		: input.recent
-			? { expression: ORDER.addedAt, way: "desc" as const }
-			: { expression: ORDER.title, way: "asc" as const };
-	// The order is decided on the ids alone (a sorter that holds a key and an id,
-	// not thirteen columns), then the page's rows are read by id.
-	const ids = database
-		.select({ id: tracks.id })
-		.from(tracks)
-		.where(where)
-		.orderBy(by(first.expression, first.way), by(sql`${tracks.id}`, first.way))
-		.limit(input.limit)
-		.offset(offset)
-		.all()
-		.map((row) => row.id);
-	const data = rowsInOrder(database, ids);
-	return {
-		data,
-		total: totalOf(database, where, version, where === undefined),
-		offset,
-	};
+			? { column: ORDER.addedAt, direction: "desc" as const }
+			: { column: ORDER.title, direction: "asc" as const };
+	const page = await paginateWindow(database.query.tracks, {
+		where: and(matches, filters),
+		orderBy: dflt,
+		sorts: ORDER,
+		sort: input.sort,
+		join: fts
+			? (query) =>
+					query.innerJoin(trackSearch, eq(trackSearch.rowid, tracks.seq))
+			: undefined,
+		idColumn: tracks.id,
+		columns: OTHER_COLUMNS,
+		offset: input.offset,
+		limit: input.limit,
+		db: database,
+	});
+	return page as { data: ListRow[]; total: number; offset: number };
 }
 
 // Counts for the sidebar's facet pickers, one pass over a covering index each.
@@ -316,6 +288,7 @@ export interface Facets {
 	keys: Array<{ value: string; count: number }>;
 	formats: Array<{ value: string; count: number }>;
 	issues: Array<{ value: IssueFilter; count: number }>;
+	tags: Array<{ id: number; name: string; count: number }>;
 	total: number;
 }
 
@@ -334,7 +307,9 @@ export function facetsOf(database: Db, version: number): Facets {
 				count: count(),
 			})
 			.from(tracks)
-			.where(sql`${tracks[column]} IS NOT NULL`)
+			.where(
+				sql`${tracks[column]} IS NOT NULL AND (${tracks.issues} & ${QUARANTINED}) = 0`,
+			)
 			.groupBy(expression)
 			.orderBy(desc(count()))
 			.limit(1000)
@@ -350,7 +325,9 @@ export function facetsOf(database: Db, version: number): Facets {
 			) as Record<IssueFilter, SQL<number>>,
 		)
 		.from(tracks)
+		.where(sql`(${tracks.issues} & ${QUARANTINED}) = 0`)
 		.get();
+	refreshHidden(database, version);
 	const facets: Facets = {
 		genres: group("genre"),
 		keys: group("key"),
@@ -359,7 +336,14 @@ export function facetsOf(database: Db, version: number): Facets {
 			value,
 			count: sums?.[value] ?? 0,
 		})).filter((issue) => issue.count > 0),
-		total: totalOf(database, undefined, version, true),
+		tags: database
+			.select({ id: tags.id, name: tags.name, count: count(trackTags.trackId) })
+			.from(tags)
+			.leftJoin(trackTags, eq(trackTags.tagId, tags.id))
+			.groupBy(tags.id)
+			.orderBy(sql`${tags.name} collate nocase`)
+			.all(),
+		total: totalOf(database, undefined, version, true) - hidden,
 	};
 	cachedFacets = { version, facets };
 	return facets;

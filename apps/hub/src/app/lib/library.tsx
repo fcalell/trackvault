@@ -1,16 +1,27 @@
-import { useWindow } from "@fcalell/plugin-api/tanstack-query";
+import { useMutation, useWindow } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
-import { player } from "@fcalell/plugin-react-ui/lib/player";
-import type { TableColumn } from "@fcalell/ui-core/descriptors";
+import { player, windowQueue } from "@fcalell/plugin-react-ui/lib/player";
+import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
 import { useParams } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import type { ISSUE_FILTERS, ListRow } from "../../shared/library.ts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { LibraryQuery } from "../../server/lib/library-query.ts";
+import {
+	type ISSUE_FILTERS,
+	ISSUE_LABELS,
+	type ListRow,
+} from "../../shared/library.ts";
 import { clock, quality, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
+import {
+	BulkEditFields,
+	type EditDraft,
+	EMPTY_DRAFT,
+	patchOf,
+} from "./bulk-edit.tsx";
 import { useDebounced } from "./debounced.ts";
-import { queueFrom, setQueueSource } from "./queue.ts";
+import { setQueueSource } from "./queue.ts";
 
 // The keys are the hub's sort columns (shared/library.ts) where the column sorts.
 const COLUMNS: TableColumn<ListRow>[] = [
@@ -77,18 +88,6 @@ const BPM_RANGES = [
 	{ value: "160-999", label: "160 and over", min: 160, max: 999 },
 ] as const;
 
-const ISSUE_LABELS: Record<(typeof ISSUE_FILTERS)[number], string> = {
-	lowBitrate: "Low bitrate",
-	noTitle: "No title",
-	noArtist: "No artist",
-	noGenre: "No genre",
-	noBpm: "No BPM",
-	noKey: "No key",
-	noArt: "No artwork",
-	undecodable: "Unreadable audio",
-	missingFile: "File missing",
-};
-
 const count = new Intl.NumberFormat("en");
 
 // The library's list: a search box and filters over a table of every track, read a
@@ -98,34 +97,58 @@ export function LibraryPane({
 	title,
 	base,
 	recent = false,
+	initial = {},
 }: {
 	title: string;
 	base: string;
 	recent?: boolean;
+	// Filters the page was opened with (a link from the Issues screen).
+	initial?: {
+		issue?: (typeof ISSUE_FILTERS)[number] | undefined;
+		tag?: number | undefined;
+		genre?: string | undefined;
+	};
 }) {
 	const [text, setText] = useState("");
 	const q = useDebounced(text.trim(), 120);
-	const [genre, setGenre] = useState<string>();
+	const [genre, setGenre] = useState<string | undefined>(initial.genre);
 	const [key, setKey] = useState<string>();
-	const [issue, setIssue] = useState<(typeof ISSUE_FILTERS)[number]>();
+	const [issue, setIssue] = useState<
+		(typeof ISSUE_FILTERS)[number] | undefined
+	>(initial.issue);
+	const [tag, setTag] = useState<number | undefined>(initial.tag);
 	const [bpm, setBpm] = useState<string>();
 	const range = BPM_RANGES.find((each) => each.value === bpm);
 
-	const query = useMemo(
+	const query = useMemo<LibraryQuery>(
 		() => ({
 			q: q || undefined,
 			genre,
 			key,
 			issue,
+			tag,
 			bpmMin: range?.min,
 			bpmMax: range?.max,
 			recent: recent || undefined,
 		}),
-		[q, genre, key, issue, range, recent],
+		[q, genre, key, issue, tag, range, recent],
 	);
 	const tracks = orpc.tracks.list.window(query);
 	const facets = orpc.tracks.facets.read();
 	const open = useParams({ strict: false }).trackId;
+
+	// The rows a bulk act takes: the ticked ids, or the whole query less the unticked.
+	const [picked, setPicked] = useState<Picked<LibraryQuery>>({ ids: [] });
+	const draft = useRef<EditDraft>(EMPTY_DRAFT);
+	const edit = useMutation(orpc.bulk.edit.mutationOptions());
+	const rules = useMutation(orpc.bulk.rules.mutationOptions());
+	const organise = useMutation(orpc.bulk.organise.mutationOptions());
+	const dedupe = useMutation(orpc.bulk.dedupe.mutationOptions());
+	const quarantine = useMutation(orpc.bulk.quarantine.mutationOptions());
+	const nothing =
+		"ids" in picked && picked.ids.length === 0
+			? "Choose tracks first."
+			: undefined;
 
 	// The player's queue is the rows loaded, in the list's order.
 	const view = useWindow(tracks);
@@ -191,6 +214,19 @@ export function LibraryPane({
 						onChange: (value) => setBpm(value ?? undefined),
 					},
 					{
+						label: "Tag",
+						placeholder: "Any tag",
+						options: facets.at((each) =>
+							each.tags.map((row) => ({
+								value: String(row.id),
+								label: row.name,
+								description: count.format(row.count),
+							})),
+						),
+						value: tag === undefined ? undefined : String(tag),
+						onChange: (value) => setTag(value ? Number(value) : undefined),
+					},
+					{
 						label: "Issue",
 						placeholder: "No filter",
 						options: facets.at((each) =>
@@ -213,18 +249,104 @@ export function LibraryPane({
 				row={{
 					id: (row) => row.id,
 					href: (row) => `${base}/${row.id}`,
-					// Shift+Enter on the active row plays it, with the loaded rows after it as the queue.
+					// Shift+Enter on the active row plays it; Next and Previous follow the list.
 					act: (row) => ({
 						icon: "Play",
 						label: `Play ${row.title ?? "Untitled"}`,
-						onAct: () =>
+						onAct: () => {
+							const at =
+								rows?.findIndex(
+									(each) => (each as ListRow | undefined)?.id === row.id,
+								) ?? -1;
 							player.play(
 								toTrack(row),
-								queueFrom(row.id).map((each) => toTrack(each)),
-							),
+								at >= 0
+									? windowQueue(tracks, { track: toTrack, at })
+									: undefined,
+							);
+						},
 					}),
 				}}
 				selected={open}
+				choose={{ picked, onPick: setPicked, noun: "tracks" }}
+				select={{
+					acts: [
+						{
+							label: "Quarantine",
+							destructive: true,
+							blocked: nothing,
+							confirm: {
+								title: "Quarantine the chosen tracks?",
+								sentence:
+									"Their files move to the quarantine and the tracks leave the library. Restore them from Quarantine, or undo the batch in History.",
+							},
+							onAct: () => quarantine.mutateAsync({ tracks: picked }),
+							done: "Moving files to the quarantine",
+							to: "/jobs",
+						},
+						{
+							label: "Find duplicates",
+							blocked: nothing,
+							onAct: () => dedupe.mutateAsync({ tracks: picked }),
+							done: "Looking for duplicates",
+							to: "/jobs",
+						},
+						{
+							label: "Organise",
+							blocked: nothing,
+							confirm: {
+								title: "Organise the chosen tracks?",
+								sentence:
+									"Their files move to the folders the Organiser's template names. Undo the batch in History.",
+							},
+							onAct: () => organise.mutateAsync({ tracks: picked }),
+							done: "Organising",
+							to: "/jobs",
+						},
+						{
+							label: "Apply rules",
+							blocked: nothing,
+							confirm: {
+								title: "Apply the cleanup rules?",
+								sentence:
+									"Every enabled rule runs over the chosen tracks and their tags are rewritten. Undo the batch in History.",
+							},
+							onAct: () => rules.mutateAsync({ tracks: picked }),
+							done: "Applying rules",
+							to: "/jobs",
+						},
+						{
+							label: "Edit tags",
+							blocked: nothing,
+							sheet: {
+								title: "Edit tags",
+								description:
+									"Fill the tags to set on the chosen tracks. Empty keeps a tag, a dash clears it.",
+								submit: {
+									label: "Apply",
+									onAct: () => {
+										const typed = draft.current;
+										const patch = patchOf(typed.text);
+										if (
+											Object.keys(patch).length === 0 &&
+											typed.addTags.length + typed.removeTags.length === 0
+										)
+											throw new Error("Enter a value to change.");
+										return edit.mutateAsync({
+											tracks: picked,
+											patch,
+											addTags: typed.addTags,
+											removeTags: typed.removeTags,
+										});
+									},
+									done: "Editing tags",
+									to: "/jobs",
+								},
+								children: <BulkEditFields picked={picked} draft={draft} />,
+							},
+						},
+					],
+				}}
 			/>
 		</Pane>
 	);

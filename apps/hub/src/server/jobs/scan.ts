@@ -3,6 +3,7 @@ import { eq, like, or } from "@fcalell/plugin-db/orm";
 import { safeJoin } from "@trackvault/core/paths";
 import { files } from "../../schema/index.ts";
 import { db } from "../lib/db.ts";
+import { acquireFs } from "../lib/fs-lock.ts";
 import { defineJob } from "../lib/job.ts";
 import {
 	applyOutcomes,
@@ -81,97 +82,106 @@ export default defineJob<ScanPayload, ScanResult>({
 		const settings = readSettings();
 		const root = settings.libraryRoot;
 		if (!root) throw new Error("The library folder is not set");
-		await access(root).catch(() => {
-			throw new Error(`The library folder cannot be read: ${root}`);
-		});
-		const scopes =
-			payload.paths && payload.paths.length > 0
-				? [...new Set(payload.paths)]
-				: [""];
-		for (const scope of scopes) if (scope !== "") safeJoin(root, scope);
+		// Files do not move under a scan: the organiser and the quarantine wait for it.
+		const release = await acquireFs(signal);
+		try {
+			await access(root).catch(() => {
+				throw new Error(`The library folder cannot be read: ${root}`);
+			});
+			const scopes =
+				payload.paths && payload.paths.length > 0
+					? [...new Set(payload.paths)]
+					: [""];
+			for (const scope of scopes) if (scope !== "") safeJoin(root, scope);
 
-		progress(0, 0, "Looking for files");
-		const known = knownUnder(scopes);
-		const seen = new Map<string, FoundFile>();
-		const changed: FoundFile[] = [];
-		const onFound = (file: FoundFile): void => {
-			seen.set(file.path, file);
-			if (isChanged(file, known.get(file.path))) changed.push(file);
-		};
-		for (const scope of scopes) await walk(root, scope, onFound, signal);
+			progress(0, 0, "Looking for files");
+			const known = knownUnder(scopes);
+			const seen = new Map<string, FoundFile>();
+			const changed: FoundFile[] = [];
+			const onFound = (file: FoundFile): void => {
+				seen.set(file.path, file);
+				if (isChanged(file, known.get(file.path))) changed.push(file);
+			};
+			for (const scope of scopes) await walk(root, scope, onFound, signal);
 
-		const result: ScanResult = {
-			seen: seen.size,
-			changed: changed.length,
-			added: 0,
-			updated: 0,
-			failed: 0,
-			missing: 0,
-			tookMs: 0,
-		};
+			const result: ScanResult = {
+				seen: seen.size,
+				changed: changed.length,
+				added: 0,
+				updated: 0,
+				failed: 0,
+				missing: 0,
+				tookMs: 0,
+			};
 
-		const total = changed.length;
-		let done = 0;
-		let buffer: AnalyzeOutcome[] = [];
-		const flush = (): void => {
-			if (buffer.length === 0) return;
-			const outcomes = buffer;
-			buffer = [];
-			const applied = applyOutcomes(
-				outcomes,
-				seen,
-				known,
-				settings.lowBitrateThreshold,
-				batchId,
+			const total = changed.length;
+			let done = 0;
+			let buffer: AnalyzeOutcome[] = [];
+			const flush = (): void => {
+				if (buffer.length === 0) return;
+				const outcomes = buffer;
+				buffer = [];
+				const applied = applyOutcomes(
+					outcomes,
+					seen,
+					known,
+					settings.lowBitrateThreshold,
+					batchId,
+				);
+				result.added += applied.stats.added;
+				result.updated += applied.stats.updated;
+				result.failed += applied.stats.failed;
+				notifyChanged(applied.ids, applied.version);
+				done += outcomes.length;
+				progress(done, total, "Reading files");
+			};
+
+			progress(0, total, total === 0 ? "Nothing changed" : "Reading files");
+			const items: AnalyzeItem[] = changed.map((file) => ({
+				path: file.path,
+				abs: safeJoin(root, file.path),
+			}));
+			await analyzeAll(
+				items,
+				(outcomes) => {
+					buffer.push(...outcomes);
+					progress(done + buffer.length, total);
+					if (buffer.length >= TRANSACTION_SIZE) flush();
+				},
+				signal,
 			);
-			result.added += applied.stats.added;
-			result.updated += applied.stats.updated;
-			result.failed += applied.stats.failed;
-			notifyChanged(applied.ids, applied.version);
-			done += outcomes.length;
-			progress(done, total, "Reading files");
-		};
+			flush();
+			signal.throwIfAborted();
 
-		progress(0, total, total === 0 ? "Nothing changed" : "Reading files");
-		const items: AnalyzeItem[] = changed.map((file) => ({
-			path: file.path,
-			abs: safeJoin(root, file.path),
-		}));
-		await analyzeAll(
-			items,
-			(outcomes) => {
-				buffer.push(...outcomes);
-				progress(done + buffer.length, total);
-				if (buffer.length >= TRANSACTION_SIZE) flush();
-			},
-			signal,
-		);
-		flush();
-		signal.throwIfAborted();
-
-		// Whatever the scope held in the database and the walk did not find is gone.
-		const gone = [...known.entries()].filter(
-			([path, row]) => !seen.has(path) && row.state !== "missing",
-		);
-		if (gone.length > 0) {
-			progress(done, total, "Marking missing files");
-			markMissing(gone.map(([, row]) => row));
+			// Whatever the scope held in the database and the walk did not find is gone.
+			const gone = [...known.entries()].filter(
+				([path, row]) =>
+					!seen.has(path) &&
+					row.state !== "missing" &&
+					row.state !== "quarantined",
+			);
+			if (gone.length > 0) {
+				progress(done, total, "Marking missing files");
+				markMissing(gone.map(([, row]) => row));
+			}
+			result.missing = gone.length;
+			// New tracks get their waveforms, at low priority and in one job.
+			if (result.added > 0) enqueue(peaks, {}, { reuse: () => true });
+			result.tookMs = Date.now() - started;
+			const summary = [
+				result.added > 0 && `${result.added} added`,
+				result.updated > 0 && `${result.updated} updated`,
+				result.missing > 0 && `${result.missing} missing`,
+				result.failed > 0 && `${result.failed} unreadable`,
+			].filter(Boolean);
+			progress(
+				total,
+				total,
+				summary.length > 0 ? summary.join(", ") : "Nothing changed",
+			);
+			return result;
+		} finally {
+			release();
 		}
-		result.missing = gone.length;
-		// New tracks get their waveforms, at low priority and in one job.
-		if (result.added > 0) enqueue(peaks, {}, { reuse: () => true });
-		result.tookMs = Date.now() - started;
-		const summary = [
-			result.added > 0 && `${result.added} added`,
-			result.updated > 0 && `${result.updated} updated`,
-			result.missing > 0 && `${result.missing} missing`,
-			result.failed > 0 && `${result.failed} unreadable`,
-		].filter(Boolean);
-		progress(
-			total,
-			total,
-			summary.length > 0 ? summary.join(", ") : "Nothing changed",
-		);
-		return result;
 	},
 });

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { and, eq, inArray, sql } from "@fcalell/plugin-db/orm";
-import { changes, files, tracks } from "../../../schema/index.ts";
+import { ISSUE } from "@trackvault/core/issues";
+import { batches, changes, files, tracks } from "../../../schema/index.ts";
 import { bumpVersion, notifyChanged } from "../../services/library.ts";
 import { db, type Tx } from "../db.ts";
 import { inserter } from "../raw.ts";
@@ -64,7 +65,7 @@ export function refreshMissing(
 	for (const ids of chunks(trackIds, CHUNK)) {
 		tx.update(tracks)
 			.set({
-				issues: sql`(${tracks.issues} & ~256) | (CASE WHEN EXISTS (SELECT 1 FROM ${files} WHERE ${files.trackId} = ${tracks.id} AND ${files.state} = 'ok') THEN 0 ELSE 256 END)`,
+				issues: sql`(${tracks.issues} & ~256) | (CASE WHEN (${tracks.issues} & ${ISSUE.quarantined}) != 0 OR EXISTS (SELECT 1 FROM ${files} WHERE ${files.trackId} = ${tracks.id} AND ${files.state} = 'ok') THEN 0 ELSE 256 END)`,
 				version,
 				updatedAt: new Date(),
 			})
@@ -88,6 +89,7 @@ export function applyOutcomes(
 	const inserted = new Set<string>();
 	const orphaned = new Set<string>();
 	let version = 0;
+	let loggedCount = 0;
 
 	db().transaction((tx) => {
 		version = bumpVersion(tx);
@@ -183,6 +185,8 @@ export function applyOutcomes(
 
 			const fields = fieldsFromAnalysis(analysis, lowBitrateKbps);
 			let track = trackByHash.get(analysis.audioHash);
+			// What a health check found of the audio holds while the audio is the same.
+			if (track) fields.issues |= track.issues & HEALTH_BITS;
 			if (!track) {
 				track = {
 					id: randomUUID(),
@@ -213,6 +217,7 @@ export function applyOutcomes(
 						// Derived columns follow the tags and are no change of their own.
 						const logged = diff.filter((d) => !DERIVED.has(d.field));
 						if (logged.length > 0) {
+							loggedCount += logged.length;
 							tx.insert(changes)
 								.values(
 									logged.map((d) => ({
@@ -259,6 +264,22 @@ export function applyOutcomes(
 			);
 		}
 
+		if (loggedCount > 0) {
+			tx.insert(batches)
+				.values({
+					id: batchId,
+					origin: "scan",
+					label: "Library scan",
+					count: loggedCount,
+					at: now,
+				})
+				.onConflictDoUpdate({
+					target: batches.id,
+					set: { count: sql`${batches.count} + ${loggedCount}` },
+				})
+				.run();
+		}
+
 		// Tracks that gained or lost a file get their missing flag re-decided.
 		// (A track inserted with its file needs none.)
 		const reflag = new Set<string>([...orphaned, ...touched]);
@@ -274,6 +295,7 @@ export function applyOutcomes(
 const insertTrack = inserter(tracks);
 const insertFile = inserter(files);
 
+const HEALTH_BITS = ISSUE.corrupt | ISSUE.fakeBitrate | ISSUE.quarantined;
 const DERIVED = new Set(["artists", "mixName", "blockKey", "issues"]);
 
 type FileValues = typeof files.$inferInsert;

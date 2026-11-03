@@ -15,6 +15,20 @@ export const Route = createFileRoute("/_app/jobs")({
 const KINDS: Record<string, { title: string; icon: IconName }> = {
 	scan: { title: "Library scan", icon: "FolderSearch" },
 	"tag-write": { title: "Tag write", icon: "Tags" },
+	peaks: { title: "Waveforms", icon: "AudioWaveform" },
+	edit: { title: "Edit tags", icon: "PencilLine" },
+	rules: { title: "Cleanup rules", icon: "WandSparkles" },
+	unify: { title: "Unify tags", icon: "Replace" },
+	organise: { title: "Organise", icon: "FolderTree" },
+	quarantine: { title: "Quarantine", icon: "Archive" },
+	restore: { title: "Restore", icon: "ArchiveRestore" },
+	purge: { title: "Purge quarantine", icon: "Trash2" },
+	undo: { title: "Undo batch", icon: "Undo2" },
+	merge: { title: "Merge duplicates", icon: "Merge" },
+	dedupe: { title: "Find duplicates", icon: "Copy" },
+	fingerprint: { title: "Fingerprints", icon: "Fingerprint" },
+	integrity: { title: "Integrity check", icon: "ShieldCheck" },
+	bitrate: { title: "Bitrate check", icon: "Gauge" },
 };
 
 const TONES: Record<JobView["state"], Tone> = {

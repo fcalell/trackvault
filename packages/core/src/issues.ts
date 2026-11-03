@@ -11,7 +11,21 @@ export const ISSUE = {
 	undecodable: 128,
 	// Set by the scanner: no file of the track is on disk.
 	missingFile: 256,
+	// Set by the integrity check: ffmpeg could not decode the file to its end.
+	corrupt: 512,
+	// Set by the bitrate check: the audio ends at the lowpass of a lower bitrate.
+	fakeBitrate: 1024,
+	// Every file of the track sits in the quarantine; the library list hides it.
+	quarantined: 2048,
 } as const;
+
+// The bits a health check or the quarantine decides: a rescan or a tag edit keeps them.
+export const KEPT_ISSUES: number =
+	ISSUE.undecodable |
+	ISSUE.missingFile |
+	ISSUE.corrupt |
+	ISSUE.fakeBitrate |
+	ISSUE.quarantined;
 
 export type IssueName = keyof typeof ISSUE;
 

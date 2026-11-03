@@ -2,14 +2,29 @@ import type { SQLiteTable } from "@fcalell/plugin-db/orm";
 import { getTableColumns, getTableName } from "@fcalell/plugin-db/orm";
 import { db } from "./db.ts";
 
-interface Statement {
-	run(parameters: Record<string, unknown>): {
+export interface Statement {
+	run(parameters?: Record<string, unknown>): {
 		lastInsertRowid: number | bigint;
+		changes: number;
 	};
+	all(parameters?: Record<string, unknown>): unknown[];
+	get(parameters?: Record<string, unknown>): unknown;
 }
 
 interface Raw {
 	prepare(sql: string): Statement;
+}
+
+const prepared = new Map<string, Statement>();
+
+// A statement prepared once per process: for the hot paths of the jobs.
+export function statement(sql: string): Statement {
+	let found = prepared.get(sql);
+	if (!found) {
+		found = raw().prepare(sql);
+		prepared.set(sql, found);
+	}
+	return found;
 }
 
 // The better-sqlite3 connection behind the drizzle handle, for the statements a
@@ -36,7 +51,9 @@ export function inserter<T extends SQLiteTable>(
 						? value
 							? 1
 							: 0
-						: (value ?? null);
+						: column.dataType === "json" && value != null
+							? JSON.stringify(value)
+							: (value ?? null);
 		}
 		return Number(statement.run(parameters).lastInsertRowid);
 	};

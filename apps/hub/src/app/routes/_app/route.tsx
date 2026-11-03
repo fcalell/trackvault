@@ -2,6 +2,7 @@ import { Shell } from "@fcalell/plugin-react-ui/components/shell";
 import type { PlaceSpec } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
+import { useJobEffects } from "../../lib/jobs-effects.ts";
 import { useLibraryLive } from "../../lib/library-live.ts";
 
 // A session younger than this is not asked for again on the next navigation.
@@ -30,7 +31,7 @@ export const Route = createFileRoute("/_app")({
 });
 
 // Only the places that are built stand here; the rest of the plan's sidebar
-// (Inbox, Playlists, Curate, Tags, Discover, Devices) join as they land.
+// (Inbox, Playlists, Discover, Devices) join as they land.
 const PLACES: PlaceSpec[] = [
 	{ label: "All tracks", icon: "Library", route: "/library", group: "Library" },
 	{
@@ -39,12 +40,37 @@ const PLACES: PlaceSpec[] = [
 		route: "/recent",
 		group: "Library",
 	},
+	{ label: "Issues", icon: "TriangleAlert", route: "/issues", group: "Curate" },
+	{ label: "Duplicates", icon: "Copy", route: "/duplicates", group: "Curate" },
+	{
+		label: "Organiser",
+		icon: "FolderTree",
+		route: "/organiser",
+		group: "Curate",
+	},
+	{
+		label: "Cleanup rules",
+		icon: "WandSparkles",
+		route: "/rules",
+		group: "Curate",
+	},
+	{
+		label: "Quarantine",
+		icon: "Archive",
+		route: "/quarantine",
+		group: "Curate",
+	},
+	{ label: "Genres", icon: "Music", route: "/genres", group: "Tags" },
+	{ label: "Custom tags", icon: "Tags", route: "/tags", group: "Tags" },
+	{ label: "Aliases", icon: "Replace", route: "/aliases", group: "Tags" },
+	{ label: "History", icon: "History", route: "/history", group: "System" },
 	{ label: "Jobs", icon: "ListChecks", route: "/jobs", group: "System" },
 	{ label: "Settings", icon: "Settings", route: "/settings", group: "System" },
 ];
 
 function App() {
 	useLibraryLive();
+	useJobEffects();
 	return (
 		<Shell places={PLACES}>
 			<Outlet />

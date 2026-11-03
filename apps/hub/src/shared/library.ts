@@ -12,6 +12,8 @@ export const ISSUE_FILTERS = [
 	"noArt",
 	"undecodable",
 	"missingFile",
+	"corrupt",
+	"fakeBitrate",
 ] as const;
 export type IssueFilter = (typeof ISSUE_FILTERS)[number];
 
@@ -44,4 +46,19 @@ export type ListRow = {
 	bitrate: number | null;
 	addedAt: Date;
 	issues: number;
+};
+
+// What each issue is called on screen.
+export const ISSUE_LABELS: Record<IssueFilter, string> = {
+	lowBitrate: "Low bitrate",
+	noTitle: "No title",
+	noArtist: "No artist",
+	noGenre: "No genre",
+	noBpm: "No BPM",
+	noKey: "No key",
+	noArt: "No artwork",
+	undecodable: "Unreadable audio",
+	missingFile: "File missing",
+	corrupt: "Corrupt audio",
+	fakeBitrate: "Fake bitrate",
 };

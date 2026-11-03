@@ -17,16 +17,23 @@ no test suite, the gate is `pnpm check`.
 
 ```
 apps/hub/            the stack app (node target, sqlite, auth, api, vite, react, react-ui, screens)
-  src/schema/        Drizzle tables: tracks, files, jobs, changes, settings (+ auth's)
-  src/worker/routes/ procedures: settings, jobs, scan, tracks (list = window read, facets, get, update), fs (folder browser)
-  src/server/jobs/   one file per job kind (defineJob): scan, tag-write, peaks; the runner finds them
+  src/schema/        Drizzle tables: tracks, files, jobs, changes, batches, settings, genres + aliases, tags,
+                     rules, previews, dupeGroups, fingerprints, healthChecks (+ auth's)
+  src/worker/routes/ procedures: settings, jobs, scan, tracks (list = window read, facets, get, update), fs,
+                     bulk (acts on a selection), history, genres/aliases/unifyTags, tags, cleanup, previews,
+                     organiser, quarantine, health, dupes
+  src/server/jobs/   one file per job kind (defineJob): scan, tag-write, peaks, edit, rules, unify, organise,
+                     quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate
   src/server/services/  jobs (durable runner + `jobs` channel), library (version + `library` channel),
-                     scanner (watcher + reconcile), media (/media/<trackId>, /peaks, Range)
+                     scanner (watcher + reconcile), media (/media/<trackId>, /peaks, Range),
+                     housekeeping (seeds genres and built-in rules, purges the quarantine)
   src/server/lib/    db handle and pragmas, scan pipeline (walk, worker pool, batched apply), track fields,
-                     library-query (the one `where`, list, facets), peaks (ffmpeg)
+                     library-query (the one `where`, list, facets), peaks (ffmpeg), changes (every library
+                     write: chunked, logged, undoable), file-ops (recorded file moves), fs-lock (scan and
+                     file-moving jobs do not overlap), previews, taxonomy, rules, health
   src/shared/        channels (jobs, library)
   src/app/           the web UI, from stack's roster only
-  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan])
+  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs
 apps/agent/          placeholder for the Rekordbox-machine agent (R2)
 packages/core/       pure Node 24 TypeScript, no stack imports: ID3 tag IO, audio hash, normalize, paths, issues
 ```

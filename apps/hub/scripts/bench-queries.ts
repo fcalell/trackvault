@@ -88,10 +88,8 @@ for (const [filterName, filter] of FILTERS) {
 			if (only && !label.includes(only)) continue;
 			const times: number[] = [];
 			for (const where of ["0", "mid", "deep"]) {
-				const total = listPage(
-					database,
-					{ ...filter, limit: 1 },
-					version,
+				const total = (
+					await listPage(database, { ...filter, limit: 1 }, version)
 				).total;
 				const offset =
 					where === "0"
@@ -105,19 +103,19 @@ for (const [filterName, filter] of FILTERS) {
 					offset,
 					limit: 200,
 				};
-				listPage(database, input, version);
+				await listPage(database, input, version);
 				const runs: number[] = [];
 				for (let i = 0; i < 5; i++) {
 					// The unfiltered total and the facets are cached by version, as in the hub.
 					const t = performance.now();
-					listPage(database, input, version);
+					await listPage(database, input, version);
 					runs.push(performance.now() - t);
 				}
 				times.push(median(runs));
 				if (plan && where === "deep") {
 					seen.length = 0;
 					recording = true;
-					listPage(database, input, version);
+					await listPage(database, input, version);
 					recording = false;
 					const query = seen.find((s) => /limit/i.test(s.sql));
 					if (query) {

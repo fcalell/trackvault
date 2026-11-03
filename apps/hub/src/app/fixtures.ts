@@ -6,6 +6,85 @@ import type { jobsChannel, libraryChannel } from "../shared/channels.ts";
 const minutes = (ago: number): string =>
 	new Date(Date.now() - ago * 60_000).toISOString();
 
+const TAGS = [
+	{ id: 1, name: "Peak time", tracks: 840 },
+	{ id: 2, name: "Warm-up", tracks: 612 },
+	{ id: 3, name: "Closing", tracks: 97 },
+];
+
+const job = (kind: string, state: "done" | "running", at: number) => ({
+	id: `job-${kind}`,
+	kind,
+	state,
+	done: 100,
+	total: 100,
+	message: null,
+	error: null,
+	createdAt: minutes(at),
+	startedAt: minutes(at),
+	finishedAt: minutes(at - 1),
+});
+
+const CHANGE_ROWS = [
+	{
+		id: "1",
+		trackId: "track-1",
+		label: "Kalomi - Midnight Echo (Extended Mix)",
+		field: "genre",
+		before: "Tech-House",
+		after: "Tech House",
+	},
+	{
+		id: "2",
+		trackId: "track-2",
+		label: "Rendor - Velvet Signal (Original Mix)",
+		field: "genre",
+		before: "DnB",
+		after: "Drum & Bass",
+	},
+	{
+		id: "3",
+		trackId: "track-3",
+		label: "Sha & Tormar - Neon Drift (Extended Mix)",
+		field: "artist",
+		before: "Sha & Tormar feat. Lio",
+		after: "Sha & Tormar",
+	},
+];
+
+const BATCH = {
+	id: "batch-1",
+	origin: "ui" as const,
+	label: "Edit tags",
+	count: 3,
+	at: new Date(Date.now() - 3_600_000),
+	undone: false,
+	undoable: true,
+};
+
+const GROUP_MEMBERS = (base: number) => [
+	{
+		id: `track-${base}`,
+		title: "Midnight Echo",
+		artist: "Kalomi",
+		mixName: "Original Mix",
+		format: "mp3",
+		bitrate: 320,
+		durationMs: 372_000,
+		size: 14_800_000,
+	},
+	{
+		id: `track-${base + 1}`,
+		title: "Midnight Echo",
+		artist: "Kalomi",
+		mixName: "Original Mix",
+		format: "mp3",
+		bitrate: 192,
+		durationMs: 372_000,
+		size: 8_900_000,
+	},
+];
+
 const JOBS = [
 	{
 		id: "job-3",
@@ -44,6 +123,13 @@ const JOBS = [
 		finishedAt: minutes(300),
 	},
 ];
+
+const SETTINGS = {
+	libraryRoot: "/music",
+	lowBitrateThreshold: 256,
+	quarantineDays: 30,
+	libraryVersion: 12,
+};
 
 const ORGANIZATION = {
 	id: "org-1",
@@ -122,16 +208,8 @@ export default defineFixtures<
 			},
 		},
 		settings: {
-			read: () => ({
-				libraryRoot: "/music",
-				lowBitrateThreshold: 256,
-				libraryVersion: 12,
-			}),
-			update: () => ({
-				libraryRoot: "/music",
-				lowBitrateThreshold: 256,
-				libraryVersion: 12,
-			}),
+			read: () => SETTINGS,
+			update: () => SETTINGS,
 		},
 		jobs: {
 			list: () => JOBS,
@@ -158,10 +236,263 @@ export default defineFixtures<
 					{ value: "lowBitrate" as const, count: 6200 },
 					{ value: "noKey" as const, count: 1900 },
 				],
+				tags: TAGS.map((tag) => ({
+					id: tag.id,
+					name: tag.name,
+					count: tag.tracks,
+				})),
 				total: TOTAL,
 			}),
 			get: ({ id }) => record(Number(id.replace("track-", "")) || 0),
 			update: ({ id }) => record(Number(id.replace("track-", "")) || 0),
+		},
+		bulk: {
+			preview: () => ({
+				total: 3,
+				sampled: 3,
+				touched: 3,
+				changes: CHANGE_ROWS.map((row) => ({
+					key: row.id,
+					label: row.label,
+					field: row.field,
+					before: row.before,
+					after: row.after,
+				})),
+			}),
+			edit: () => job("edit", "running", 1),
+			rules: () => job("rules", "running", 1),
+			organise: () => job("organise", "running", 1),
+			quarantine: () => job("quarantine", "running", 1),
+			dedupe: () => job("dedupe", "running", 1),
+		},
+		tags: {
+			list: () => TAGS,
+			forTrack: () => TAGS.slice(0, 2).map(({ id, name }) => ({ id, name })),
+			create: () => ({ id: 9, name: "New", createdAt: new Date() }),
+			rename: () => undefined,
+			remove: () => undefined,
+			assign: () => undefined,
+		},
+		cleanup: {
+			list: () => [
+				{
+					id: "builtin.whitespace",
+					name: "Trim and collapse whitespace",
+					enabled: true,
+					builtin: true,
+					summary: "whitespace",
+					form: {
+						action: "whitespace" as const,
+						fields: [],
+						caseMode: undefined,
+						pattern: undefined,
+						replacement: undefined,
+						literal: true,
+						setField: undefined,
+						setValue: undefined,
+						onlyIfEmpty: true,
+					},
+				},
+				{
+					id: "rule.1",
+					name: "Title case the artist",
+					enabled: false,
+					builtin: false,
+					summary: "title case",
+					form: {
+						action: "case" as const,
+						fields: ["artist" as const],
+						caseMode: "title" as const,
+						pattern: undefined,
+						replacement: undefined,
+						literal: true,
+						setField: undefined,
+						setValue: undefined,
+						onlyIfEmpty: true,
+					},
+				},
+			],
+			save: () => ({ id: "rule.1" }),
+			toggle: () => undefined,
+			remove: () => undefined,
+			preview: () => job("rules", "running", 1),
+			apply: () => job("rules", "running", 1),
+		},
+		previews: {
+			latest: ({ kind }) => ({
+				job: job(kind, "done", 5),
+				result: {
+					mode: "preview",
+					tracks: 3,
+					fields: 3,
+					scanned: 48_210,
+					moves: 3,
+					collisions: 1,
+					unchanged: 48_000,
+					skipped: 0,
+				},
+			}),
+			list: ({ offset = 0, limit = 200 }) => ({
+				data: CHANGE_ROWS.slice(offset, offset + limit),
+				total: CHANGE_ROWS.length,
+				offset,
+			}),
+		},
+		organiser: {
+			get: () => ({
+				template: "{genre|Unknown}/{artist|Unknown} - {title}",
+			}),
+			save: () => undefined,
+			preview: () => job("organise", "running", 1),
+			apply: () => job("organise", "running", 1),
+		},
+		history: {
+			list: ({ offset = 0, limit = 100 }) => ({
+				data: [
+					BATCH,
+					{
+						...BATCH,
+						id: "batch-2",
+						origin: "scan" as const,
+						label: "Library scan",
+						count: 412,
+						undoable: false,
+					},
+					{
+						...BATCH,
+						id: "batch-3",
+						origin: "rule" as const,
+						label: "Cleanup rules",
+						count: 1880,
+						undone: true,
+						undoable: false,
+					},
+				].slice(offset, offset + limit),
+				total: 3,
+				offset,
+			}),
+			get: () => BATCH,
+			changes: ({ offset = 0, limit = 200 }) => ({
+				data: CHANGE_ROWS.slice(offset, offset + limit),
+				total: CHANGE_ROWS.length,
+				offset,
+			}),
+			undo: () => job("undo", "running", 1),
+		},
+		genres: {
+			list: () => [
+				{
+					id: 1,
+					name: "Tech House",
+					tracks: 5200,
+					aliases: [
+						{ id: 1, alias: "Tech-House" },
+						{ id: 2, alias: "Techhouse" },
+					],
+				},
+				{
+					id: 2,
+					name: "Drum & Bass",
+					tracks: 1900,
+					aliases: [{ id: 3, alias: "DnB" }],
+				},
+			],
+			unknown: () => [
+				{ value: "Hous", count: 14, suggestions: ["House", "Deep House"] },
+				{
+					value: "Minimal Tech",
+					count: 6,
+					suggestions: ["Minimal / Deep Tech"],
+				},
+			],
+			create: () => ({ id: 3, name: "New", createdAt: new Date() }),
+			remove: () => undefined,
+			addAlias: () => ({ id: 9, alias: "x", genreId: 1 }),
+			removeAlias: () => undefined,
+			mapOne: () => undefined,
+			map: () => ({ mapped: 1 }),
+		},
+		aliases: {
+			list: () => [
+				{ id: 1, alias: "Sha and Tormar", canonical: "Sha & Tormar" },
+			],
+			suggest: () => [
+				{
+					canonical: "Kalomi",
+					variants: [
+						{ value: "KALOMI", count: 12 },
+						{ value: "kalomi ", count: 3 },
+					],
+				},
+			],
+			map: () => ({ mapped: 2 }),
+			add: () => ({ id: 2, alias: "x", canonical: "y" }),
+			remove: () => undefined,
+		},
+		unifyTags: {
+			preview: () => job("unify", "running", 1),
+			apply: () => job("unify", "running", 1),
+		},
+		health: {
+			summary: () => ({
+				total: TOTAL,
+				issues: [
+					{ value: "lowBitrate" as const, count: 6200 },
+					{ value: "noKey" as const, count: 1900 },
+					{ value: "corrupt" as const, count: 0 },
+					{ value: "fakeBitrate" as const, count: 211 },
+				],
+				checked: { integrity: 30_000, bitrate: 12_000 },
+				ffmpeg: true,
+			}),
+			run: () => job("integrity", "running", 1),
+		},
+		dupes: {
+			groups: () => ({
+				total: 2,
+				groups: [
+					{
+						id: 1,
+						reason: "exact" as const,
+						confidence: 1,
+						keeperId: "track-10",
+						keeperReason: "kept higher bitrate (320 vs 192 kbps)",
+						members: GROUP_MEMBERS(10),
+					},
+					{
+						id: 2,
+						reason: "fuzzy" as const,
+						confidence: 0.88,
+						keeperId: "track-20",
+						keeperReason: "kept more complete tags (9 vs 6 fields)",
+						members: GROUP_MEMBERS(20),
+					},
+				],
+			}),
+			status: () => ({ open: 2, dismissed: 1, fingerprints: 0, fpcalc: false }),
+			run: () => job("dedupe", "running", 1),
+			dismiss: () => undefined,
+			restore: () => undefined,
+			keep: () => undefined,
+			merge: () => job("merge", "running", 1),
+		},
+		quarantine: {
+			list: ({ offset = 0, limit = 200 }) => ({
+				data: [
+					{
+						id: "1",
+						label: "Kalomi - Midnight Echo",
+						originalPath: "House/Kalomi - Midnight Echo.mp3",
+						at: new Date(Date.now() - 86_400_000),
+						daysLeft: 29,
+					},
+				].slice(offset, offset + limit),
+				total: 1,
+				offset,
+			}),
+			restore: () => job("restore", "running", 1),
+			restoreAll: () => job("restore", "running", 1),
+			purge: () => job("purge", "running", 1),
 		},
 		fs: {
 			browse: ({ path }) => ({
@@ -175,6 +506,6 @@ export default defineFixtures<
 			}),
 		},
 	},
-	{ trackId: "track-3" },
+	{ trackId: "track-3", batchId: "batch-1" },
 	{ jobs: () => ({ jobs: JOBS }), library: () => ({ version: 12 }) },
 );

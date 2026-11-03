@@ -1,5 +1,5 @@
 import type { FileAnalysis } from "@trackvault/core/analyze";
-import { ISSUE, issuesOf } from "@trackvault/core/issues";
+import { issuesOf, KEPT_ISSUES } from "@trackvault/core/issues";
 import { normalizeTrack } from "@trackvault/core/normalize";
 import type { tracks } from "../../schema/index.ts";
 
@@ -33,6 +33,27 @@ export const FILE_FIELDS = [
 	"issues",
 	"blockKey",
 ] as const satisfies ReadonlyArray<keyof TrackRow>;
+
+// The fields an edit may carry: the ones that live in a file's tags. What a bulk
+// edit, a rule, a unify and an undo write (and the tag-write job puts in the file).
+export const TAG_KEYS = [
+	"title",
+	"artist",
+	"albumArtist",
+	"album",
+	"remixer",
+	"label",
+	"genre",
+	"isrc",
+	"key",
+	"comment",
+	"year",
+	"bpm",
+	"energy",
+	"rating",
+] as const satisfies ReadonlyArray<keyof TrackRow>;
+export type TagKey = (typeof TAG_KEYS)[number];
+export type TagValues = Partial<Record<TagKey, string | number | null>>;
 
 export type FileField = (typeof FILE_FIELDS)[number];
 export type FileFields = Pick<TrackRow, FileField>;
@@ -105,7 +126,7 @@ export function fieldsFromAnalysis(
 // Issue bits after a tag edit: the tag-driven ones are recomputed, the ones a
 // scan decides (undecodable, missing file) are kept.
 export function issuesAfterEdit(row: TrackRow, lowBitrateKbps: number): number {
-	const kept = row.issues & (ISSUE.undecodable | ISSUE.missingFile);
+	const kept = row.issues & KEPT_ISSUES;
 	return (
 		kept |
 		issuesOf(
