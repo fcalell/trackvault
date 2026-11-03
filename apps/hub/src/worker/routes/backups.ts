@@ -29,7 +29,7 @@ import { jobViewSchema } from "../../shared/channels.ts";
 
 type Row = ReturnType<typeof readSettings>;
 
-// A secret is never sent whole: the last four characters say which one it is.
+// A secret is never sent whole: the form draws its last four characters ("Saved, ends in …") and leaves it out of a save it was not touched in.
 const mask = (value: string | null): string | null =>
 	value
 		? `${"•".repeat(Math.max(4, Math.min(value.length - 4, 12)))}${value.slice(-4)}`
@@ -206,12 +206,6 @@ export const backups = {
 			// An encryption key is made the first time encryption is switched on.
 			const key =
 				input.offsiteEncrypt && !before.offsiteKey ? newKey() : undefined;
-			const secret = (v: string | null | undefined) =>
-				v !== undefined && !v?.includes("•")
-					? { v: v ? orNull(v) : null }
-					: undefined;
-			const access = secret(input.offsiteAccessKey);
-			const secretKey = secret(input.offsiteSecretKey);
 			db()
 				.update(settingsTable)
 				.set({
@@ -246,8 +240,12 @@ export const backups = {
 					...(input.offsiteRegion !== undefined && {
 						offsiteRegion: input.offsiteRegion,
 					}),
-					...(access && { offsiteAccessKey: access.v }),
-					...(secretKey && { offsiteSecretKey: secretKey.v }),
+					...(input.offsiteAccessKey !== undefined && {
+						offsiteAccessKey: orNull(input.offsiteAccessKey ?? ""),
+					}),
+					...(input.offsiteSecretKey !== undefined && {
+						offsiteSecretKey: orNull(input.offsiteSecretKey ?? ""),
+					}),
 					...(input.offsitePrefix !== undefined && {
 						offsitePrefix: orNull(
 							input.offsitePrefix.replace(/^\/+|\/+$/g, ""),
@@ -374,6 +372,8 @@ export const backups = {
 				dir: z.string(),
 				freeBytes: z.number().nullable(),
 				nextAt: z.date().nullable(),
+				// The newest backup on this hub that opened and checked clean.
+				lastGood: z.date().nullable(),
 				lastBackup: jobViewSchema.nullable(),
 				lastVerify: jobViewSchema.nullable(),
 				lastOffsite: jobViewSchema.nullable(),
@@ -399,6 +399,8 @@ export const backups = {
 				dir,
 				freeBytes: free,
 				nextAt: s.backupEnabled ? nextDue(new Date(), s.backupHour) : null,
+				lastGood:
+					listLocal(dir).find((item) => item.meta?.verified)?.at ?? null,
 				lastBackup: latest("backup"),
 				lastVerify: latest("backup-verify"),
 				lastOffsite: latest("offsite"),

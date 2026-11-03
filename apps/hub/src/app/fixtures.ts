@@ -1437,6 +1437,7 @@ export default defineFixtures<
 				dir: "/var/lib/trackvault/backups",
 				freeBytes: 412_000_000_000,
 				nextAt: hoursAgo(-22),
+				lastGood: hoursAgo(2),
 				lastBackup: JOBS[4] as (typeof JOBS)[number],
 				lastVerify: null,
 				lastOffsite: JOBS[3] as (typeof JOBS)[number],
