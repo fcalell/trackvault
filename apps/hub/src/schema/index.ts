@@ -1,5 +1,6 @@
 import {
 	check,
+	ftsTable,
 	index,
 	integer,
 	real,
@@ -12,6 +13,17 @@ import {
 export * from "@fcalell/plugin-auth/schema";
 export * from "@fcalell/plugin-auth/schema/organization";
 export * from "@fcalell/plugin-auth/schema/passkey";
+
+// The issue bits the library can be filtered by (core/issues), each with a partial index.
+const ISSUE_BITS = [
+	["lowBitrate", 1],
+	["noTitle", 2],
+	["noArtist", 4],
+	["noGenre", 8],
+	["noBpm", 16],
+	["noKey", 32],
+	["noArt", 64],
+] as const;
 
 const at = (name: string) => integer(name, { mode: "timestamp_ms" });
 
@@ -27,6 +39,9 @@ export const tracks = sqliteTable(
 	"tracks",
 	{
 		id: text("id").primaryKey(),
+		// A number per track, assigned once at insert (the highest plus one) and never
+		// changed: the integer the full-text index addresses the row by (`trackSearch`).
+		seq: integer("seq").notNull(),
 		audioHash: text("audio_hash").notNull(),
 		fingerprint: text("fingerprint"),
 		title: text("title"),
@@ -61,8 +76,6 @@ export const tracks = sqliteTable(
 		issues: integer("issues").notNull().default(0),
 		// Artist and base title with the mix stripped: the fuzzy dedupe block.
 		blockKey: text("block_key"),
-		// Artist, title, album and label folded, for search.
-		searchText: text("search_text"),
 		addedAt: at("added_at").notNull(),
 		updatedAt: at("updated_at").notNull(),
 		// The library version at this row's last change (settings.libraryVersion).
@@ -70,14 +83,14 @@ export const tracks = sqliteTable(
 	},
 	(t) => [
 		uniqueIndex("tracks_audio_hash_idx").on(t.audioHash),
+		uniqueIndex("tracks_seq_idx").on(t.seq),
+		// One index per sortable column, ending in `id`: an unfiltered window is a
+		// range scan from any offset.
 		index("tracks_title_idx").on(nocase(t.title), t.id),
 		index("tracks_artist_idx").on(nocase(t.artist), t.id),
-		index("tracks_album_idx").on(nocase(t.album), t.id),
-		index("tracks_label_idx").on(nocase(t.label), t.id),
 		index("tracks_genre_idx").on(nocase(t.genre), t.id),
 		index("tracks_bpm_idx").on(t.bpm, t.id),
 		index("tracks_key_idx").on(t.key, t.id),
-		index("tracks_year_idx").on(t.year, t.id),
 		index("tracks_rating_idx").on(t.rating, t.id),
 		index("tracks_duration_idx").on(t.durationMs, t.id),
 		index("tracks_bitrate_idx").on(t.bitrate, t.id),
@@ -86,8 +99,50 @@ export const tracks = sqliteTable(
 		index("tracks_added_idx").on(t.addedAt, t.id),
 		index("tracks_version_idx").on(t.version),
 		index("tracks_block_key_idx").on(t.blockKey),
+		// A facet filter with a sort: the equality leads and the order follows, so
+		// the window is a range scan of the facet's slice and `total` a count of it
+		// (measured: a genre of 11k rows went from 20 ms through a temp B-tree to 2).
+		index("tracks_genre_title_idx").on(nocase(t.genre), nocase(t.title), t.id),
+		index("tracks_genre_artist_idx").on(
+			nocase(t.genre),
+			nocase(t.artist),
+			t.id,
+		),
+		index("tracks_genre_added_idx").on(nocase(t.genre), t.addedAt, t.id),
+		index("tracks_genre_bpm_idx").on(nocase(t.genre), t.bpm, t.id),
+		index("tracks_genre_key_idx").on(nocase(t.genre), t.key, t.id),
+		index("tracks_genre_rating_idx").on(nocase(t.genre), t.rating, t.id),
+		index("tracks_key_title_idx").on(t.key, nocase(t.title), t.id),
+		index("tracks_key_artist_idx").on(t.key, nocase(t.artist), t.id),
+		index("tracks_key_added_idx").on(t.key, t.addedAt, t.id),
+		index("tracks_key_bpm_idx").on(t.key, t.bpm, t.id),
+		// A BPM range is a range, so the order cannot follow it; the index covers the
+		// sort keys, so the sorter reads no rows.
+		index("tracks_bpm_title_idx").on(t.bpm, nocase(t.title), t.id),
+		index("tracks_bpm_artist_idx").on(t.bpm, nocase(t.artist), t.id),
+		index("tracks_bpm_added_idx").on(t.bpm, t.addedAt, t.id),
+		// An issue filter tests a bit, which no ordinary index answers: one small
+		// partial index per bit and per default order (title, newest).
+		...ISSUE_BITS.flatMap(([name, bit]) => [
+			index(`tracks_issue_${name}_title_idx`)
+				.on(nocase(t.title), t.id)
+				.where(sql`(${t.issues} & ${sql.raw(String(bit))}) != 0`),
+			index(`tracks_issue_${name}_added_idx`)
+				.on(t.addedAt, t.id)
+				.where(sql`(${t.issues} & ${sql.raw(String(bit))}) != 0`),
+		]),
 	],
 );
+
+// Library search: tokens of the text a person types into the search box. The text
+// stays in `tracks`; the index is kept in step by triggers, so a scan or an edit
+// needs nothing more. Prefix indexes make search-as-you-type a lookup.
+export const trackSearch = ftsTable("track_search", {
+	content: tracks,
+	columns: ["title", "artist", "remixer", "mixName", "album", "label", "genre"],
+	rowid: "seq",
+	prefix: [2, 3],
+});
 
 const FILE_STATES = ["ok", "missing", "quarantined", "error"] as const;
 

@@ -8,6 +8,27 @@
       "when": 1793664686365,
       "tag": "0000_tricky_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793667547916,
+      "tag": "0001_shiny_genesis",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793667549471,
+      "tag": "0002_fts_track_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793667560538,
+      "tag": "0003_bent_prima",
+      "breakpoints": true
     }
   ]
 }

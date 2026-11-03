@@ -18,14 +18,15 @@ no test suite, the gate is `pnpm check`.
 ```
 apps/hub/            the stack app (node target, sqlite, auth, api, vite, react, react-ui, screens)
   src/schema/        Drizzle tables: tracks, files, jobs, changes, settings (+ auth's)
-  src/worker/routes/ procedures: settings, jobs, scan, tracks (the library listing waits for stack's window pagination)
-  src/server/jobs/   one file per job kind (defineJob): scan, tag-write; the runner finds them
+  src/worker/routes/ procedures: settings, jobs, scan, tracks (list = window read, facets, get, update), fs (folder browser)
+  src/server/jobs/   one file per job kind (defineJob): scan, tag-write, peaks; the runner finds them
   src/server/services/  jobs (durable runner + `jobs` channel), library (version + `library` channel),
-                     scanner (watcher + reconcile), media (/media/<trackId>, Range)
-  src/server/lib/    db handle and pragmas, scan pipeline (walk, worker pool, batched apply), track fields
+                     scanner (watcher + reconcile), media (/media/<trackId>, /peaks, Range)
+  src/server/lib/    db handle and pragmas, scan pipeline (walk, worker pool, batched apply), track fields,
+                     library-query (the one `where`, list, facets), peaks (ffmpeg)
   src/shared/        channels (jobs, library)
   src/app/           the web UI, from stack's roster only
-  scripts/seed-bench.ts   50k synthetic tracks
+  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan])
 apps/agent/          placeholder for the Rekordbox-machine agent (R2)
 packages/core/       pure Node 24 TypeScript, no stack imports: ID3 tag IO, audio hash, normalize, paths, issues
 ```

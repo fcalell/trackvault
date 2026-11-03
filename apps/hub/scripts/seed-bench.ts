@@ -220,6 +220,13 @@ const version = database
 	.returning({ version: settings.libraryVersion })
 	.get()?.version as number;
 
+const firstSeq =
+	(
+		database
+			.select({ seq: sql<number>`coalesce(max(${tracks.seq}), 0)` })
+			.from(tracks)
+			.get() as { seq: number }
+	).seq + 1;
 const now = Date.now();
 const seen = new Set<string>();
 const run = sqlite.transaction(() => {
@@ -270,6 +277,7 @@ const run = sqlite.transaction(() => {
 		const added = now - Math.floor(random() ** 1.5 * 3 * 365 * 86400 * 1000);
 		insertTrack.run({
 			id,
+			seq: firstSeq + i,
 			audio_hash: hash,
 			fingerprint: null,
 			title,
@@ -310,7 +318,6 @@ const run = sqlite.transaction(() => {
 			has_art: hasArt ? 1 : 0,
 			issues,
 			block_key: normalized.blockKey === "|" ? null : normalized.blockKey,
-			search_text: normalized.searchText || null,
 			added_at: added,
 			updated_at: added,
 			version,

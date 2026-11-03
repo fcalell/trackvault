@@ -21,6 +21,8 @@ export default defineConfig({
 		db({ dialect: "sqlite", path: "./data/trackvault.sqlite" }),
 		auth({
 			cookies: { prefix: "trackvault" },
+			// Only the owner's first account may sign up; any later one needs an invitation.
+			signUp: "first",
 			// One owner. Passkeys after the first sign-in, email codes to get in.
 			passkey: {},
 			// One personal organization: the MCP server of a later phase needs one.

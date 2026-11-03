@@ -1,47 +1,17 @@
 import { createReadStream } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
+import { readFile, realpath, stat } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { and, eq } from "@fcalell/plugin-db/orm";
 import { defineService } from "@fcalell/plugin-node/server";
 import { isUnderRoot, safeJoin } from "@trackvault/core/paths";
 import { files } from "../../schema/index.ts";
 import { db } from "../lib/db.ts";
+import { peaksPath } from "../lib/peaks.ts";
 import { readSettings } from "../lib/settings.ts";
 
 const TYPES: Record<string, string> = {
 	".mp3": "audio/mpeg",
 };
-
-// A session cookie is asked of the auth endpoint once in this long: a player
-// makes many Range requests in a row.
-const SESSION_TTL_MS = 30_000;
-const sessions = new Map<string, number>();
-
-async function signedIn(request: Request, port: number): Promise<boolean> {
-	const cookie = request.headers.get("cookie");
-	const authorization = request.headers.get("authorization");
-	const key = `${cookie ?? ""}\n${authorization ?? ""}`;
-	if (key === "\n") return false;
-	const cached = sessions.get(key);
-	if (cached !== undefined && cached > Date.now()) return true;
-	const headers = new Headers({ accept: "application/json" });
-	if (cookie) headers.set("cookie", cookie);
-	if (authorization) headers.set("authorization", authorization);
-	try {
-		const response = await fetch(
-			`http://127.0.0.1:${port}/api/auth/get-session`,
-			{ headers },
-		);
-		if (!response.ok) return false;
-		const body = (await response.json()) as { session?: unknown } | null;
-		if (!body?.session) return false;
-	} catch {
-		return false;
-	}
-	if (sessions.size > 64) sessions.clear();
-	sessions.set(key, Date.now() + SESSION_TTL_MS);
-	return true;
-}
 
 type Range = { start: number; end: number } | "unsatisfiable" | null;
 
@@ -73,14 +43,37 @@ const plain = (status: number, text: string): Response =>
 		headers: { "content-type": "text/plain; charset=utf-8" },
 	});
 
-async function serve(request: Request, port: number): Promise<Response> {
+// GET /media/<id>/peaks: the track's waveform, made by the `peaks` job.
+async function servePeaks(request: Request, id: string): Promise<Response> {
+	if (id === "" || id.includes("/")) return plain(404, "Not found");
+	try {
+		const bytes = await readFile(peaksPath(id));
+		return new Response(request.method === "HEAD" ? null : bytes, {
+			headers: {
+				"content-type": "application/octet-stream",
+				"content-length": String(bytes.length),
+				// A track's id names its audio for good: the peaks never change.
+				"cache-control": "private, max-age=31536000, immutable",
+			},
+		});
+	} catch {
+		return plain(404, "No waveform yet");
+	}
+}
+
+async function serve(
+	request: Request,
+	signedIn: (request: Request) => Promise<unknown>,
+): Promise<Response> {
 	if (request.method !== "GET" && request.method !== "HEAD")
 		return plain(405, "Method not allowed");
-	if (!(await signedIn(request, port))) return plain(401, "Sign in first");
+	if (!(await signedIn(request))) return plain(401, "Sign in first");
 
-	const id = decodeURIComponent(
+	const path = decodeURIComponent(
 		new URL(request.url).pathname.slice("/media/".length),
 	);
+	if (path.endsWith("/peaks")) return servePeaks(request, path.slice(0, -6));
+	const id = path;
 	if (id === "" || id.includes("/")) return plain(404, "Not found");
 	const root = readSettings().libraryRoot;
 	if (!root) return plain(404, "The library folder is not set");
@@ -145,12 +138,13 @@ async function serve(request: Request, port: number): Promise<Response> {
 	});
 }
 
-// GET /media/<trackId>: the track's file, with Range support, to a signed-in session.
+// GET /media/<trackId>: the track's file, with Range support, to a signed-in session
+// (the session the cookie or bearer token holds, as `/ws` resolves it).
 export default defineService({
 	name: "media",
 	start({ http }) {
 		http.mount("/media", (request) =>
-			serve(request, http.port).catch(() =>
+			serve(request, http.session).catch(() =>
 				plain(500, "Could not read the file"),
 			),
 		);

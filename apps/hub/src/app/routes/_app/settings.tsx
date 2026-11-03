@@ -1,10 +1,12 @@
-import { preload } from "@fcalell/plugin-api/tanstack-query";
+import { preload, useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
 import { orpc } from "../../lib/api.ts";
 import { authClient } from "../../lib/auth.ts";
+import { FolderBrowser } from "../../lib/folder-browser.tsx";
 
 export const Route = createFileRoute("/_app/settings")({
 	loader: ({ context }) =>
@@ -14,6 +16,10 @@ export const Route = createFileRoute("/_app/settings")({
 
 function Settings() {
 	const settings = orpc.settings.read.read();
+	const update = useMutation(orpc.settings.update.mutationOptions());
+	// The folder the browser has requested, and the one it shows (the choice).
+	const [browsing, setBrowsing] = useState<string>();
+	const [listed, setListed] = useState<string>();
 	return (
 		<Pane
 			title="Settings"
@@ -51,6 +57,39 @@ function Settings() {
 					}}
 				/>
 			</Section>
+			<Section
+				items={[
+					{
+						key: "browse",
+						leading: { icon: "FolderSearch" },
+						title: "Browse the hub's folders",
+						meta: ["Pick the folder instead of typing its path"],
+						act: {
+							icon: "FolderOpen",
+							label: "Browse folders",
+							sheet: {
+								title: "Choose the library folder",
+								description:
+									"Open folders until the one that holds your music is shown.",
+								submit: {
+									label: "Use this folder",
+									onAct: () =>
+										update.mutateAsync({ libraryRoot: listed as string }),
+									done: "Library folder set",
+									blocked: listed ? undefined : "Open a folder first",
+								},
+								children: (
+									<FolderBrowser
+										path={browsing}
+										onPath={setBrowsing}
+										onListed={setListed}
+									/>
+								),
+							},
+						},
+					},
+				]}
+			/>
 			<Section
 				title="Account"
 				items={[

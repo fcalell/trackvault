@@ -32,7 +32,6 @@ export const FILE_FIELDS = [
 	"hasArt",
 	"issues",
 	"blockKey",
-	"searchText",
 ] as const satisfies ReadonlyArray<keyof TrackRow>;
 
 export type FileField = (typeof FILE_FIELDS)[number];
@@ -52,7 +51,6 @@ export function derivedText(input: {
 		mixName: normalized.mixName,
 		remixer: input.remixer ?? normalized.remixer,
 		blockKey: normalized.blockKey === "|" ? null : normalized.blockKey,
-		searchText: normalized.searchText || null,
 	};
 }
 

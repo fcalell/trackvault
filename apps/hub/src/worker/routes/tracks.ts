@@ -7,6 +7,13 @@ import type { TagPatch } from "@trackvault/core/tags";
 import { changes, tracks as tracksTable } from "../../schema/index.ts";
 import tagWrite from "../../server/jobs/tag-write.ts";
 import { db } from "../../server/lib/db.ts";
+import {
+	facetsOf,
+	libraryQuery,
+	listPage,
+	SORT_COLUMNS,
+} from "../../server/lib/library-query.ts";
+import { hasPeaks } from "../../server/lib/peaks.ts";
 import { readSettings } from "../../server/lib/settings.ts";
 import {
 	derivedText,
@@ -63,10 +70,26 @@ const TAG_KEYS = [
 ] as const satisfies ReadonlyArray<keyof TagPatch & keyof TrackRow>;
 
 export const tracks = {
-	// TODO(stack window pagination): `tracks.list`, the library's windowed read
-	// (`paginated: "window"`, a `sort` over the indexed columns, search and facet
-	// filters in the input, one `where` shared with `selector` for select-all). It
-	// lands with the library screen; there is no stopgap listing here.
+	// The library's windowed read: search, facet and issue filters and the sort go
+	// into the input, SQLite does the work (schema: the indexes), and a page holds
+	// only the columns the table draws.
+	list: procedure({
+		auth: true,
+		paginated: "window",
+		maxLimit: 200,
+		sort: SORT_COLUMNS,
+		reads: ["tracks"],
+	})
+		.input(libraryQuery)
+		.query(({ input }) => {
+			const version = readSettings().libraryVersion;
+			return listPage(db(), input, version);
+		}),
+
+	// Counts for the filter pickers, cached by library version.
+	facets: procedure({ auth: true, reads: ["tracks"] }).query(() =>
+		facetsOf(db(), readSettings().libraryVersion),
+	),
 
 	// The full record of one track.
 	get: procedure({ auth: true, reads: ["tracks"] })
@@ -78,7 +101,8 @@ export const tracks = {
 				.where(eq(tracksTable.id, input.id))
 				.get();
 			if (!row) throw new ApiError("NOT_FOUND");
-			return row;
+			// `peaks`: the waveform is drawn (`/media/<id>/peaks` answers).
+			return { ...row, peaks: hasPeaks(row.id) };
 		}),
 
 	// Edits tags in the library and queues the file write. The database is the

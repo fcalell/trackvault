@@ -92,6 +92,12 @@ export function applyOutcomes(
 	db().transaction((tx) => {
 		version = bumpVersion(tx);
 		const now = new Date();
+		// New tracks take the next numbers after the highest one, an index lookup.
+		let lastSeq =
+			tx
+				.select({ seq: sql<number>`max(${tracks.seq})` })
+				.from(tracks)
+				.get()?.seq ?? 0;
 
 		const hashes = [
 			...new Set(
@@ -180,6 +186,7 @@ export function applyOutcomes(
 			if (!track) {
 				track = {
 					id: randomUUID(),
+					seq: ++lastSeq,
 					audioHash: analysis.audioHash,
 					fingerprint: null,
 					genreId: null,
@@ -267,13 +274,7 @@ export function applyOutcomes(
 const insertTrack = inserter(tracks);
 const insertFile = inserter(files);
 
-const DERIVED = new Set([
-	"artists",
-	"mixName",
-	"blockKey",
-	"searchText",
-	"issues",
-]);
+const DERIVED = new Set(["artists", "mixName", "blockKey", "issues"]);
 
 type FileValues = typeof files.$inferInsert;
 

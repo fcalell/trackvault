@@ -1,0 +1,49 @@
+import type { Track } from "@fcalell/ui-core/descriptors";
+
+// What the library draws of a track: the columns of a list row, which a record
+// has as well.
+export interface TrackFacts {
+	id: string;
+	title: string | null;
+	artist: string | null;
+	durationMs: number | null;
+}
+
+// A length as the player writes it: 5:32.
+export function clock(ms: number | null): string | null {
+	if (!ms || ms <= 0) return null;
+	const total = Math.round(ms / 1000);
+	const seconds = total % 60;
+	return `${Math.floor(total / 60)}:${String(seconds).padStart(2, "0")}`;
+}
+
+// MP3 320.
+export function quality(format: string, bitrate: number | null): string {
+	return bitrate ? `${format.toUpperCase()} ${bitrate}` : format.toUpperCase();
+}
+
+// The player's track for a row: the file the hub serves, with what is known of it.
+export function toTrack(row: TrackFacts, peaks?: ArrayLike<number>): Track {
+	return {
+		src: `/media/${encodeURIComponent(row.id)}`,
+		key: row.id,
+		title: row.title ?? "Untitled",
+		meta: row.artist ?? undefined,
+		duration: row.durationMs ? row.durationMs / 1000 : undefined,
+		peaks: peaks ? { values: peaks } : undefined,
+	};
+}
+
+// The hub's `/media/<id>/peaks`: one byte per value, 255 the loudest stretch.
+// Undefined while the waveform is not drawn yet.
+export async function fetchPeaks(
+	id: string,
+): Promise<Float32Array | undefined> {
+	const response = await fetch(`/media/${encodeURIComponent(id)}/peaks`);
+	if (response.status === 404) return undefined;
+	if (!response.ok) throw new Error("The waveform could not be read.");
+	return Float32Array.from(
+		new Uint8Array(await response.arrayBuffer()),
+		(v) => v / 255,
+	);
+}

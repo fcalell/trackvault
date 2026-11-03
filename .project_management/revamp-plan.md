@@ -147,7 +147,7 @@ The old `.claude/rules/*` and `.knowledge/` (Solid/Electron) are deleted. `CLAUD
 
 | Table | Holds |
 |---|---|
-| `tracks` | `id`, `audioHash`, `fingerprint`; title, artist, artists (normalised), remixer, mixName, album, albumArtist, label, `genreId`, year, releaseDate, isrc; bpm, key (Camelot), energy, loudness; rating, colour, comment; format, bitrate, sampleRate, durationMs, size; `hasArt`, quality flags; `addedAt`, `updatedAt`, `version` |
+| `tracks` | `id`, `seq` (the number FTS addresses the row by), `audioHash`, `fingerprint`; title, artist, artists (normalised), remixer, mixName, album, albumArtist, label, `genreId`, year, releaseDate, isrc; bpm, key (Camelot), energy, loudness; rating, colour, comment; format, bitrate, sampleRate, durationMs, size; `hasArt`, quality flags; `addedAt`, `updatedAt`, `version` |
 | `files` | trackId, relative path, size, mtime, inode, fileHash, state (ok/missing/quarantined) |
 | `genres`, `genreAliases` | the taxonomy and its aliases |
 | `artistAliases`, `labelAliases` | unification maps |
@@ -341,6 +341,14 @@ Decided (D8): each gap is built in `fcalell/stack` (on `master`, following stack
 | G6 | Table at scale: column show/hide, many columns, keyboard row navigation and actions. Check what `Table` has first | R0 |
 | G7 | SQLite extras in `db()`: FTS5 virtual tables and triggers, pragmas on open. Check whether `stack db generate` keeps hand-written SQL first | R0 |
 | G8 | Server folder browser (choosing the library root on the hub) | R0, with a path field until then |
+
+Landed in stack: S1–S6, G1, G2, G6 (the Table's columns menu, keyboard rows, row act on a key), G7 (`ftsTable`, pragmas) and the device credential (G4). G8 was built in the app (`fs.browse`, owner-only, and a `Sheet` of folder rows in Settings), since it needs no stack part.
+
+Gaps found building the library (R0):
+- `paginateWindow` takes columns only: it cannot order by `collate nocase` or `bm25`, nor join the FTS table, so `tracks.list` builds its own page (ids first, then rows) and keeps `paginated: "window"`, `sort` and `maxLimit` for the client.
+- `stack db generate` swallows drizzle-kit's interactive rename prompt (a column added and another dropped in one table) when there is no TTY, and still writes the FTS migration; it reports "No schema changes". Such a change is made in two steps.
+- The generated `.stack/biome.json` lists `files.includes: ["!src/migrations"]` alone; in an app's `extends` chain it replaces the shared include list and Biome checks 0 files.
+- Biome's `useValidAriaRole` flags `<Text role="meta">` (the type role); the app silences it on the line.
 
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
