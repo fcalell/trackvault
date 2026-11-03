@@ -23,6 +23,14 @@ export function duration(ms: number | null): string | null {
 	return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
+// 4 h 32 min, 48 min: a total length.
+export function span(ms: number): string {
+	const minutes = Math.round(ms / 60_000);
+	return minutes >= 60
+		? `${Math.floor(minutes / 60)} h ${minutes % 60} min`
+		: `${minutes} min`;
+}
+
 // 12.4 MB, 3.2 GB.
 export function size(bytes: number): string {
 	return bytes >= 1024 * MB

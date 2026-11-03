@@ -1,6 +1,7 @@
 import { useRead } from "@fcalell/plugin-api/tanstack-query";
 import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Banner } from "@fcalell/plugin-react-ui/components/banner";
+import { Card } from "@fcalell/plugin-react-ui/components/card";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { Act } from "@fcalell/plugin-react-ui/lib/act";
@@ -141,10 +142,12 @@ export function PreviewSection({
 	);
 	return (
 		<Section title={title} read={latest} empty={{ sentence: none }}>
-			<Banner
-				tone={said.at((each) => each?.tone ?? "idle")}
-				sentence={said.at((each) => each?.sentence)}
-			/>
+			<Card>
+				<Banner
+					tone={said.at((each) => each?.tone ?? "idle")}
+					sentence={said.at((each) => each?.sentence)}
+				/>
+			</Card>
 			<PreviewRows kind={kind} fields={fields} />
 		</Section>
 	);
