@@ -844,6 +844,10 @@ const SET_TRACK = (at: number, score: number | null) => ({
 	score,
 	weak: score !== null && score < 50,
 	why: score !== null && score < 50 ? "8A to 3B: clash" : null,
+	change:
+		score === null
+			? null
+			: { bpm: 1, energy: score < 50 ? -3 : 1, keyFrom: "8A" },
 });
 
 const SET_TRACKS = [SET_TRACK(1, null), SET_TRACK(2, 86), SET_TRACK(3, 41)];
@@ -948,12 +952,15 @@ export default defineFixtures<
 			suggest: () =>
 				[4, 5, 6].map((at, i) => ({
 					...SET_TRACK(at, null),
+					change: { bpm: 0.8, energy: 1, keyFrom: "8A" },
 					score: 92 - i * 9,
 					why: "8A to 9A: adjacent; 126 to 127 bpm, +0.8% pitch; energy 6 to 7; never played",
 					lastPlayedAt: null,
 				})),
 			find: () =>
-				SET_TRACKS.map(({ score: _s, weak: _w, why: _y, ...row }) => row),
+				SET_TRACKS.map(
+					({ score: _s, weak: _w, why: _y, change: _c, ...row }) => row,
+				),
 			append: () => ({ added: 1 }),
 			appendSelection: () => ({ added: 3 }),
 			fromPlaylist: () => ({ added: 12 }),

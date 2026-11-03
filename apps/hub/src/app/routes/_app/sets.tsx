@@ -2,7 +2,6 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { BarChart } from "@fcalell/plugin-react-ui/components/bar-chart";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
-import { Stats } from "@fcalell/plugin-react-ui/components/stats";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
@@ -10,7 +9,7 @@ import { useState } from "react";
 import { orpc } from "../../lib/api.ts";
 import { useDebounced } from "../../lib/debounced.ts";
 import { pathsOf } from "../../lib/playlists.tsx";
-import { bpm } from "../../ui/figures.ts";
+import { bpm, signed } from "../../ui/figures.ts";
 import { trackRow } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/sets")({
@@ -30,6 +29,19 @@ interface Facts {
 	energy: number | null;
 	artist: string | null;
 }
+
+interface Change {
+	bpm: number | null;
+	energy: number | null;
+	keyFrom: string | null;
+}
+
+// A track after another: how its tempo, key and energy move from the one before.
+const steps = (t: Facts, from: Change): string[] => [
+	from.bpm === null ? "No BPM" : `${signed(from.bpm)} BPM`,
+	t.key ? (from.keyFrom ? `${from.keyFrom} to ${t.key}` : t.key) : "No key",
+	from.energy === null ? "No energy" : `Energy ${signed(from.energy)}`,
+];
 
 const facts = (t: Facts): string[] => [
 	t.bpm ? `${bpm(t.bpm)} BPM` : "No BPM",
@@ -128,6 +140,26 @@ function SetBuilder() {
 				]}
 			/>
 			<Section
+				title="Next"
+				items={next.at((rows) =>
+					rows.map(
+						(each): Row =>
+							trackRow(each, {
+								key: each.id,
+								leading: { icon: "Music" },
+								facts: steps(each, each.change),
+								trailing: { value: `${each.score}%` },
+								act: {
+									icon: "Plus",
+									label: `Add ${each.title ?? "Untitled"} to the set`,
+									onAct: () => add(each.id),
+								},
+							}),
+					),
+				)}
+				empty={{ sentence: "Suggestions follow the last track of the set." }}
+			/>
+			<Section
 				title="Find"
 				items={found.at((rows) =>
 					rows.map(
@@ -146,42 +178,40 @@ function SetBuilder() {
 				)}
 				empty={{ sentence: "Search the library to add a track." }}
 			/>
-			<Stats
-				items={[
-					{ label: "Tracks", value: draft.at((each) => each.tracks.length) },
-					{
-						label: "Mix score",
-						value: draft.at((each) => each.average),
-						unit: "%",
-					},
-					{ label: "Weak steps", value: draft.at((each) => each.weak) },
-				]}
-			/>
 			<Section title="Energy">
 				<BarChart
-					label="Energy along the set"
-					items={draft.at((each) => each.curve)}
+					label="Energy at each step of the set"
+					items={draft.at((each) =>
+						each.curve.map((point, at) => ({ ...point, step: at + 1 })),
+					)}
 					bar={{
 						key: (point) => point.id,
 						value: (point) => point.energy ?? 0,
-						at: (point) => point.camelot ?? "",
+						label: (point) => String(point.step),
 					}}
 					unit="energy"
+					level
 				/>
 			</Section>
 			<Section
 				title="Set"
+				description={draft.at((each) =>
+					each.tracks.length > 1
+						? `Mix score ${each.average}%. ${each.weak} weak ${each.weak === 1 ? "step" : "steps"}.`
+						: "",
+				)}
 				items={draft.at((each) =>
 					each.tracks.map(
-						(track): Row =>
+						(track, at): Row =>
 							trackRow(track, {
 								key: track.id,
+								label: `Step ${at + 1}`,
 								leading: { icon: "Music" },
 								facts: [
 									...(track.weak
 										? [{ tone: "attention" as const, label: "Weak step" }]
 										: []),
-									...facts(track),
+									...(track.change ? steps(track, track.change) : facts(track)),
 									...(track.score !== null
 										? [`${track.score}% from the last`]
 										: []),
@@ -201,27 +231,6 @@ function SetBuilder() {
 					done: "Set reordered",
 				}}
 				empty={{ sentence: "Add a track to start the set." }}
-			/>
-			<Section
-				title="Next"
-				items={next.at((rows) =>
-					rows.map(
-						(each): Row =>
-							trackRow(each, {
-								key: each.id,
-								leading: { icon: "Music" },
-								facts: facts(each),
-								note: each.why,
-								trailing: { value: `${each.score}%` },
-								act: {
-									icon: "Plus",
-									label: `Add ${each.title ?? "Untitled"} to the set`,
-									onAct: () => add(each.id),
-								},
-							}),
-					),
-				)}
-				empty={{ sentence: "Suggestions follow the last track of the set." }}
 			/>
 		</Pane>
 	);
