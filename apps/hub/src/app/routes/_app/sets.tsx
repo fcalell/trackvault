@@ -127,7 +127,6 @@ function SetBuilder() {
 			/>
 			<Section
 				title="Find"
-				read={found}
 				items={found.at((rows) =>
 					rows.map(
 						(each): Row => ({
@@ -170,7 +169,6 @@ function SetBuilder() {
 			</Section>
 			<Section
 				title="Set"
-				read={draft}
 				items={draft.at((each) =>
 					each.tracks.map(
 						(track, at): Row => ({
@@ -204,7 +202,6 @@ function SetBuilder() {
 			/>
 			<Section
 				title="Next"
-				read={next}
 				items={next.at((rows) =>
 					rows.map(
 						(each): Row => ({

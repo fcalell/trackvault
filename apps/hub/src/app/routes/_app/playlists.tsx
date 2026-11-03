@@ -3,14 +3,10 @@ import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
-import { useState } from "react";
+import type { PlaylistSource } from "../../../server/lib/playlist-selection.ts";
 import { SMART_HELP, SMART_SORTS } from "../../../shared/playlists.ts";
 import { orpc } from "../../lib/api.ts";
-import {
-	type PlaylistNode,
-	SmartPreview,
-	type SmartRule,
-} from "../../lib/playlists.tsx";
+import { type PlaylistNode, SmartPreview } from "../../lib/playlists.tsx";
 
 export const Route = createFileRoute("/_app/playlists")({
 	component: Playlists,
@@ -58,13 +54,15 @@ export const SMART_FIELDS = {
 // onto a folder moves into it.
 function Playlists() {
 	const open = useParams({ strict: false }).playlistId;
-	const [rule, setRule] = useState<SmartRule>();
 	const tree = orpc.playlists.tree.read();
 	const remove = useMutation(orpc.playlists.remove.mutationOptions());
 	const move = useMutation(orpc.playlists.move.mutationOptions());
 	const add = useMutation(orpc.playlists.add.mutationOptions());
 
-	const toRow = (node: PlaylistNode, all: readonly PlaylistNode[]): Row => ({
+	const toRow = (
+		node: PlaylistNode,
+		all: readonly PlaylistNode[],
+	): Row<string, PlaylistSource> => ({
 		key: node.id,
 		leading: {
 			icon:
@@ -114,7 +112,7 @@ function Playlists() {
 							onDrop: (drag) =>
 								add.mutateAsync({
 									playlistId: node.id,
-									tracks: drag.picked as never,
+									tracks: drag.picked,
 								}),
 							done: `Added to ${node.name}`,
 						},
@@ -199,16 +197,14 @@ function Playlists() {
 							form: {
 								act: orpc.playlists.createSmart,
 								fields: SMART_FIELDS,
-								onChange: setRule,
+								after: (input) => <SmartPreview rule={input} />,
 								submit: { label: "Add", done: "Smart playlist added" },
 							},
-							after: <SmartPreview rule={rule} />,
 						}),
 					},
 				]}
 			>
 				<Section
-					read={tree}
 					items={tree.at((nodes) =>
 						nodes
 							.filter((node) => node.parentId === null)

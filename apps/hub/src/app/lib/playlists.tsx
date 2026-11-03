@@ -4,6 +4,7 @@ import type { PlaceSpec } from "@fcalell/ui-core/descriptors";
 import { skipToken } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { AppRouter } from "../../../.stack/worker";
+import type { PlaylistSource } from "../../server/lib/playlist-selection.ts";
 import { orpc } from "./api.ts";
 import { useDebounced } from "./debounced.ts";
 
@@ -34,7 +35,7 @@ export function pathsOf(
 // The sidebar's Playlists group: the place that manages the tree, then the tree itself
 // (a folder is a branch that folds its playlists). A manual playlist takes tracks
 // dragged onto it.
-export function usePlaylistPlaces(): PlaceSpec[] {
+export function usePlaylistPlaces(): PlaceSpec<PlaylistSource>[] {
 	const tree = useRead(orpc.playlists.tree.read().or([])) ?? [];
 	const add = useMutation(orpc.playlists.add.mutationOptions());
 	const byParent = new Map<string | null, PlaylistNode[]>();
@@ -43,7 +44,10 @@ export function usePlaylistPlaces(): PlaceSpec[] {
 		list.push(node);
 		byParent.set(node.parentId, list);
 	}
-	const placeOf = (node: PlaylistNode, group?: string): PlaceSpec => {
+	const placeOf = (
+		node: PlaylistNode,
+		group?: string,
+	): PlaceSpec<PlaylistSource> => {
 		const base = {
 			label: node.name,
 			...(group ? { group } : {}),
@@ -67,7 +71,7 @@ export function usePlaylistPlaces(): PlaceSpec[] {
 							onDrop: (drag) =>
 								add.mutateAsync({
 									playlistId: node.id,
-									tracks: drag.picked as never,
+									tracks: drag.picked,
 								}),
 							done: `Added to ${node.name}`,
 						},
@@ -86,7 +90,7 @@ export function usePlaylistPlaces(): PlaceSpec[] {
 	];
 }
 
-// The rule a smart-playlist form has made, as its `onChange` hears it.
+// The rule a smart-playlist form has made, as its `after` is given it.
 export type SmartRule = Partial<
 	Parameters<typeof orpc.playlists.preview.call>[0]
 >;
@@ -110,7 +114,6 @@ export function SmartPreview({ rule }: { rule: SmartRule | undefined }) {
 			description={preview.at(
 				(each) => `${count.format(each.count)} tracks match this rule.`,
 			)}
-			read={preview}
 			items={preview.at((each) =>
 				each.sample.map(
 					(row): Row => ({

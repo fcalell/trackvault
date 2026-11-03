@@ -37,7 +37,6 @@ function ConnectConsent() {
 			}
 		>
 			<Section
-				read={client}
 				items={client.at((each) => [
 					{
 						key: "client",

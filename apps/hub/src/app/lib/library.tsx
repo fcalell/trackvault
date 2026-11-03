@@ -16,7 +16,7 @@ import {
 } from "../../shared/library.ts";
 import { clock, quality, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
-import { type EditInput, EditPreview, useEditFields } from "./bulk-edit.tsx";
+import { EditPreview, useEditFields } from "./bulk-edit.tsx";
 import { useChosen } from "./chosen.ts";
 import { useDebounced } from "./debounced.ts";
 import { pathsOf } from "./playlists.tsx";
@@ -160,7 +160,6 @@ export function LibraryPane({
 
 	// The rows a bulk act takes: the ticked ids, or the whole query less the unticked.
 	const [picked, setPicked] = useState<Picked<LibraryQuery>>({ ids: [] });
-	const [edit, setEdit] = useState<EditInput>();
 	const fields = useEditFields();
 	const rules = useMutation(orpc.bulk.rules.mutationOptions());
 	const organise = useMutation(orpc.bulk.organise.mutationOptions());
@@ -278,14 +277,15 @@ export function LibraryPane({
 									act: orpc.bulk.edit,
 									given: { tracks: picked },
 									fields,
-									onChange: setEdit,
+									after: (input) => (
+										<EditPreview picked={picked} edit={input} />
+									),
 									submit: {
 										label: "Apply",
 										done: "Editing tags",
 										to: "/jobs",
 									},
 								},
-								after: <EditPreview picked={picked} edit={edit} />,
 							}),
 						},
 						{

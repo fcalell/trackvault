@@ -13,7 +13,7 @@ import { useState } from "react";
 import { orpc } from "../../lib/api.ts";
 import { useChosen } from "../../lib/chosen.ts";
 import { LIBRARY_COLUMNS } from "../../lib/library.tsx";
-import { SmartPreview, type SmartRule } from "../../lib/playlists.tsx";
+import { SmartPreview } from "../../lib/playlists.tsx";
 import { SMART_FIELDS } from "./playlists.tsx";
 
 export const Route = createFileRoute("/_app/playlists/$playlistId")({
@@ -48,7 +48,6 @@ function Playlist() {
 		"tracks",
 	);
 	const manual = kind === "manual";
-	const [rule, setRule] = useState<SmartRule>();
 
 	return (
 		<Pane
@@ -95,10 +94,9 @@ function Playlist() {
 											descending: SMART_FIELDS.descending,
 											limit: SMART_FIELDS.limit,
 										},
-										onChange: setRule,
+										after: (input) => <SmartPreview rule={input} />,
 										submit: { label: "Save", done: "Rule saved" },
 									},
-									after: <SmartPreview rule={rule} />,
 								}),
 							},
 						]

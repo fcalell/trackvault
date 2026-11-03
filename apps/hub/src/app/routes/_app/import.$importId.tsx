@@ -126,7 +126,6 @@ function ImportResult() {
 			]}
 		>
 			<Section
-				read={imported}
 				items={imported.at((each) => [
 					...(each.state === "parsing"
 						? [

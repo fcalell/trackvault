@@ -38,7 +38,6 @@ function ConnectOrganization() {
 			}
 		>
 			<Section
-				read={organizations}
 				items={organizations.at((rows) =>
 					rows.map((each) => ({
 						key: each.id,

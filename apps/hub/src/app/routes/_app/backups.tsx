@@ -138,7 +138,6 @@ function Backups() {
 			/>
 			<Section
 				title="Schedule"
-				read={status}
 				items={status.at((each) => [
 					{
 						key: "next",
@@ -171,7 +170,6 @@ function Backups() {
 			<Section
 				title="On this hub"
 				description="Each backup is checked when it is taken. Check one again to catch a disk that has gone bad since."
-				read={local}
 				items={local.at((rows) =>
 					rows.map((row) =>
 						localRow(
@@ -189,7 +187,6 @@ function Backups() {
 			<Section
 				title="Offsite"
 				description="Database backups in the bucket. To restore from them, run restore-offsite.mjs from the bundle with the hub stopped."
-				read={remote}
 				items={remote.at((each) =>
 					each.configured && !each.error ? each.items.map(remoteRow) : [],
 				)}

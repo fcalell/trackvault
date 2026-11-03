@@ -193,7 +193,6 @@ function Devices() {
 					/>
 				)}
 				<Section
-					read={devices}
 					items={devices.at((rows) => rows.map(toRow))}
 					empty={{
 						sentence:

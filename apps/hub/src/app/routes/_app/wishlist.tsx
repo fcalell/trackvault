@@ -166,7 +166,6 @@ function Wishlist() {
 			>
 				<Section
 					title="Imports"
-					read={imports}
 					items={imports.at((rows) =>
 						rows.slice(0, 5).map((each) => ({
 							key: each.id,
