@@ -12,8 +12,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { orpc } from "../../lib/api.ts";
 import { useChosen } from "../../lib/chosen.ts";
-import { LIBRARY_COLUMNS } from "../../lib/library.tsx";
 import { SmartPreview } from "../../lib/playlists.tsx";
+import { TRACK_COLUMNS } from "../../ui/track.ts";
 import { SMART_FIELDS } from "./playlists.tsx";
 
 export const Route = createFileRoute("/_app/playlists/$playlistId")({
@@ -143,7 +143,7 @@ function Playlist() {
 			<Table
 				label="Tracks"
 				items={tracks}
-				columns={LIBRARY_COLUMNS}
+				columns={TRACK_COLUMNS}
 				row={{ id: (row) => row.id, href: (row) => `/library/${row.id}` }}
 				drag={{ kind: "track" }}
 				{...(manual

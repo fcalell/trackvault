@@ -7,7 +7,7 @@ import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { bitrate, duration } from "../../ui/figures.ts";
-import {} from "../../ui/track.ts";
+import { trackRow } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/duplicates")({
 	component: Duplicates,
@@ -39,41 +39,41 @@ function Duplicates() {
 
 	const rowsOf = (data: Groups): Row[] =>
 		data.groups.flatMap((group) =>
-			group.members.map((member) => ({
-				key: `${group.id}-${member.id}`,
-				group: String(group.id),
-				leading: {
-					icon:
-						member.id === group.keeperId
-							? ("Check" as const)
-							: ("Copy" as const),
-				},
-				title: [member.artist, member.title ?? "Untitled"]
-					.filter(Boolean)
-					.join(" - "),
-				facts: [
-					bitrate(member.format, member.bitrate),
-					duration(member.durationMs) ?? "No length",
-					member.id === group.keeperId
-						? `Keeper: ${group.keeperReason}`
-						: "Duplicate",
-				],
-				more: [
-					...(member.id === group.keeperId
-						? []
-						: [
-								{
-									label: "Keep this one instead",
-									onAct: () =>
-										keep.mutateAsync({ id: group.id, trackId: member.id }),
-								},
-							]),
-					{
-						label: "Not duplicates",
-						onAct: () => dismiss.mutateAsync({ id: group.id }),
+			group.members.map((member) =>
+				trackRow(member, {
+					key: `${group.id}-${member.id}`,
+					group: String(group.id),
+					leading: {
+						icon:
+							member.id === group.keeperId
+								? ("Check" as const)
+								: ("Copy" as const),
 					},
-				],
-			})),
+					facts: [
+						bitrate(member.format, member.bitrate),
+						duration(member.durationMs) ?? "No length",
+					],
+					note:
+						member.id === group.keeperId
+							? `Keeper: ${group.keeperReason}`
+							: undefined,
+					more: [
+						...(member.id === group.keeperId
+							? []
+							: [
+									{
+										label: "Keep this one instead",
+										onAct: () =>
+											keep.mutateAsync({ id: group.id, trackId: member.id }),
+									},
+								]),
+						{
+							label: "Not duplicates",
+							onAct: () => dismiss.mutateAsync({ id: group.id }),
+						},
+					],
+				}),
+			),
 		);
 
 	const band = (group: Group) => ({

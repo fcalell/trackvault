@@ -24,6 +24,7 @@ import { notifyPlaylists } from "../../server/lib/sync/wake.ts";
 const trackView = z.object({
 	id: z.string(),
 	title: z.string().nullable(),
+	mixName: z.string().nullable(),
 	artist: z.string().nullable(),
 	bpm: z.number().nullable(),
 	key: z.string().nullable(),
@@ -35,6 +36,7 @@ const trackView = z.object({
 const view = (t: {
 	id: string;
 	title: string | null;
+	mixName: string | null;
 	artist: string | null;
 	bpm?: number | null;
 	key?: string | null;
@@ -44,6 +46,7 @@ const view = (t: {
 }) => ({
 	id: t.id,
 	title: t.title,
+	mixName: t.mixName,
 	artist: t.artist,
 	bpm: t.bpm ?? null,
 	key: t.key ?? null,
@@ -168,6 +171,7 @@ export const sets = {
 				.select({
 					id: tracks.id,
 					title: tracks.title,
+					mixName: tracks.mixName,
 					artist: tracks.artist,
 					bpm: tracks.bpm,
 					key: tracks.key,

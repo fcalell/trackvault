@@ -813,6 +813,7 @@ const PROPOSALS = [
 const SET_TRACK = (at: number, score: number | null) => ({
 	id: `track-${at}`,
 	title: TITLES[at % TITLES.length] ?? null,
+	mixName: at % 2 === 0 ? "Extended Mix" : null,
 	artist: ARTISTS[at % ARTISTS.length] ?? null,
 	bpm: 124 + at,
 	key: KEYS[at % KEYS.length] ?? null,

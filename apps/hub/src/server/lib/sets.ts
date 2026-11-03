@@ -31,6 +31,7 @@ export function writeDraft(ids: readonly string[]): void {
 interface MixRow {
 	id: string;
 	title: string | null;
+	mixName: string | null;
 	artist: string | null;
 	bpm: number | null;
 	key: string | null;
@@ -41,11 +42,12 @@ interface MixRow {
 	hasArt: number;
 }
 
-const COLUMNS = `id, title, artist, bpm, key, energy, genre, last_played_at AS lastPlayedAt, play_count AS playCount, has_art AS hasArt`;
+const COLUMNS = `id, title, mix_name AS mixName, artist, bpm, key, energy, genre, last_played_at AS lastPlayedAt, play_count AS playCount, has_art AS hasArt`;
 
 export type SetTrack = MixTrack & {
 	id: string;
 	title: string | null;
+	mixName: string | null;
 	artist: string | null;
 	hasArt: boolean;
 };
@@ -53,6 +55,7 @@ export type SetTrack = MixTrack & {
 const asMix = (row: MixRow): SetTrack => ({
 	id: row.id,
 	title: row.title,
+	mixName: row.mixName,
 	artist: row.artist,
 	bpm: row.bpm,
 	key: row.key,

@@ -5,7 +5,7 @@ import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { player, windowQueue } from "@fcalell/plugin-react-ui/lib/player";
-import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
+import type { Picked } from "@fcalell/ui-core/descriptors";
 import { useParams } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
@@ -14,85 +14,14 @@ import {
 	ISSUE_LABELS,
 	type ListRow,
 } from "../../shared/library.ts";
-import { age, bitrate, bpm, count, duration } from "../ui/figures.ts";
-import { toTrack } from "../ui/track.ts";
+import { count } from "../ui/figures.ts";
+import { TRACK_COLUMNS, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { EditPreview, useEditFields } from "./bulk-edit.tsx";
 import { useChosen } from "./chosen.ts";
 import { useDebounced } from "./debounced.ts";
 import { pathsOf } from "./playlists.tsx";
 import { setQueueSource } from "./queue.ts";
-
-// The keys are the hub's sort columns (shared/library.ts) where the column sorts.
-export const LIBRARY_COLUMNS: TableColumn<ListRow>[] = [
-	{
-		key: "title",
-		label: "Title",
-		sortable: true,
-		cell: (row) => row.title ?? "Untitled",
-	},
-	{
-		key: "artist",
-		label: "Artist",
-		sortable: true,
-		cell: (row) => row.artist,
-	},
-	{ key: "mixName", label: "Mix", hidden: true, cell: (row) => row.mixName },
-	{
-		key: "bpm",
-		label: "BPM",
-		kind: "number",
-		sortable: true,
-		cell: (row) => bpm(row.bpm),
-	},
-	{ key: "key", label: "Key", sortable: true, cell: (row) => row.key },
-	{ key: "genre", label: "Genre", sortable: true, cell: (row) => row.genre },
-	{
-		key: "rating",
-		label: "Rating",
-		kind: "number",
-		sortable: true,
-		hidden: true,
-		cell: (row) => (row.rating > 0 ? row.rating : null),
-	},
-	{
-		key: "durationMs",
-		label: "Time",
-		kind: "number",
-		sortable: true,
-		cell: (row) => duration(row.durationMs),
-	},
-	{
-		key: "bitrate",
-		label: "Quality",
-		sortable: true,
-		hidden: true,
-		cell: (row) => bitrate(row.format, row.bitrate),
-	},
-	{
-		key: "energy",
-		label: "Energy",
-		kind: "number",
-		sortable: true,
-		cell: (row) => row.energy,
-	},
-	{
-		key: "loudness",
-		label: "LUFS",
-		kind: "number",
-		sortable: true,
-		hidden: true,
-		cell: (row) =>
-			row.loudness === null ? null : Math.round(row.loudness * 10) / 10,
-	},
-	{
-		key: "addedAt",
-		label: "Added",
-		kind: "age",
-		sortable: true,
-		cell: (row) => age(row.addedAt),
-	},
-];
 
 const BPM_RANGES = [
 	{ value: "0-99", label: "Under 100", min: 0, max: 99.99 },
@@ -412,7 +341,7 @@ export function LibraryPane({
 			<Table
 				label="Tracks"
 				items={tracks}
-				columns={LIBRARY_COLUMNS}
+				columns={TRACK_COLUMNS}
 				row={{
 					id: (row) => row.id,
 					href: (row) => `${base}/${row.id}`,

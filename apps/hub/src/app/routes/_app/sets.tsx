@@ -11,6 +11,7 @@ import { orpc } from "../../lib/api.ts";
 import { useDebounced } from "../../lib/debounced.ts";
 import { pathsOf } from "../../lib/playlists.tsx";
 import { bpm } from "../../ui/figures.ts";
+import { trackRow } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/sets")({
 	component: SetBuilder,
@@ -31,7 +32,6 @@ interface Facts {
 }
 
 const facts = (t: Facts): string[] => [
-	t.artist ?? "Unknown artist",
 	t.bpm ? `${bpm(t.bpm)} BPM` : "No BPM",
 	t.key ?? "No key",
 	t.energy ? `Energy ${t.energy}` : "No energy",
@@ -131,17 +131,17 @@ function SetBuilder() {
 				title="Find"
 				items={found.at((rows) =>
 					rows.map(
-						(each): Row => ({
-							key: each.id,
-							leading: { icon: "Music" },
-							title: each.title ?? "Untitled",
-							facts: facts(each),
-							act: {
-								icon: "Plus",
-								label: `Add ${each.title ?? "Untitled"} to the set`,
-								onAct: () => add(each.id),
-							},
-						}),
+						(each): Row =>
+							trackRow(each, {
+								key: each.id,
+								leading: { icon: "Music" },
+								facts: facts(each),
+								act: {
+									icon: "Plus",
+									label: `Add ${each.title ?? "Untitled"} to the set`,
+									onAct: () => add(each.id),
+								},
+							}),
 					),
 				)}
 				empty={{ sentence: "Search the library to add a track." }}
@@ -173,27 +173,27 @@ function SetBuilder() {
 				title="Set"
 				items={draft.at((each) =>
 					each.tracks.map(
-						(track, at): Row => ({
-							key: track.id,
-							leading: { icon: "Music" },
-							title: `${at + 1}. ${track.title ?? "Untitled"}`,
-							facts: [
-								...(track.weak
-									? [{ tone: "attention" as const, label: "Weak step" }]
-									: []),
-								...facts(track),
-								...(track.score !== null
-									? [`${track.score}% from the last`]
-									: []),
-							],
-							...(track.weak && track.why ? { line: track.why } : {}),
-							href: `/library/${track.id}`,
-							act: {
-								icon: "X",
-								label: `Take ${track.title ?? "Untitled"} out of the set`,
-								onAct: () => remove.mutateAsync({ id: track.id }),
-							},
-						}),
+						(track): Row =>
+							trackRow(track, {
+								key: track.id,
+								leading: { icon: "Music" },
+								facts: [
+									...(track.weak
+										? [{ tone: "attention" as const, label: "Weak step" }]
+										: []),
+									...facts(track),
+									...(track.score !== null
+										? [`${track.score}% from the last`]
+										: []),
+								],
+								note: track.weak ? (track.why ?? undefined) : undefined,
+								href: `/library/${track.id}`,
+								act: {
+									icon: "X",
+									label: `Take ${track.title ?? "Untitled"} out of the set`,
+									onAct: () => remove.mutateAsync({ id: track.id }),
+								},
+							}),
 					),
 				)}
 				reorder={{
@@ -206,19 +206,19 @@ function SetBuilder() {
 				title="Next"
 				items={next.at((rows) =>
 					rows.map(
-						(each): Row => ({
-							key: each.id,
-							leading: { icon: "Music" },
-							title: each.title ?? "Untitled",
-							facts: facts(each),
-							line: each.why,
-							trailing: { value: `${each.score}%` },
-							act: {
-								icon: "Plus",
-								label: `Add ${each.title ?? "Untitled"} to the set`,
-								onAct: () => add(each.id),
-							},
-						}),
+						(each): Row =>
+							trackRow(each, {
+								key: each.id,
+								leading: { icon: "Music" },
+								facts: facts(each),
+								note: each.why,
+								trailing: { value: `${each.score}%` },
+								act: {
+									icon: "Plus",
+									label: `Add ${each.title ?? "Untitled"} to the set`,
+									onAct: () => add(each.id),
+								},
+							}),
 					),
 				)}
 				empty={{ sentence: "Suggestions follow the last track of the set." }}

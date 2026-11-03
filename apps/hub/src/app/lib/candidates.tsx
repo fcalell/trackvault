@@ -4,7 +4,6 @@ import type { TableColumn } from "@fcalell/ui-core/descriptors";
 import type { AppRouter } from "../../../.stack/worker";
 import { HAVE_LABELS, nameOf } from "../ui/acquire.ts";
 import { duration, size } from "../ui/figures.ts";
-import {} from "../ui/track.ts";
 import { orpc } from "./api.ts";
 
 type Candidate = AppRouter["soulseek"]["results"]["__output"]["data"][number];
