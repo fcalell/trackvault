@@ -76,6 +76,11 @@ const GROUP_MEMBERS = (base: number) => [
 		bitrate: 320,
 		durationMs: 372_000,
 		size: 14_800_000,
+		path: "House/Kalomi - Midnight Echo.mp3",
+		tags: 9,
+		tagSlots: 11,
+		cues: 4,
+		playlists: 2,
 	},
 	{
 		id: `track-${base + 1}`,
@@ -86,6 +91,11 @@ const GROUP_MEMBERS = (base: number) => [
 		bitrate: 192,
 		durationMs: 372_000,
 		size: 8_900_000,
+		path: "Inbox/Kalomi - Midnight Echo (1).mp3",
+		tags: 6,
+		tagSlots: 11,
+		cues: 0,
+		playlists: 0,
 	},
 ];
 
@@ -1203,8 +1213,8 @@ export default defineFixtures<
 			run: () => job("integrity", "running", 1),
 		},
 		dupes: {
-			groups: () => ({
-				total: 2,
+			groups: ({ state }) => ({
+				total: state === "dismissed" ? 1 : 2,
 				groups: [
 					{
 						id: 1,
@@ -1222,13 +1232,16 @@ export default defineFixtures<
 						keeperReason: "kept more complete tags (9 vs 6 fields)",
 						members: GROUP_MEMBERS(20),
 					},
-				],
+				].slice(0, state === "dismissed" ? 1 : 2),
 			}),
 			status: () => ({ open: 2, dismissed: 1, fingerprints: 0, fpcalc: false }),
 			run: () => job("dedupe", "running", 1),
 			dismiss: () => undefined,
 			restore: () => undefined,
-			keep: () => undefined,
+			keep: () => ({
+				keeperId: "track-10",
+				keeperReason: "kept higher bitrate (320 vs 192 kbps)",
+			}),
 			merge: () => job("merge", "running", 1),
 		},
 		quarantine: {

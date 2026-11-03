@@ -1,12 +1,16 @@
 import { procedure } from "virtual:stack-procedure";
 import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
-import { and, count, desc, eq, inArray } from "@fcalell/plugin-db/orm";
+import { and, count, desc, eq, inArray, sql } from "@fcalell/plugin-db/orm";
+import { COMPLETENESS_SLOTS, tagCompleteness } from "@trackvault/core/dedupe";
 import { binaryAvailable } from "@trackvault/core/exec";
 import {
+	cues,
 	dupeGroups,
 	dupeMembers,
+	files,
 	fingerprints,
+	playlistTracks,
 	tracks,
 } from "../../schema/index.ts";
 import dedupe from "../../server/jobs/dedupe.ts";
@@ -55,6 +59,15 @@ export const dupes = {
 							id: tracks.id,
 							title: tracks.title,
 							artist: tracks.artist,
+							albumArtist: tracks.albumArtist,
+							album: tracks.album,
+							genre: tracks.genre,
+							year: tracks.year,
+							label: tracks.label,
+							bpm: tracks.bpm,
+							key: tracks.key,
+							isrc: tracks.isrc,
+							hasArt: tracks.hasArt,
 							mixName: tracks.mixName,
 							format: tracks.format,
 							bitrate: tracks.bitrate,
@@ -71,6 +84,43 @@ export const dupes = {
 						)
 						.all()
 				: [];
+			const ids = members.map((member) => member.id);
+			const paths = new Map(
+				ids.length
+					? database
+							.select({
+								trackId: files.trackId,
+								path: sql<string>`min(${files.path})`,
+							})
+							.from(files)
+							.where(and(inArray(files.trackId, ids), eq(files.state, "ok")))
+							.groupBy(files.trackId)
+							.all()
+							.map((row) => [row.trackId, row.path])
+					: [],
+			);
+			const cueCounts = new Map(
+				ids.length
+					? database
+							.select({ trackId: cues.trackId, n: count() })
+							.from(cues)
+							.where(inArray(cues.trackId, ids))
+							.groupBy(cues.trackId)
+							.all()
+							.map((row) => [row.trackId, row.n])
+					: [],
+			);
+			const playlistCounts = new Map(
+				ids.length
+					? database
+							.select({ trackId: playlistTracks.trackId, n: count() })
+							.from(playlistTracks)
+							.where(inArray(playlistTracks.trackId, ids))
+							.groupBy(playlistTracks.trackId)
+							.all()
+							.map((row) => [row.trackId, row.n])
+					: [],
+			);
 			return {
 				total,
 				groups: groups.map((group) => ({
@@ -81,7 +131,21 @@ export const dupes = {
 					keeperReason: group.keeperReason,
 					members: members
 						.filter((member) => member.groupId === group.id)
-						.map(({ groupId: _groupId, ...member }) => member)
+						.map((member) => ({
+							id: member.id,
+							title: member.title,
+							artist: member.artist,
+							mixName: member.mixName,
+							format: member.format,
+							bitrate: member.bitrate,
+							durationMs: member.durationMs,
+							size: member.size,
+							path: paths.get(member.id) ?? null,
+							tags: tagCompleteness({ tags: member, hasArt: member.hasArt }),
+							tagSlots: COMPLETENESS_SLOTS,
+							cues: cueCounts.get(member.id) ?? 0,
+							playlists: playlistCounts.get(member.id) ?? 0,
+						}))
 						.sort(
 							(a, b) =>
 								Number(b.id === group.keeperId) -
@@ -144,8 +208,21 @@ export const dupes = {
 
 	// Picks another track of the group to keep.
 	keep: procedure({ auth: true, writes: ["dupeGroups"] })
-		.input(z.object({ id: z.number().int(), trackId: z.string() }))
+		.input(
+			z.object({
+				id: z.number().int(),
+				trackId: z.string(),
+				reason: z.string().optional(),
+			}),
+		)
+		.output(z.object({ keeperId: z.string(), keeperReason: z.string() }))
 		.mutation(({ input }) => {
+			const group = db()
+				.select()
+				.from(dupeGroups)
+				.where(eq(dupeGroups.id, input.id))
+				.get();
+			if (!group) throw new ApiError("NOT_FOUND");
 			const member = db()
 				.select()
 				.from(dupeMembers)
@@ -161,11 +238,15 @@ export const dupes = {
 				.update(dupeGroups)
 				.set({
 					keeperId: input.trackId,
-					keeperReason: "chosen by you",
+					keeperReason: input.reason ?? "chosen by you",
 					updatedAt: new Date(),
 				})
 				.where(eq(dupeGroups.id, input.id))
 				.run();
+			return {
+				keeperId: group.keeperId,
+				keeperReason: group.keeperReason,
+			};
 		}),
 
 	// Merges groups into their keepers: fills tags, quarantines the others. One

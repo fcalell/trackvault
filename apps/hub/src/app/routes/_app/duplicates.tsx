@@ -2,11 +2,14 @@ import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Banner } from "@fcalell/plugin-react-ui/components/banner";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
+import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
+import { toast } from "@fcalell/plugin-react-ui/lib/toast";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { bitrate, duration } from "../../ui/figures.ts";
+import { queuedBatch } from "../../ui/batch.ts";
+import { bitrate, count, duration, size } from "../../ui/figures.ts";
 import { trackRow } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/duplicates")({
@@ -15,6 +18,8 @@ export const Route = createFileRoute("/_app/duplicates")({
 
 type Groups = AppRouter["dupes"]["groups"]["__output"];
 type Group = Groups["groups"][number];
+type Member = Group["members"][number];
+type View = "open" | "dismissed";
 
 const REASONS = {
 	exact: "Same audio",
@@ -22,20 +27,79 @@ const REASONS = {
 	fuzzy: "Same artist and title",
 } as const;
 
+const VIEWS: Record<View, string> = {
+	open: "Open",
+	dismissed: "Not duplicates",
+};
+
 const PAGE = 100;
+
+const plural = (n: number, noun: string): string =>
+	`${count(n)} ${noun}${n === 1 ? "" : "s"}`;
+
+// What tells the copies apart, side by side: the file, its quality, its tags, and
+// what Rekordbox and the playlists hold of it.
+const facts = (member: Member) => [
+	bitrate(member.format, member.bitrate),
+	duration(member.durationMs) ?? "No length",
+	...(member.size === null ? [] : [size(member.size)]),
+	`${member.tags} of ${member.tagSlots} tags`,
+	plural(member.cues, "cue"),
+	`In ${plural(member.playlists, "playlist")}`,
+	...(member.path ? [{ code: member.path }] : []),
+];
 
 // The duplicate groups the last search found, each a band over its tracks: the
 // keeper first, with why it was picked. A group merges into its keeper (tags filled,
-// the others quarantined) or is dismissed for good as "not duplicates".
+// the others quarantined) or is dismissed as "not duplicates", and the dismissed
+// ones can be read and brought back.
 function Duplicates() {
 	const [limit, setLimit] = useState(PAGE);
+	const [view, setView] = useState<View>("open");
 	const merge = useMutation(orpc.dupes.merge.mutationOptions());
 	const dismiss = useMutation(orpc.dupes.dismiss.mutationOptions());
+	const restore = useMutation(orpc.dupes.restore.mutationOptions());
 	const keep = useMutation(orpc.dupes.keep.mutationOptions());
-	const groups = orpc.dupes.groups.read({ limit });
+	const groups = orpc.dupes.groups.read({ limit, state: view });
 	const status = orpc.dupes.status.read();
 	const found = useRead(groups);
 	const total = found?.total ?? 0;
+
+	const dismissGroup = async (group: Group) => {
+		await dismiss.mutateAsync({ id: group.id });
+		toast("Marked as not duplicates", {
+			act: {
+				label: "Undo",
+				onAct: () => restore.mutateAsync({ id: group.id }),
+			},
+		});
+	};
+	const keepMember = async (group: Group, member: Member) => {
+		const previous = await keep.mutateAsync({
+			id: group.id,
+			trackId: member.id,
+		});
+		toast("Keeper changed", {
+			act: {
+				label: "Undo",
+				onAct: () =>
+					keep.mutateAsync({
+						id: group.id,
+						trackId: previous.keeperId,
+						reason: previous.keeperReason,
+					}),
+			},
+		});
+	};
+	const bringBack = async (group: Group) => {
+		await restore.mutateAsync({ id: group.id });
+		toast("Back among the duplicates", {
+			act: {
+				label: "Undo",
+				onAct: () => dismiss.mutateAsync({ id: group.id }),
+			},
+		});
+	};
 
 	const rowsOf = (data: Groups): Row[] =>
 		data.groups.flatMap((group) =>
@@ -49,29 +113,43 @@ function Duplicates() {
 								? ("Check" as const)
 								: ("Copy" as const),
 					},
-					facts: [
-						bitrate(member.format, member.bitrate),
-						duration(member.durationMs) ?? "No length",
-					],
+					facts: facts(member),
 					note:
 						member.id === group.keeperId
 							? `Keeper: ${group.keeperReason}`
 							: undefined,
-					more: [
-						...(member.id === group.keeperId
-							? []
-							: [
+					more:
+						view === "dismissed"
+							? [
 									{
-										label: "Keep this one instead",
-										onAct: () =>
-											keep.mutateAsync({ id: group.id, trackId: member.id }),
+										label: "These are duplicates",
+										onAct: () => bringBack(group),
 									},
-								]),
-						{
-							label: "Not duplicates",
-							onAct: () => dismiss.mutateAsync({ id: group.id }),
-						},
-					],
+								]
+							: [
+									...(member.id === group.keeperId
+										? []
+										: [
+												{
+													label: "Keep this one instead",
+													confirm: {
+														title: "Keep this one instead?",
+														sentence:
+															"A merge keeps this file, and the other copies go to the quarantine.",
+													},
+													onAct: () => keepMember(group, member),
+												},
+											]),
+									{
+										label: "Not duplicates",
+										confirm: {
+											title: "These are not duplicates?",
+											sentence:
+												"The group leaves this list and later searches do not offer it again. Bring it back from the Not duplicates view.",
+										},
+										onAct: () => dismissGroup(group),
+									},
+								],
 				}),
 			),
 		);
@@ -79,18 +157,27 @@ function Duplicates() {
 	const band = (group: Group) => ({
 		key: String(group.id),
 		label: `${REASONS[group.reason]} - ${group.members.length} tracks`,
-		act: {
-			icon: "Merge" as const,
-			label: "Merge into the keeper",
-			confirm: {
-				title: "Merge this group?",
-				sentence:
-					"The keeper gets the tags it lacks and the other files move to the quarantine. Undo the batch in History.",
-			},
-			onAct: () => merge.mutateAsync({ groupIds: [group.id] }),
-			done: "Merging",
-			to: "/jobs",
-		},
+		act:
+			view === "dismissed"
+				? {
+						icon: "Undo2" as const,
+						label: "These are duplicates",
+						onAct: () => bringBack(group),
+					}
+				: {
+						icon: "Merge" as const,
+						label: "Merge into the keeper",
+						confirm: {
+							title: "Merge this group?",
+							sentence:
+								"The keeper gets the tags it lacks and the other files move to the quarantine. Undo the batch in History.",
+						},
+						onAct: () =>
+							queuedBatch(
+								merge.mutateAsync({ groupIds: [group.id] }),
+								"Merging the group",
+							),
+					},
 	});
 
 	return (
@@ -114,9 +201,11 @@ function Duplicates() {
 						sentence:
 							"Groups of identical audio merge into their keepers, and the other files move to the quarantine.",
 					},
-					onAct: () => merge.mutateAsync({ reason: "exact" }),
-					done: "Merging",
-					to: "/jobs",
+					onAct: () =>
+						queuedBatch(
+							merge.mutateAsync({ reason: "exact" }),
+							"Merging every exact duplicate",
+						),
 				},
 			]}
 		>
@@ -130,12 +219,34 @@ function Duplicates() {
 					)
 					.or(undefined)}
 			/>
+			<Toolbar
+				filters={[
+					{
+						label: "Show",
+						placeholder: "Open",
+						options: status.at((each) =>
+							(Object.keys(VIEWS) as View[]).map((value) => ({
+								value,
+								label: VIEWS[value],
+								line: count(each[value]),
+							})),
+						),
+						value: view,
+						onChange: (value) => {
+							setView(value === "dismissed" ? "dismissed" : "open");
+							setLimit(PAGE);
+						},
+					},
+				]}
+			/>
 			<Section
 				items={groups.at(rowsOf)}
 				groups={groups.at((data) => data.groups.map(band))}
 				empty={{
 					sentence:
-						"No duplicates found. Find duplicates to search the library.",
+						view === "open"
+							? "No duplicates found. Find duplicates to search the library."
+							: "No group was marked as not duplicates.",
 				}}
 			/>
 			{total > limit && (
