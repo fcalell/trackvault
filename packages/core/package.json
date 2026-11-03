@@ -7,6 +7,7 @@
 	"exports": {
 		"./analyze": "./src/analyze.ts",
 		"./dedupe": "./src/dedupe/index.ts",
+		"./exec": "./src/exec/index.ts",
 		"./hash": "./src/hash/index.ts",
 		"./issues": "./src/issues.ts",
 		"./normalize": "./src/normalize/index.ts",
@@ -17,6 +18,7 @@
 		"./rekordbox/anlz": "./src/rekordbox/anlz.ts",
 		"./rekordbox/sync": "./src/rekordbox/sync.ts",
 		"./rules": "./src/rules/index.ts",
+		"./sync": "./src/sync/index.ts",
 		"./tags": "./src/tags/index.ts",
 		"./taxonomy": "./src/taxonomy/index.ts"
 	},

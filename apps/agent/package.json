@@ -3,11 +3,22 @@
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
+	"description": "TrackVault device agent: replica sync, folder upload and the Rekordbox bridge. Plain Node 24 TypeScript, run from source.",
+	"bin": {
+		"trackvault-agent": "./src/cli.ts"
+	},
+	"engines": {
+		"node": ">=24"
+	},
 	"scripts": {
+		"start": "node src/cli.ts run",
 		"check": "tsc --noEmit && biome check ."
 	},
 	"dependencies": {
-		"@trackvault/core": "workspace:*"
+		"@fcalell/plugin-api": "link:../../../stack/plugins/api",
+		"@fcalell/plugin-node": "link:../../../stack/plugins/node",
+		"@trackvault/core": "workspace:*",
+		"better-sqlite3-multiple-ciphers": "13.0.3"
 	},
 	"devDependencies": {
 		"@fcalell/typescript-config": "link:../../../stack/packages/typescript-config",

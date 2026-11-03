@@ -42,9 +42,18 @@ importers:
 
   apps/agent:
     dependencies:
+      '@fcalell/plugin-api':
+        specifier: link:../../../stack/plugins/api
+        version: link:../../../stack/plugins/api
+      '@fcalell/plugin-node':
+        specifier: link:../../../stack/plugins/node
+        version: link:../../../stack/plugins/node
       '@trackvault/core':
         specifier: workspace:*
         version: link:../../packages/core
+      better-sqlite3-multiple-ciphers:
+        specifier: 13.0.3
+        version: 13.0.3
     devDependencies:
       '@fcalell/typescript-config':
         specifier: link:../../../stack/packages/typescript-config
