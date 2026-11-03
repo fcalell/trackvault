@@ -11,8 +11,8 @@ export const Route = createFileRoute("/_app/settings/account")({
 });
 
 function AccountSettings() {
-	const apps = orpc.connectedApps.list.read();
-	const revoke = useMutation(orpc.connectedApps.revoke.mutationOptions());
+	const apps = orpc.auth.oauth.grants.list.read();
+	const revoke = useMutation(orpc.auth.oauth.grants.revoke.mutationOptions());
 	return (
 		<Pane
 			title="Account"
@@ -66,7 +66,7 @@ function AccountSettings() {
 						leading: { icon: "Plug" as const },
 						title: each.name,
 						line: each.uri ?? undefined,
-						facts: each.connectedAt ? [date(each.connectedAt)] : [],
+						facts: [date(each.createdAt)],
 						act: {
 							icon: "Unplug" as const,
 							label: `Revoke ${each.name}`,
