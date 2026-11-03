@@ -21,7 +21,15 @@ export interface TrackTags {
 }
 
 // What an edit may carry: a key left out is left alone, `null` clears it.
-export type TagPatch = { [K in keyof TrackTags]?: TrackTags[K] };
+export type TagPatch = { [K in keyof TrackTags]?: TrackTags[K] } & {
+	// Replaces the front cover (APIC); `null` removes every picture.
+	picture?: CoverPicture | null;
+};
+
+export interface CoverPicture {
+	mime: "image/jpeg" | "image/png";
+	data: Uint8Array;
+}
 
 export const TAG_FIELDS = [
 	"title",

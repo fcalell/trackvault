@@ -1,7 +1,12 @@
+import {
+	decodeMono,
+	meanSpectrum,
+	rms,
+	type Spectrum,
+} from "../audio/index.ts";
 import { binaryAvailable, run } from "../exec/index.ts";
-import { meanSpectrum, type Spectrum } from "./fft.ts";
 
-export { FFT, meanSpectrum } from "./fft.ts";
+export { FFT, meanSpectrum } from "../audio/index.ts";
 
 export interface FfmpegOptions {
 	ffmpegPath?: string;
@@ -99,45 +104,15 @@ async function decodeClip(
 	bin: string,
 	timeoutMs: number,
 ): Promise<{ samples: Float32Array } | { missing: true } | null> {
-	const r = await run(
-		bin,
-		[
-			"-nostdin",
-			"-v",
-			"error",
-			"-ss",
-			startSec.toFixed(2),
-			"-t",
-			String(clipSec),
-			"-i",
-			path,
-			"-vn",
-			"-ac",
-			"1",
-			"-ar",
-			String(RATE),
-			"-f",
-			"f32le",
-			"-",
-		],
-		{ timeoutMs, maxStdoutBytes: RATE * 4 * (clipSec + 2) },
-	);
-	if (r.missing) return { missing: true };
-	if (r.timedOut || r.stdout.length < FFT_SIZE * 4 * 2) return null;
-	const buf = r.stdout;
-	const samples = new Float32Array(
-		buf.buffer.slice(
-			buf.byteOffset,
-			buf.byteOffset + buf.length - (buf.length % 4),
-		),
-	);
-	return { samples };
-}
-
-function rms(samples: Float32Array): number {
-	let s = 0;
-	for (let i = 0; i < samples.length; i++) s += (samples[i] as number) ** 2;
-	return Math.sqrt(s / Math.max(1, samples.length));
+	const r = await decodeMono(path, {
+		ffmpegPath: bin,
+		startSec,
+		durationSec: clipSec,
+		sampleRate: RATE,
+		timeoutMs,
+	});
+	if (!r.ok) return r.reason === "unavailable" ? { missing: true } : null;
+	return r.samples.length < FFT_SIZE * 2 ? null : { samples: r.samples };
 }
 
 // Pure part: from a mean power spectrum to the cutoff.

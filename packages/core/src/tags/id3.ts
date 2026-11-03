@@ -341,6 +341,17 @@ export function textFrame(version: number, id: string, text: string): Id3Frame {
 	return { id, size: body.length, body, opaque: false, flags: 0 };
 }
 
+// APIC with picture type 3 (front cover), empty description, Latin-1 text.
+export function pictureFrame(mime: string, data: Uint8Array): Id3Frame {
+	const body = Buffer.concat([
+		Buffer.from([0]),
+		Buffer.from(`${mime}\0`, "latin1"),
+		Buffer.from([3, 0]),
+		data,
+	]);
+	return { id: "APIC", size: body.length, body, opaque: false, flags: 0 };
+}
+
 export function commentFrame(
 	version: number,
 	id: "COMM" | "USLT",

@@ -4,6 +4,7 @@ import type { TagFormat, TagPatch, TagReadResult } from "./types.ts";
 
 export type {
 	AudioInfo,
+	CoverPicture,
 	TagFormat,
 	TagPatch,
 	TagReader,

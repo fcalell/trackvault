@@ -6,6 +6,7 @@ import {
 	commentOf,
 	type Id3Frame,
 	type Id3Tag,
+	pictureFrame,
 	popularimeterFrame,
 	popularimeterOf,
 	readId3,
@@ -336,6 +337,11 @@ function apply(frames: Id3Frame[], version: 3 | 4, patch: TagPatch): void {
 		} else if (value > 0) {
 			frames.push(popularimeterFrame(WMP, value, 0));
 		}
+	}
+	if (patch.picture !== undefined) {
+		remove(frames, "APIC");
+		if (patch.picture !== null)
+			frames.push(pictureFrame(patch.picture.mime, patch.picture.data));
 	}
 	if (patch.energy !== undefined) {
 		const existing = findUserText(frames, ENERGY_NAMES);
