@@ -383,3 +383,4 @@ Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothi
 | D9 | Network | LAN plus Tailscale, with a stable HTTPS origin for passkeys |
 | D10 | Hosting | Homelab. Process manager (systemd, Docker…) still open, decided at R0 step 7 |
 | D11 | Branches | Work directly on `master` in both repos |
+| D12 | Essentia license | essentia.js 0.1.3 is **AGPL-3.0** (its `package.json` and `LICENSE`). Fine for the self-hosted hub, which has one owner and is not offered to others as a service; the AGPL would bind only if the hub were run for third parties, and then TrackVault's source would have to be offered to them. The pretrained models (CC BY-NC-ND, non-commercial) are not used |
