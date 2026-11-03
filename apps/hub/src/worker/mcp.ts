@@ -3,7 +3,7 @@ import type * as routes from "./routes/index.ts";
 
 // What an MCP client (Claude) may do with the library: read it, and make the safe
 // changes (playlists, queueing jobs). Nothing here edits tags directly or removes files:
-// auto-tag results wait in Review for the owner.
+// auto-tag results wait in Auto-tag review for the owner.
 export default defineMcp<typeof routes>({
 	instructions:
 		"TrackVault is a DJ's music library. Search it, read tracks, playlists and stats, get harmonic next-track suggestions, build playlists, and queue auto-tag, analysis and cover-art jobs. Auto-tag results are proposals the owner reviews; tags are never changed directly. Track ids come from the search and playlist tools.",
@@ -23,7 +23,7 @@ export default defineMcp<typeof routes>({
 		"agent.createPlaylist":
 			"Creates a manual playlist, optionally with tracks.",
 		"agent.queueAutotag":
-			"Queues auto-tag for tracks (ids or a filter); the results wait in the owner's Review.",
+			"Queues auto-tag for tracks (ids or a filter); the results wait in the owner's Auto-tag review.",
 		"agent.queueAnalyse":
 			"Queues BPM, key, energy and loudness analysis for tracks (ids or a filter).",
 		"agent.queueArt": "Queues a cover-art search for tracks (ids or a filter).",

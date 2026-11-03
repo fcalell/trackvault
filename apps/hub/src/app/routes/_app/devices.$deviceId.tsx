@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_app/devices/$deviceId")({
 	component: DeviceRecord,
 });
 
-// One device: how its replica and its Rekordbox stand, and the places to look further.
+// One device: how its local copy and its Rekordbox stand, and the places to look further.
 function DeviceRecord() {
 	const { deviceId } = Route.useParams();
 	const device = orpc.devices.get.read({ id: deviceId });
@@ -74,12 +74,12 @@ function DeviceRecord() {
 				]}
 			>
 				<Section
-					title="Replica"
+					title="Local copy"
 					items={device.at((each) => [
 						{
 							key: "files",
 							label: "Files",
-							title: `${noun(each.files.ok, "file")} in the replica`,
+							title: `${noun(each.files.ok, "file")} in the local copy`,
 							line:
 								each.files.pending > 0
 									? `${count(each.files.pending)} still to arrive`

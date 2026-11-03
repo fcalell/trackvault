@@ -86,7 +86,7 @@ const COLUMNS: TableColumn<Item>[] = [
 
 // New music, held until you say yes. Files from your devices, Soulseek downloads and
 // anything dropped in the library's Inbox folder run through the pipeline (hash,
-// fingerprint, duplicate check, cleanup, names, target path) and wait here for
+// fingerprint, duplicate check, tag rules, names, target path) and wait here for
 // approval; a duplicate or a doubt waits for your call.
 function Inbox() {
 	const open = useParams({ strict: false }).itemId;

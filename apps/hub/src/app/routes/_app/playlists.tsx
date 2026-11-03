@@ -97,6 +97,20 @@ function Playlists() {
 	const move = useMutation(orpc.playlists.move.mutationOptions());
 	const add = useMutation(orpc.playlists.add.mutationOptions());
 
+	const newPlaylist = {
+		icon: "Plus" as const,
+		label: "New playlist",
+		sheet: sheetOf({
+			title: "New playlist",
+			form: {
+				act: orpc.playlists.create,
+				given: { kind: "manual" as const },
+				fields: { name: { label: "Name" } },
+				submit: { label: "Add", done: "Playlist added" },
+			},
+		}),
+	};
+
 	return (
 		<>
 			<Pane
@@ -107,21 +121,10 @@ function Playlists() {
 				empty={{
 					sentence:
 						"No playlists yet. Make one, then drag tracks onto it or use Add to playlist in the library.",
+					act: newPlaylist,
 				}}
 				acts={[
-					{
-						icon: "Plus",
-						label: "New playlist",
-						sheet: sheetOf({
-							title: "New playlist",
-							form: {
-								act: orpc.playlists.create,
-								given: { kind: "manual" as const },
-								fields: { name: { label: "Name" } },
-								submit: { label: "Add", done: "Playlist added" },
-							},
-						}),
-					},
+					newPlaylist,
 					{
 						icon: "FolderPlus",
 						label: "New folder",

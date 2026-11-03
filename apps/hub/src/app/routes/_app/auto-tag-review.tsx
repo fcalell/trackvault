@@ -21,7 +21,7 @@ import { batchToast, queuedBatch } from "../../ui/batch.ts";
 import { count } from "../../ui/figures.ts";
 import { trackTitle } from "../../ui/track.ts";
 
-export const Route = createFileRoute("/_app/review")({
+export const Route = createFileRoute("/_app/auto-tag-review")({
 	loader: ({ context }) =>
 		Promise.all([
 			preload(context.queryClient, orpc.autotag.summary.read()),
@@ -30,7 +30,7 @@ export const Route = createFileRoute("/_app/review")({
 				orpc.autotag.list.window({ state: "pending" }),
 			),
 		]),
-	component: Review,
+	component: AutoTagReview,
 });
 
 type Track = AppRouter["autotag"]["list"]["__output"]["data"][number];
@@ -88,7 +88,7 @@ const COLUMNS: TableColumn<Track>[] = [
 // The auto-tag results waiting for a decision: a row per track, its fields as a
 // before and after with where they came from and how sure that source is. Accepted
 // fields are applied as one batch (History lists it) and written to the files.
-function Review() {
+function AutoTagReview() {
 	const [view, setView] = useState<ProposalView>("pending");
 	const [source, setSource] = useState<string | undefined>();
 	const [confidence, setConfidence] = useState<number | undefined>();
@@ -118,7 +118,7 @@ function Review() {
 	});
 	return (
 		<Pane
-			title="Review"
+			title="Auto-tag review"
 			back={false}
 			wide
 			acts={[

@@ -52,7 +52,7 @@ function Devices() {
 		const line =
 			deviceFix(device) ??
 			[
-				`${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
+				`${noun(device.files.ok, "file")} in the local copy${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
 				rb?.installed && rb.pendingExport > 0
 					? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
 					: undefined,
@@ -110,6 +110,23 @@ function Devices() {
 		};
 	};
 
+	const pair = {
+		icon: "Plus" as const,
+		label: "Pair a device",
+		sheet: sheetOf({
+			title: "Pair a device",
+			description:
+				"Make a key for one machine. It is shown once, with the command that pairs the agent.",
+			form: {
+				act: orpc.auth.devices.create,
+				fields: { name: { label: "Name of the machine" } },
+				submit: { label: "Make key" },
+				onDone: (made: { key: string }, input: { name: string }) =>
+					setPaired({ name: input.name, key: made.key }),
+			},
+		}),
+	};
+
 	return (
 		<>
 			<Pane
@@ -117,22 +134,7 @@ function Devices() {
 				back={false}
 				wide
 				acts={[
-					{
-						icon: "Plus",
-						label: "Pair a device",
-						sheet: sheetOf({
-							title: "Pair a device",
-							description:
-								"Make a key for one machine. It is shown once, with the command that pairs the agent.",
-							form: {
-								act: orpc.auth.devices.create,
-								fields: { name: { label: "Name of the machine" } },
-								submit: { label: "Make key" },
-								onDone: (made, input) =>
-									setPaired({ name: input.name, key: made.key }),
-							},
-						}),
-					},
+					pair,
 					{
 						icon: "GitMerge",
 						label: "Conflicts",
@@ -170,7 +172,8 @@ function Devices() {
 					items={devices.at((rows) => rows.map(toRow))}
 					empty={{
 						sentence:
-							"No devices yet. Pair a machine to give it a replica of the library or to sync its Rekordbox.",
+							"No devices yet. Pair a machine to give it a local copy of the library or to sync its Rekordbox.",
+						act: pair,
 					}}
 				/>
 			</Pane>

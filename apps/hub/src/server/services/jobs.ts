@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, inArray, lt } from "@fcalell/plugin-db/orm";
+import { and, desc, eq, gt, inArray, lt } from "@fcalell/plugin-db/orm";
 import type { ChannelHandle } from "@fcalell/plugin-node/server";
 import { defineService, loadModules } from "@fcalell/plugin-node/server";
 import { batches, jobs } from "../../schema/index.ts";
@@ -37,7 +37,7 @@ let stopping = false;
 
 const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
-// A finished job names the batch it wrote under its own id.
+// A finished job names the batch it wrote under its own id, if that changed anything.
 function wroteBatch(row: JobRow): boolean {
 	return (
 		row.state !== "queued" &&
@@ -45,7 +45,7 @@ function wroteBatch(row: JobRow): boolean {
 		db()
 			.select({ id: batches.id })
 			.from(batches)
-			.where(eq(batches.id, row.id))
+			.where(and(eq(batches.id, row.id), gt(batches.count, 0)))
 			.get() !== undefined
 	);
 }

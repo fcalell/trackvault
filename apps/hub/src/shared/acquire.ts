@@ -39,13 +39,13 @@ export const INBOX_GROUPS = ["ready", "review", "processing", "done"] as const;
 export type InboxGroup = (typeof INBOX_GROUPS)[number];
 
 // What a list or a selection can be of: one group, or "waiting", the two the owner
-// acts on (Ready and Needs you), which the selection bar counts and Select all takes.
+// acts on (Ready and Needs a look), which the selection bar counts and Select all takes.
 export const INBOX_FILTERS = [...INBOX_GROUPS, "waiting"] as const;
 export type InboxFilterGroup = (typeof INBOX_FILTERS)[number];
 
 export const INBOX_GROUP_LABELS: Record<InboxGroup, string> = {
 	ready: "Ready",
-	review: "Needs you",
+	review: "Needs a look",
 	processing: "Processing",
 	done: "Done",
 };
@@ -55,7 +55,7 @@ export const STEP_LABELS = {
 	fingerprint: "Fingerprint",
 	dedupe: "Duplicate check",
 	rules: "Clean up tags",
-	taxonomy: "Unify genres and names",
+	taxonomy: "Tidy genres and names",
 	autotag: "Auto-tag",
 	organise: "Choose target path",
 	approve: "Approve",

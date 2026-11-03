@@ -143,7 +143,13 @@ function LibraryStats() {
 							]
 						: []),
 				])}
-				empty={{ sentence: "Genres show here once tracks carry them." }}
+				empty={{
+					sentence: "Genres show here once tracks carry them.",
+					act: {
+						label: "Find tracks without a genre",
+						href: "/library?issue=noGenre",
+					},
+				}}
 			/>
 			<Section
 				title="Formats"
@@ -158,17 +164,31 @@ function LibraryStats() {
 						}),
 					),
 				)}
-				empty={{ sentence: "Formats show here once the library is scanned." }}
+				empty={{
+					sentence: "Formats show here once the library is scanned.",
+					act: {
+						label: "Scan now",
+						onAct: () => orpc.scan.start.call(),
+						done: "Scan started",
+						to: "/jobs",
+					},
+				}}
 			/>
 			<Section
 				title="Most played"
 				items={played.at((each) => each.most.map(playedRow))}
-				empty={{ sentence: "Plays arrive from Rekordbox." }}
+				empty={{
+					sentence: "Plays arrive from Rekordbox through a paired device.",
+					act: { label: "Open Devices", href: "/devices" },
+				}}
 			/>
 			<Section
 				title="Least played"
 				items={played.at((each) => each.least.map(playedRow))}
-				empty={{ sentence: "Plays arrive from Rekordbox." }}
+				empty={{
+					sentence: "Plays arrive from Rekordbox through a paired device.",
+					act: { label: "Open Devices", href: "/devices" },
+				}}
 			/>
 		</Pane>
 	);

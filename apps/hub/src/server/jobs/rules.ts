@@ -101,7 +101,7 @@ export default defineJob<RulesPayload, RulesResult>({
 		const info = {
 			batchId: id,
 			origin: "rule" as const,
-			label: "Cleanup rules",
+			label: "Rules",
 		};
 		openBatch(info);
 		const applied = applyPatches(patches(), info, {

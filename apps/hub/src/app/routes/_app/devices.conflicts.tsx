@@ -80,6 +80,12 @@ function Conflicts() {
 			back="/devices"
 			cover
 			wide
+			read={conflicts}
+			empty={{
+				sentence:
+					"No conflicts. Rekordbox and TrackVault agree on everything the agent has synced.",
+				act: { label: "Open Devices", href: "/devices" },
+			}}
 			foot={
 				<ActionBar
 					chosen={chosen}

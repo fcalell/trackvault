@@ -114,7 +114,7 @@ function ImportResult() {
 					confirm: {
 						title: "Delete this import?",
 						sentence:
-							"The result is dropped. A playlist or wants made from it stay.",
+							"The result is dropped. A playlist or wishlist items made from it stay.",
 					},
 					onAct: () => remove.mutateAsync({ id: importId }),
 					to: "/wishlist",

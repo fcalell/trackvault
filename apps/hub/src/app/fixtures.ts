@@ -1046,6 +1046,16 @@ export default defineFixtures<
 			],
 			update: () => ({ batch: "batch-1" }),
 		},
+		attention: {
+			counts: () => ({
+				inbox: 4,
+				review: 37,
+				conflicts: 2,
+				duplicates: 12,
+				failedJobs: 1,
+				backupFailed: false,
+			}),
+		},
 		autotag: {
 			settings: () => AUTOTAG_SETTINGS,
 			updateSettings: () => AUTOTAG_SETTINGS,
@@ -1262,7 +1272,7 @@ export default defineFixtures<
 						...BATCH,
 						id: "batch-3",
 						origin: "rule" as const,
-						label: "Cleanup rules",
+						label: "Rules",
 						count: 1880,
 						undone: true,
 						undoable: false,

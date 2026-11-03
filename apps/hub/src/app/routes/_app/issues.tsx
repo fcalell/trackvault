@@ -25,14 +25,14 @@ const WHY: Record<IssueFilter, string> = {
 	noArt: "No cover art embedded",
 	undecodable: "The scan found no audio frames",
 	missingFile: "No file of the track is on disk",
-	corrupt: "ffmpeg could not decode the file to its end",
+	corrupt: "The file could not be decoded to its end",
 	fakeBitrate: "The audio ends where a lower bitrate's does",
 };
 
 // Where each issue is fixed: the library filtered by it, where the bulk acts are
 // (or the place that finds better copies).
 const FIX: Record<IssueFilter, { label: string; href: string }> = {
-	lowBitrate: { label: "Find better copies", href: "/search" },
+	lowBitrate: { label: "Find better copies", href: "/soulseek" },
 	noTitle: { label: "Edit the tags", href: "/library?issue=noTitle" },
 	noArtist: { label: "Edit the tags", href: "/library?issue=noArtist" },
 	noGenre: { label: "Edit the tags", href: "/library?issue=noGenre" },
@@ -48,7 +48,7 @@ const FIX: Record<IssueFilter, { label: string; href: string }> = {
 		href: "/library?issue=missingFile",
 	},
 	corrupt: { label: "Review the files", href: "/library?issue=corrupt" },
-	fakeBitrate: { label: "Find better copies", href: "/search" },
+	fakeBitrate: { label: "Find better copies", href: "/soulseek" },
 };
 
 // The checks that read each file: an issue they find is only counted over the

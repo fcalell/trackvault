@@ -135,7 +135,7 @@ const COMPARE: TableColumn<Fact>[] = [
 ];
 
 // One inbox item: where it stands in the pipeline, the verdict and why, the file
-// beside the library copy it matched, what the cleanup would do to its tags, and
+// beside the library copy it matched, what the rules would do to its tags, and
 // where it will be filed.
 function Item() {
 	const { itemId } = Route.useParams();

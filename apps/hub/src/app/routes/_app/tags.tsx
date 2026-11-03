@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/tags")({
 
 type Tag = AppRouter["tags"]["list"]["__output"][number];
 
-// Custom tags (vibe, set position, venue): made here, put on tracks from the record or
+// Tags (vibe, set position, venue): made here, put on tracks from the record or
 // by the library's Edit tags act, and a filter of the library.
 function Tags() {
 	const remove = useMutation(orpc.tags.remove.mutationOptions());
@@ -52,30 +52,25 @@ function Tags() {
 			},
 		],
 	});
+	const newTag = {
+		icon: "Plus" as const,
+		label: "New tag",
+		sheet: sheetOf({
+			title: "New tag",
+			form: {
+				act: orpc.tags.create,
+				fields: { name: { label: "Name" } },
+				submit: { label: "Add", done: "Tag added" },
+			},
+		}),
+	};
 	return (
-		<Pane
-			title="Custom tags"
-			back={false}
-			wide
-			acts={[
-				{
-					icon: "Plus",
-					label: "New tag",
-					sheet: sheetOf({
-						title: "New tag",
-						form: {
-							act: orpc.tags.create,
-							fields: { name: { label: "Name" } },
-							submit: { label: "Add", done: "Tag added" },
-						},
-					}),
-				},
-			]}
-		>
+		<Pane title="Tags" back={false} wide acts={[newTag]}>
 			<Section
 				items={tags.at((rows) => rows.map(toRow))}
 				empty={{
-					sentence: "No custom tags yet. Make one, then put it on tracks.",
+					sentence: "No tags yet. Make one, then put it on tracks.",
+					act: newTag,
 				}}
 			/>
 		</Pane>

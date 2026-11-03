@@ -1,3 +1,4 @@
+import { useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Dock } from "@fcalell/plugin-react-ui/components/dock";
 import { Shell } from "@fcalell/plugin-react-ui/components/shell";
 import {
@@ -10,6 +11,7 @@ import { orpc } from "../../lib/api.ts";
 import { useJobEffects } from "../../lib/jobs-effects.ts";
 import { useLibraryLive } from "../../lib/library-live.ts";
 import { usePlaylistPlaces } from "../../lib/playlists.tsx";
+import { NOTHING_WAITING } from "../../ui/attention.ts";
 
 connectOutput(audioOutput());
 
@@ -38,81 +40,64 @@ export const Route = createFileRoute("/_app")({
 	component: App,
 });
 
-// The plan's sidebar, group by group (the Playlists group joins from the data).
-const PLACES: PlaceSpec[] = [
-	{ label: "All tracks", icon: "Library", route: "/library", group: "Library" },
-	{ label: "Inbox", icon: "Inbox", route: "/inbox", group: "Library" },
-	{
-		label: "Set builder",
-		icon: "ListOrdered",
-		route: "/sets",
-		group: "Library",
-	},
-	{ label: "Stats", icon: "ChartColumn", route: "/stats", group: "Library" },
-	// The Playlists group stands here: `usePlaylistPlaces`.
-	{ label: "Issues", icon: "TriangleAlert", route: "/issues", group: "Curate" },
-	{ label: "Duplicates", icon: "Copy", route: "/duplicates", group: "Curate" },
-	{
-		label: "Organiser",
-		icon: "FolderTree",
-		route: "/organiser",
-		group: "Curate",
-	},
-	{
-		label: "Review",
-		icon: "ClipboardCheck",
-		route: "/review",
-		group: "Curate",
-	},
-	{
-		label: "Cleanup rules",
-		icon: "WandSparkles",
-		route: "/rules",
-		group: "Curate",
-	},
-	{
-		label: "Quarantine",
-		icon: "Archive",
-		route: "/quarantine",
-		group: "Curate",
-	},
-	{ label: "Genres", icon: "Music", route: "/genres", group: "Tags" },
-	{ label: "Custom tags", icon: "Tags", route: "/tags", group: "Tags" },
-	{ label: "Aliases", icon: "Replace", route: "/aliases", group: "Tags" },
-	{ label: "Search", icon: "Search", route: "/search", group: "Discover" },
-	{ label: "Wishlist", icon: "Star", route: "/wishlist", group: "Discover" },
-	{
-		label: "Downloads",
-		icon: "Download",
-		route: "/downloads",
-		group: "Discover",
-	},
-	{
-		label: "Devices",
-		icon: "MonitorSmartphone",
-		route: "/devices",
-		group: "System",
-	},
-	{ label: "History", icon: "History", route: "/history", group: "System" },
-	{
-		label: "Backups",
-		icon: "DatabaseBackup",
-		route: "/backups",
-		group: "System",
-	},
-	{ label: "Jobs", icon: "ListChecks", route: "/jobs", group: "System" },
-	{ label: "Settings", icon: "Settings", route: "/settings", group: "System" },
-];
+// The sidebar, group by job. The Playlists group joins from the data, and Set builder
+// stands at its end; the places with work waiting carry a count.
+const place = (
+	label: string,
+	icon: PlaceSpec["icon"],
+	route: string,
+	group: string,
+	waiting = 0,
+): PlaceSpec => ({
+	label,
+	icon,
+	route,
+	group,
+	...(waiting > 0 ? { count: waiting } : {}),
+});
 
-// Library first, then the playlists, then the rest, as the plan's sidebar reads.
 function App() {
 	useLibraryLive();
 	useJobEffects();
 	const playlists = usePlaylistPlaces();
+	const waiting =
+		useRead(orpc.attention.counts.read().or(NOTHING_WAITING)) ??
+		NOTHING_WAITING;
 	const places = [
-		...PLACES.filter((place) => place.group === "Library"),
+		place("All tracks", "Library", "/library", "Library"),
+		place("Inbox", "Inbox", "/inbox", "Library", waiting.inbox),
+		place("Stats", "ChartColumn", "/stats", "Library"),
 		...playlists,
-		...PLACES.filter((place) => place.group !== "Library"),
+		place("Set builder", "ListOrdered", "/sets", "Playlists"),
+		place("Soulseek", "Search", "/soulseek", "Get music"),
+		place("Wishlist", "Star", "/wishlist", "Get music"),
+		place("Downloads", "Download", "/downloads", "Get music"),
+		place("Issues", "TriangleAlert", "/issues", "Clean up"),
+		place("Duplicates", "Copy", "/duplicates", "Clean up", waiting.duplicates),
+		place("Organiser", "FolderTree", "/organiser", "Clean up"),
+		place("Rules", "WandSparkles", "/rules", "Clean up"),
+		place(
+			"Auto-tag review",
+			"ClipboardCheck",
+			"/auto-tag-review",
+			"Clean up",
+			waiting.review,
+		),
+		place("Genres", "Music", "/genres", "Tags"),
+		place("Aliases", "Replace", "/aliases", "Tags"),
+		place("Tags", "Tags", "/tags", "Tags"),
+		place(
+			"Devices",
+			"MonitorSmartphone",
+			"/devices",
+			"System",
+			waiting.conflicts,
+		),
+		place("Jobs", "ListChecks", "/jobs", "System"),
+		place("History", "History", "/history", "System"),
+		place("Quarantine", "Archive", "/quarantine", "System"),
+		place("Backups", "DatabaseBackup", "/backups", "System"),
+		place("Settings", "Settings", "/settings", "System"),
 	];
 	return (
 		<Shell places={places} foot={<Dock />}>

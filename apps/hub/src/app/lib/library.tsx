@@ -1,5 +1,6 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
+import { Banner } from "@fcalell/plugin-react-ui/components/banner";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Picker } from "@fcalell/plugin-react-ui/components/picker";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
@@ -10,6 +11,7 @@ import { useParams } from "@tanstack/react-router";
 import { type ReactNode, useMemo, useState } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
 import { type ISSUE_FILTERS, ISSUE_LABELS } from "../../shared/library.ts";
+import { attentionBanner } from "../ui/attention.ts";
 import { batchToast, namedBatch, queuedBatch } from "../ui/batch.ts";
 import { count } from "../ui/figures.ts";
 import { TRACK_COLUMNS } from "../ui/track.ts";
@@ -83,6 +85,7 @@ export function LibraryPane({
 	const tracks = orpc.tracks.list.window(query);
 	const facets = orpc.tracks.facets.read();
 	const playlists = orpc.playlists.tree.read();
+	const attention = orpc.attention.counts.read();
 	const open = useParams({ strict: false }).trackId;
 
 	// The rows a bulk act takes: the ticked ids, or the whole query less the unticked.
@@ -128,7 +131,7 @@ export function LibraryPane({
 								label: "Auto-tag",
 								blocked: nothing,
 								onAct: () => autotag.mutateAsync({ tracks: picked }),
-								done: "Looking the tracks up; the results wait in Review",
+								done: "Looking the tracks up; the results wait in Auto-tag review",
 								to: "/jobs",
 							},
 							{
@@ -172,7 +175,7 @@ export function LibraryPane({
 								label: "Apply rules",
 								blocked: nothing,
 								confirm: {
-									title: "Apply the cleanup rules?",
+									title: "Apply the rules?",
 									sentence:
 										"Every enabled rule runs over the chosen tracks and their tags are rewritten. Undo the batch in History.",
 								},
@@ -253,6 +256,11 @@ export function LibraryPane({
 					/>
 				}
 			>
+				<Banner
+					tone={attention.at((each) => attentionBanner(each)?.tone)}
+					sentence={attention.at((each) => attentionBanner(each)?.sentence)}
+					act={attention.at((each) => attentionBanner(each)?.act)}
+				/>
 				<Toolbar
 					search={{
 						value: text,

@@ -18,7 +18,7 @@ export const FIELD_LABELS: Record<string, string> = {
 	bpm: "BPM",
 	energy: "Energy",
 	rating: "Rating",
-	tags: "Custom tags",
+	tags: "Tags",
 	colour: "Colour",
 	cues: "Cues",
 	node: "Playlist",

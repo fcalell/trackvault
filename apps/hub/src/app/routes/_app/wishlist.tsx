@@ -83,9 +83,9 @@ const COLUMNS: TableColumn<Want>[] = [
 	},
 ];
 
-// What you want and the library lacks. The hub searches Soulseek for each on a
+// The wishlist: what the library lacks and you want. The hub searches Soulseek for each on a
 // schedule (a few tries quickly, then slower), ranks what it finds and either
-// downloads the best one or marks the want found for you to look at.
+// downloads the best one or marks the item found for you to look at.
 function Wishlist() {
 	const open = useParams({ strict: false }).wantId;
 	const navigate = useNavigate();
@@ -95,6 +95,30 @@ function Wishlist() {
 	const ignore = useMutation(orpc.wishlist.ignore.mutationOptions());
 	const remove = useMutation(orpc.wishlist.remove.mutationOptions());
 	const imports = orpc.imports.list.read();
+	const importSheet = sheetOf({
+		title: "Import a playlist",
+		description:
+			"A link (Spotify, Beatport, 1001Tracklists, YouTube), pasted text, or a file: a text or CSV list, M3U, Rekordbox XML, a saved page.",
+		form: {
+			act: orpc.imports.start,
+			fields: {
+				url: { label: "Link" },
+				text: { label: "Or paste it here", control: "prose" },
+				file: {
+					label: "Or pick a file",
+					control: "file",
+					accept: [".txt", ".csv", ".m3u", ".m3u8", ".xml", ".html", ".htm"],
+					name: "fileName",
+				},
+			},
+			submit: { label: "Import" },
+			onDone: (made) =>
+				navigate({
+					to: "/import/$importId",
+					params: { importId: made.id },
+				}),
+		},
+	});
 	return (
 		<>
 			<Pane
@@ -107,7 +131,7 @@ function Wishlist() {
 						label: "Add a track",
 						sheet: sheetOf({
 							title: "Add a track",
-							description: "Something you want that the library lacks.",
+							description: "A track the library lacks.",
 							form: {
 								act: orpc.wishlist.add,
 								fields: {
@@ -154,13 +178,19 @@ function Wishlist() {
 							trailing: { age: age(each.createdAt) },
 						})),
 					)}
-					empty={{ sentence: "Imported playlists show here." }}
+					empty={{
+						sentence: "Imported playlists show here.",
+						act: {
+							label: "Import a playlist",
+							sheet: importSheet,
+						},
+					}}
 				/>
 				<Toolbar
 					filters={[
 						{
 							label: "Show",
-							placeholder: "Every want",
+							placeholder: "Every wishlist item",
 							options: counts.at((each) =>
 								WISHLIST_VIEWS.map((value) => ({
 									value,
@@ -178,38 +208,7 @@ function Wishlist() {
 						act="secondary"
 						icon="ListPlus"
 						label="Import a playlist"
-						sheet={sheetOf({
-							title: "Import a playlist",
-							description:
-								"A link (Spotify, Beatport, 1001Tracklists, YouTube), pasted text, or a file: a text or CSV list, M3U, Rekordbox XML, a saved page.",
-							form: {
-								act: orpc.imports.start,
-								fields: {
-									url: { label: "Link" },
-									text: { label: "Or paste it here", control: "prose" },
-									file: {
-										label: "Or pick a file",
-										control: "file",
-										accept: [
-											".txt",
-											".csv",
-											".m3u",
-											".m3u8",
-											".xml",
-											".html",
-											".htm",
-										],
-										name: "fileName",
-									},
-								},
-								submit: { label: "Import" },
-								onDone: (made) =>
-									navigate({
-										to: "/import/$importId",
-										params: { importId: made.id },
-									}),
-							},
-						})}
+						sheet={importSheet}
 					/>
 				</Toolbar>
 				<Table

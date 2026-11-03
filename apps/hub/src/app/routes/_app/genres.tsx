@@ -17,7 +17,7 @@ type Genre = AppRouter["genres"]["list"]["__output"][number];
 type Unknown = AppRouter["genres"]["unknown"]["__output"][number];
 
 // The genre taxonomy: the names and their aliases, the values in the library it does
-// not know yet (map them to a genre, in a click each), and the unify that rewrites
+// not know yet (map them to a genre, in a click each), and the tidying that rewrites
 // every track to the canonical spelling after a preview.
 function Genres() {
 	const genres = orpc.genres.list.read();
@@ -37,7 +37,8 @@ function Genres() {
 				label: "Add an alias",
 				sheet: sheetOf({
 					title: `Add an alias to ${genre.name}`,
-					description: "Another spelling of this genre that Unify rewrites.",
+					description:
+						"Another spelling of this genre that tidying the spellings rewrites.",
 					form: {
 						act: orpc.genres.addAlias,
 						given: { genreId: genre.id },
@@ -116,6 +117,19 @@ function Genres() {
 		],
 	});
 
+	const newGenre = {
+		icon: "Plus" as const,
+		label: "New genre",
+		sheet: sheetOf({
+			title: "New genre",
+			form: {
+				act: orpc.genres.create,
+				fields: { name: { label: "Name" } },
+				submit: { label: "Add", done: "Genre added" },
+			},
+		}),
+	};
+
 	return (
 		<Pane
 			title="Genres"
@@ -152,26 +166,19 @@ function Genres() {
 		>
 			<Section
 				title="Not in the taxonomy"
-				description="Genre values the library carries that no genre or alias names. Map one to a genre, then unify."
+				description="Genre values the library carries that no genre or alias names. Map one to a genre, then tidy the spellings."
 				items={unknown.at((rows) => rows.map(toUnknown))}
 				empty={{ sentence: "Every genre in the library is known." }}
 			/>
 			<Section
 				title="Taxonomy"
 				items={genres.at((rows) => rows.map(toGenre))}
-				act={{
-					icon: "Plus",
-					label: "New genre",
-					sheet: sheetOf({
-						title: "New genre",
-						form: {
-							act: orpc.genres.create,
-							fields: { name: { label: "Name" } },
-							submit: { label: "Add", done: "Genre added" },
-						},
-					}),
+				act={newGenre}
+				empty={{
+					sentence:
+						"No genres yet. The genres you add are the spellings tracks are tidied to.",
+					act: newGenre,
 				}}
-				empty={{ sentence: "No genres yet." }}
 			/>
 			<PreviewSection
 				kind="unify"
