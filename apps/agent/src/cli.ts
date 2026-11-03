@@ -18,6 +18,7 @@ import { buildHello, NO_REKORDBOX } from "./hello.ts";
 import { HubClient, HubError } from "./hub/client.ts";
 import { createLogger, type Level } from "./log.ts";
 import { defaultRoot, hostName } from "./platform.ts";
+import { writeYardstick } from "./rekordbox/yardstick.ts";
 import { State } from "./state.ts";
 import { errorMessage, formatBytes } from "./util.ts";
 
@@ -28,6 +29,8 @@ Usage:
   trackvault-agent run [--debug]                   run the daemon
   trackvault-agent status                          show config, sync and Rekordbox state
   trackvault-agent unpair [--keep-state]           forget the hub (files stay on disk)
+  trackvault-agent yardstick [--out <file>]        write the BPM and key Rekordbox holds for linked tracks
+                                                   (a benchmark input for the hub's bench-yardstick script)
 
 pair options:
   --name <name>       device name shown in the hub (default: this machine's name)
@@ -234,6 +237,29 @@ async function unpair(argv: string[]): Promise<void> {
 	);
 }
 
+async function yardstick(argv: string[]): Promise<void> {
+	const { values } = parseArgs({
+		args: argv,
+		options: { out: { type: "string" } },
+	});
+	const paths = agentPaths();
+	await loadConfig(paths);
+	const state = new State(paths.state);
+	try {
+		const out = values.out ?? "yardstick.json";
+		const r = await writeYardstick(state, out);
+		process.stdout.write(
+			`${r.written} of ${r.linked} linked tracks have a BPM or key in Rekordbox; written to ${out}\n`,
+		);
+		if (r.linked === 0)
+			process.stdout.write(
+				"No tracks are linked yet: run the agent once so it matches Rekordbox to the library.\n",
+			);
+	} finally {
+		state.close();
+	}
+}
+
 async function main(): Promise<void> {
 	const [command, ...rest] = process.argv.slice(2);
 	switch (command) {
@@ -245,6 +271,8 @@ async function main(): Promise<void> {
 			return status();
 		case "unpair":
 			return unpair(rest);
+		case "yardstick":
+			return yardstick(rest);
 		case undefined:
 		case "help":
 		case "--help":
