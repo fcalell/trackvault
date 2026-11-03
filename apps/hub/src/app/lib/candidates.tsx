@@ -1,9 +1,10 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
-import type { TableColumn } from "@fcalell/ui-core/descriptors";
+import type { StatusMark, TableColumn } from "@fcalell/ui-core/descriptors";
 import type { AppRouter } from "../../../.stack/worker";
-import { HAVE_LABELS, nameOf } from "../ui/acquire.ts";
+import { MATCH, TRANSFER_STATE } from "../ui/acquire.ts";
 import { duration, size } from "../ui/figures.ts";
+import { trackTitle } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 
 type Candidate = AppRouter["soulseek"]["results"]["__output"]["data"][number];
@@ -15,16 +16,47 @@ const kind = (c: Candidate): string => {
 	return c.bitrate ? `${base} ${c.bitrate}` : base;
 };
 
+// A candidate whose artist and title are known can be wanted whatever its file.
+function wishEntry(
+	c: Candidate,
+	add: (want: {
+		artist: string;
+		title: string;
+		mix: string;
+	}) => Promise<unknown>,
+) {
+	const { artist, title } = c;
+	if (!artist || !title) return [];
+	return [
+		{
+			label: "Add to the wishlist",
+			onAct: () => add({ artist, title, mix: c.mixName ?? "" }),
+			done: "Added to the wishlist",
+		},
+	];
+}
+
+const asked = (c: Candidate): boolean =>
+	c.download !== null && c.download !== "failed" && c.download !== "cancelled";
+
+// Where the candidate stands: the download once asked for, else the ranking's call.
+const standing = (c: Candidate): StatusMark | null =>
+	c.download
+		? (TRANSFER_STATE[c.download] ?? null)
+		: c.rejected
+			? { tone: "idle", label: "Rejected" }
+			: c.recommended
+				? { tone: "active", label: "Recommended" }
+				: null;
+
 const COLUMNS: TableColumn<Candidate>[] = [
 	{
-		key: "name",
-		label: "File",
-		cell: (c) =>
-			nameOf({
-				artist: c.artist,
-				title: c.mix ? `${c.title ?? c.name} (${c.mix})` : (c.title ?? c.name),
-			}) ?? c.name,
+		key: "title",
+		label: "Title",
+		cell: (c) => trackTitle({ title: c.title ?? c.name, mixName: c.mixName }),
 	},
+	{ key: "artist", label: "Artist", cell: (c) => c.artist },
+	{ key: "standing", label: "State", kind: "status", cell: standing },
 	{
 		key: "score",
 		label: "Score",
@@ -33,11 +65,18 @@ const COLUMNS: TableColumn<Candidate>[] = [
 	},
 	{ key: "quality", label: "Quality", cell: kind },
 	{
+		key: "time",
+		label: "Time",
+		kind: "number",
+		cell: (c) => duration(c.lengthSec ? c.lengthSec * 1000 : null),
+	},
+	{ key: "size", label: "Size", cell: (c) => size(c.size) },
+	{
 		key: "library",
 		label: "Library",
 		kind: "chip",
 		family: "green",
-		cell: (c) => (c.have === "none" ? null : (HAVE_LABELS[c.have] ?? null)),
+		cell: (c) => (c.have === "none" ? null : MATCH[c.have]),
 	},
 	{ key: "peer", label: "Peer", cell: (c) => c.username },
 	{
@@ -45,26 +84,18 @@ const COLUMNS: TableColumn<Candidate>[] = [
 		label: "Queue",
 		cell: (c) => (c.freeSlot ? "Free slot" : `${c.queueLength} ahead`),
 	},
+	{ key: "folder", label: "Folder", cell: (c) => c.folder },
 	{
 		key: "why",
 		label: "Why",
 		wrap: true,
 		cell: (c) => c.reasons.join("; "),
 	},
-	{ key: "size", label: "Size", hidden: true, cell: (c) => size(c.size) },
-	{
-		key: "time",
-		label: "Time",
-		kind: "number",
-		hidden: true,
-		cell: (c) => duration(c.lengthSec ? c.lengthSec * 1000 : null),
-	},
-	{ key: "folder", label: "Folder", hidden: true, cell: (c) => c.folder },
 ];
 
-// The candidates of a search (or of a want's last search), best first: score, quality,
-// what the library already has, the peer, and the ranking's reasons. Download asks the
-// peer through slskd; the file lands in the inbox.
+// The candidates of a search (or of a want's last search), best first: the ranking's
+// call, quality, length and size, what the library already has, the peer, and the
+// ranking's reasons. Download asks the peer through slskd; the file lands in the inbox.
 export function Candidates({
 	searchId,
 	wantId,
@@ -73,6 +104,7 @@ export function Candidates({
 	wantId?: number;
 }) {
 	const download = useMutation(orpc.soulseek.download.mutationOptions());
+	const want = useMutation(orpc.wishlist.add.mutationOptions());
 	const ask = (c: Candidate) =>
 		download.mutateAsync({
 			resultId: c.id,
@@ -86,21 +118,22 @@ export function Candidates({
 			row={{
 				id: (c) => String(c.id),
 				act: (c) =>
-					c.rejected
-						? undefined
-						: {
-								icon: "Download",
-								label: `Download ${c.name}`,
-								onAct: () => ask(c),
-								done: "Asked the peer",
-								...(c.download &&
-								c.download !== "failed" &&
-								c.download !== "cancelled"
-									? { blocked: "Already asked for" }
-									: {}),
-							},
+					asked(c)
+						? {
+								icon: "ArrowRight",
+								label: `Open ${c.name} in Downloads`,
+								href: "/downloads",
+							}
+						: c.rejected
+							? undefined
+							: {
+									icon: "Download",
+									label: `Download ${c.name}`,
+									onAct: () => ask(c),
+									done: "Asked the peer",
+								},
 				more: (c) => [
-					...(c.rejected
+					...(c.rejected && !asked(c)
 						? [
 								{
 									label: "Download anyway",
@@ -108,11 +141,14 @@ export function Candidates({
 									done: "Asked the peer",
 									confirm: {
 										title: "Download a rejected file?",
-										sentence: c.reasons.at(-1) ?? "The ranking turned it down.",
+										sentence:
+											c.reasons.find((why) => why.startsWith("rejected: ")) ??
+											"The ranking turned it down.",
 									},
 								},
 							]
 						: []),
+					...(wantId === undefined ? wishEntry(c, want.mutateAsync) : []),
 					...(c.haveTrackId
 						? [
 								{

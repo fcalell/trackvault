@@ -1,21 +1,20 @@
-import { useMutation } from "@fcalell/plugin-api/tanstack-query";
+import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
+import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
-import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
 import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import {
 	INBOX_GROUP_LABELS,
-	INBOX_GROUPS,
 	type InboxGroup,
 } from "../../../shared/acquire.ts";
 import { orpc } from "../../lib/api.ts";
-import { useChosen } from "../../lib/chosen.ts";
-import { DECISION, INBOX_STATE, SOURCE_LABELS } from "../../ui/acquire.ts";
+import { INBOX_STATE, SOURCE_LABELS } from "../../ui/acquire.ts";
 import { age, bitrate, duration, size } from "../../ui/figures.ts";
+import { trackTitle } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/inbox")({
 	component: Inbox,
@@ -24,27 +23,20 @@ export const Route = createFileRoute("/_app/inbox")({
 type Item = AppRouter["inbox"]["list"]["__output"]["data"][number];
 type Filter = { group?: InboxGroup | undefined };
 
+// A duplicate or a doubt says why; a new track that is ready has nothing to add to "Ready".
+const why = (row: Item): string | null =>
+	row.decision === "accept" && !row.error ? null : row.reason;
+
 const COLUMNS: TableColumn<Item>[] = [
-	{ key: "label", label: "File", cell: (row) => row.label },
+	{ key: "title", label: "Title", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (row) => row.artist },
 	{
 		key: "state",
 		label: "State",
 		kind: "status",
 		cell: (row) => INBOX_STATE[row.state] ?? { tone: "idle" as const },
 	},
-	{
-		key: "decision",
-		label: "Verdict",
-		kind: "chip",
-		family: "neutral",
-		cell: (row) => (row.decision ? DECISION[row.decision] : null) ?? null,
-	},
-	{
-		key: "reason",
-		label: "Why",
-		wrap: true,
-		cell: (row) => row.reason,
-	},
+	{ key: "reason", label: "Why", wrap: true, cell: why },
 	{
 		key: "quality",
 		label: "Quality",
@@ -96,22 +88,100 @@ const COLUMNS: TableColumn<Item>[] = [
 // approval; a duplicate or a doubt waits for your call.
 function Inbox() {
 	const open = useParams({ strict: false }).itemId;
-	const [group, setGroup] = useState<InboxGroup>();
 	const counts = orpc.inbox.counts.read();
-	const query: Filter = { group };
+	const reach = useRead(counts);
 	const [picked, setPicked] = useState<Picked<Filter>>({ ids: [] });
 	const approve = useMutation(orpc.inbox.approve.mutationOptions());
 	const reject = useMutation(orpc.inbox.reject.mutationOptions());
 	const keep = useMutation(orpc.inbox.keep.mutationOptions());
 	const retry = useMutation(orpc.inbox.retry.mutationOptions());
-	const files = orpc.inbox.list.window(query);
-	const { chosen, blocked: nothing } = useChosen(
-		files,
-		picked,
-		setPicked,
-		query,
-		"files",
-	);
+	const choosable = (reach?.ready ?? 0) + (reach?.review ?? 0);
+	const ticked =
+		"ids" in picked
+			? picked.ids.length
+			: Math.max(
+					0,
+					(picked.query.group === "ready"
+						? (reach?.ready ?? 0)
+						: (reach?.review ?? 0)) - picked.except.length,
+				);
+	const nothing = ticked === 0 ? "Choose files first." : undefined;
+
+	const row = {
+		id: (item: Item) => item.id,
+		href: (item: Item) => `/inbox/${item.id}`,
+		act: (item: Item) =>
+			item.state === "awaiting-approval"
+				? {
+						icon: "Check" as const,
+						label: `Approve ${item.title}`,
+						onAct: () => approve.mutateAsync({ items: { ids: [item.id] } }),
+						done: "Filing the track",
+					}
+				: item.trackId
+					? {
+							icon: "Music" as const,
+							label: `Open ${item.title} in the library`,
+							href: `/library/${item.trackId}`,
+						}
+					: undefined,
+		more: (item: Item) => [
+			...(item.state === "duplicate" || item.state === "needs-review"
+				? [
+						{
+							label: "Keep",
+							onAct: () => keep.mutateAsync({ items: { ids: [item.id] } }),
+						},
+					]
+				: []),
+			...(item.state === "failed"
+				? [
+						{
+							label: "Try again",
+							onAct: () => retry.mutateAsync({ items: { ids: [item.id] } }),
+						},
+					]
+				: []),
+			...(item.state !== "approved" && item.state !== "rejected"
+				? [
+						{
+							label: "Reject",
+							destructive: true,
+							confirm: {
+								title: `Reject ${item.title}?`,
+								sentence:
+									"The file leaves the inbox and waits in the quarantine's folder until its days are up.",
+							},
+							onAct: () => reject.mutateAsync({ items: { ids: [item.id] } }),
+						},
+					]
+				: []),
+		],
+	};
+
+	const band = (group: InboxGroup, choosing: boolean) =>
+		!choosing && reach?.[group] === 0 ? null : (
+			<Section key={group} title={INBOX_GROUP_LABELS[group]}>
+				{choosing ? (
+					<Table
+						label={INBOX_GROUP_LABELS[group]}
+						items={orpc.inbox.list.window({ group })}
+						columns={COLUMNS}
+						row={row}
+						selected={open}
+						choose={{ picked, onPick: setPicked }}
+					/>
+				) : (
+					<Table
+						label={INBOX_GROUP_LABELS[group]}
+						items={orpc.inbox.list.window({ group })}
+						columns={COLUMNS}
+						row={row}
+						selected={open}
+					/>
+				)}
+			</Section>
+		);
 
 	return (
 		<>
@@ -122,7 +192,10 @@ function Inbox() {
 				acts={[
 					{
 						icon: "CheckCheck",
-						label: "Approve everything that is ready",
+						label: counts.at((each) => `Approve ${each.ready} ready`),
+						blocked: counts.at((each) =>
+							each.ready === 0 ? "Nothing is ready" : undefined,
+						),
 						confirm: {
 							title: "Approve every ready file?",
 							sentence:
@@ -144,10 +217,18 @@ function Inbox() {
 				]}
 				foot={
 					<ActionBar
-						chosen={chosen}
+						chosen={{
+							count: ticked,
+							of: choosable,
+							noun: "files",
+							onAll: (all) =>
+								setPicked(
+									all ? { query: { group: "ready" }, except: [] } : { ids: [] },
+								),
+						}}
 						acts={[
 							{
-								label: "Keep it anyway",
+								label: "Keep",
 								blocked: nothing,
 								onAct: () => keep.mutateAsync({ items: picked }),
 								done: "Running the pipeline again",
@@ -182,79 +263,10 @@ function Inbox() {
 					/>
 				}
 			>
-				<Toolbar
-					filters={[
-						{
-							label: "Show",
-							placeholder: "Everything open",
-							options: counts.at((each) =>
-								INBOX_GROUPS.map((value) => ({
-									value,
-									label: INBOX_GROUP_LABELS[value],
-									line: String(each[value]),
-								})),
-							),
-							value: group,
-							onChange: (value) => setGroup((value as InboxGroup) ?? undefined),
-						},
-					]}
-				/>
-				<Table
-					label="Inbox"
-					items={files}
-					columns={COLUMNS}
-					row={{
-						id: (row) => row.id,
-						href: (row) => `/inbox/${row.id}`,
-						act: (row) =>
-							row.state === "awaiting-approval"
-								? {
-										icon: "Check",
-										label: `Approve ${row.label}`,
-										onAct: () =>
-											approve.mutateAsync({ items: { ids: [row.id] } }),
-										done: "Filing the track",
-									}
-								: undefined,
-						more: (row) => [
-							...(row.state === "duplicate" || row.state === "needs-review"
-								? [
-										{
-											label: "Keep it anyway",
-											onAct: () =>
-												keep.mutateAsync({ items: { ids: [row.id] } }),
-										},
-									]
-								: []),
-							...(row.state === "failed"
-								? [
-										{
-											label: "Try again",
-											onAct: () =>
-												retry.mutateAsync({ items: { ids: [row.id] } }),
-										},
-									]
-								: []),
-							...(row.state !== "approved" && row.state !== "rejected"
-								? [
-										{
-											label: "Reject",
-											destructive: true,
-											confirm: {
-												title: `Reject ${row.label}?`,
-												sentence:
-													"The file leaves the inbox and waits in the quarantine's folder until its days are up.",
-											},
-											onAct: () =>
-												reject.mutateAsync({ items: { ids: [row.id] } }),
-										},
-									]
-								: []),
-						],
-					}}
-					selected={open}
-					choose={{ picked, onPick: setPicked }}
-				/>
+				{band("ready", true)}
+				{band("review", true)}
+				{band("processing", false)}
+				{band("done", false)}
 			</Pane>
 			<Outlet />
 		</>

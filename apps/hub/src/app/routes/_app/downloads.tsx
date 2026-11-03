@@ -7,6 +7,7 @@ import { orpc } from "../../lib/api.ts";
 import { transfersLive } from "../../lib/live.ts";
 import { TRANSFER_STATE } from "../../ui/acquire.ts";
 import { size, speed } from "../../ui/figures.ts";
+import { trackRow } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/downloads")({
 	component: Downloads,
@@ -26,10 +27,13 @@ function facts(t: TransferView): string[] {
 	return parts;
 }
 
-const line = (t: TransferView): string | undefined =>
+// What a row says after its artist: why it failed, or the wishlist item it is for.
+const note = (t: TransferView): string | undefined =>
 	t.error && (t.state === "failed" || t.state === "cancelled")
 		? t.error
-		: undefined;
+		: t.want
+			? `For  on the wishlist`
+			: undefined;
 
 // Soulseek downloads as slskd moves them, live; a finished file goes to the inbox on
 // its own, and the pipeline takes it from there.
@@ -38,12 +42,26 @@ function Downloads() {
 	const retry = useMutation(orpc.soulseek.retry.mutationOptions());
 	const clear = useMutation(orpc.soulseek.clear.mutationOptions());
 	const toRow = (t: TransferView): Row => ({
-		key: t.id,
-		leading: { icon: "Download" },
-		title: [t.artist, t.title ?? t.name].filter(Boolean).join(" - "),
-		facts: [TRANSFER_STATE[t.state] ?? { tone: "idle" }, ...facts(t)],
-		line: line(t),
-		trailing: { age: t.updatedAt },
+		...trackRow(
+			{ title: t.title ?? t.name, mixName: t.mixName, artist: t.artist },
+			{
+				key: t.id,
+				leading: { icon: "Download" },
+				facts: [TRANSFER_STATE[t.state] ?? { tone: "idle" }, ...facts(t)],
+				note: note(t),
+				trailing: { age: t.updatedAt },
+				...(t.wantId === null
+					? {}
+					: {
+							more: [
+								{
+									label: "Open the wishlist item",
+									href: `/wishlist/${t.wantId}`,
+								},
+							],
+						}),
+			},
+		),
 		...(t.state === "imported" && t.inboxItemId
 			? {
 					act: {
@@ -77,6 +95,7 @@ function Downloads() {
 			back={false}
 			wide
 			acts={[
+				{ icon: "Search", label: "Search Soulseek", href: "/search" },
 				{
 					icon: "BrushCleaning",
 					label: "Clear finished",

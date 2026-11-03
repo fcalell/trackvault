@@ -1,4 +1,5 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
+import { Button } from "@fcalell/plugin-react-ui/components/button";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
@@ -21,6 +22,7 @@ import {
 import { orpc } from "../../lib/api.ts";
 import { WANT_SOURCES, WANT_STATE, wantName } from "../../ui/acquire.ts";
 import { age, until } from "../../ui/figures.ts";
+import { trackTitle } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/wishlist")({
 	component: Wishlist,
@@ -29,7 +31,8 @@ export const Route = createFileRoute("/_app/wishlist")({
 type Want = AppRouter["wishlist"]["list"]["__output"]["data"][number];
 
 const COLUMNS: TableColumn<Want>[] = [
-	{ key: "want", label: "Track", cell: wantName },
+	{ key: "title", label: "Title", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (want) => want.artist },
 	{
 		key: "status",
 		label: "State",
@@ -121,42 +124,6 @@ function Wishlist() {
 						}),
 					},
 					{
-						icon: "ListPlus",
-						label: "Import a playlist",
-						sheet: sheetOf({
-							title: "Import a playlist",
-							description:
-								"A link (Spotify, Beatport, 1001Tracklists, YouTube), pasted text, or a file: a text or CSV list, M3U, Rekordbox XML, a saved page.",
-							form: {
-								act: orpc.imports.start,
-								fields: {
-									url: { label: "Link" },
-									text: { label: "Or paste it here", control: "prose" },
-									file: {
-										label: "Or pick a file",
-										control: "file",
-										accept: [
-											".txt",
-											".csv",
-											".m3u",
-											".m3u8",
-											".xml",
-											".html",
-											".htm",
-										],
-										name: "fileName",
-									},
-								},
-								submit: { label: "Import" },
-								onDone: (made) =>
-									navigate({
-										to: "/import/$importId",
-										params: { importId: made.id },
-									}),
-							},
-						}),
-					},
-					{
 						icon: "Search",
 						label: "Search what is due",
 						onAct: () => orpc.wishlist.searchDue.call(),
@@ -168,7 +135,7 @@ function Wishlist() {
 				<Section
 					title="Imports"
 					items={imports.at((rows) =>
-						rows.slice(0, 5).map((each) => ({
+						rows.map((each) => ({
 							key: each.id,
 							leading: { icon: "ListMusic" as const },
 							title: each.name,
@@ -206,7 +173,45 @@ function Wishlist() {
 								setView((value as WishlistView) ?? undefined),
 						},
 					]}
-				/>
+				>
+					<Button
+						act="secondary"
+						icon="ListPlus"
+						label="Import a playlist"
+						sheet={sheetOf({
+							title: "Import a playlist",
+							description:
+								"A link (Spotify, Beatport, 1001Tracklists, YouTube), pasted text, or a file: a text or CSV list, M3U, Rekordbox XML, a saved page.",
+							form: {
+								act: orpc.imports.start,
+								fields: {
+									url: { label: "Link" },
+									text: { label: "Or paste it here", control: "prose" },
+									file: {
+										label: "Or pick a file",
+										control: "file",
+										accept: [
+											".txt",
+											".csv",
+											".m3u",
+											".m3u8",
+											".xml",
+											".html",
+											".htm",
+										],
+										name: "fileName",
+									},
+								},
+								submit: { label: "Import" },
+								onDone: (made) =>
+									navigate({
+										to: "/import/$importId",
+										params: { importId: made.id },
+									}),
+							},
+						})}
+					/>
+				</Toolbar>
 				<Table
 					label="Wishlist"
 					items={orpc.wishlist.list.window({ view })}
@@ -215,20 +220,42 @@ function Wishlist() {
 						id: (want) => String(want.id),
 						href: (want) => `/wishlist/${want.id}`,
 						act: (want) =>
-							want.status === "wanted" ||
-							want.status === "found" ||
-							want.status === "gave-up"
+							want.status === "found"
 								? {
-										icon: "Search",
-										label: `Search for ${wantName(want)} now`,
-										onAct: () =>
-											searchNow.mutateAsync({
-												wants: { ids: [String(want.id)] },
-											}),
-										done: "Searching Soulseek",
+										icon: "ListOrdered",
+										label: `See candidates for ${wantName(want)}`,
+										href: `/wishlist/${want.id}`,
 									}
-								: undefined,
+								: want.trackId
+									? {
+											icon: "Music",
+											label: `Open ${wantName(want)} in the library`,
+											href: `/library/${want.trackId}`,
+										}
+									: want.status === "wanted" || want.status === "gave-up"
+										? {
+												icon: "Search",
+												label: `Search for ${wantName(want)} now`,
+												onAct: () =>
+													searchNow.mutateAsync({
+														wants: { ids: [String(want.id)] },
+													}),
+												done: "Searching Soulseek",
+											}
+										: undefined,
 						more: (want) => [
+							...(want.status === "found"
+								? [
+										{
+											label: "Search again",
+											onAct: () =>
+												searchNow.mutateAsync({
+													wants: { ids: [String(want.id)] },
+												}),
+											done: "Searching Soulseek",
+										},
+									]
+								: []),
 							{
 								label:
 									want.status === "ignored" ? "Take it up again" : "Ignore",

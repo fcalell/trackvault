@@ -9,7 +9,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { IMPORT_STATUS, WANT_SOURCES } from "../../ui/acquire.ts";
+import { IMPORT_MATCH, MATCH, WANT_SOURCES } from "../../ui/acquire.ts";
+import { trackTitle } from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/import/$importId")({
 	loader: ({ context, params }) =>
@@ -23,31 +24,20 @@ export const Route = createFileRoute("/_app/import/$importId")({
 type Item = AppRouter["imports"]["items"]["__output"]["data"][number];
 type Status = Item["status"];
 
-const FILTER_LABELS: Record<Status, string> = {
-	matched: "In the library",
-	missing: "Missing",
-	uncertain: "Not sure",
-	"other-version": "Other mix in the library",
-};
-
 const COLUMNS: TableColumn<Item>[] = [
-	{
-		key: "track",
-		label: "Track",
-		cell: (item) =>
-			`${item.artist} - ${item.title}${item.mix ? ` (${item.mix})` : ""}`,
-	},
+	{ key: "title", label: "Title", cell: trackTitle },
+	{ key: "artist", label: "Artist", cell: (item) => item.artist },
 	{
 		key: "status",
 		label: "Result",
 		kind: "chip",
 		family: "neutral",
-		cell: (item) => IMPORT_STATUS[item.status] ?? "",
+		cell: (item) => MATCH[IMPORT_MATCH[item.status]],
 	},
 	{
 		key: "match",
 		label: "Library track",
-		cell: (item) => item.match,
+		cell: (item) => (item.match ? trackTitle(item.match) : null),
 	},
 	{
 		key: "confidence",
@@ -70,6 +60,7 @@ function ImportResult() {
 	const toWishlist = useMutation(orpc.imports.addToWishlist.mutationOptions());
 	const confirm = useMutation(orpc.imports.confirm.mutationOptions());
 	const remove = useMutation(orpc.imports.remove.mutationOptions());
+	const searchItem = useMutation(orpc.imports.searchItem.mutationOptions());
 	return (
 		<Pane
 			title={imported.at((each) => each.name)}
@@ -177,9 +168,9 @@ function ImportResult() {
 					{
 						label: "Show",
 						placeholder: "Every track",
-						options: (Object.keys(FILTER_LABELS) as Status[]).map((value) => ({
+						options: (Object.keys(IMPORT_MATCH) as Status[]).map((value) => ({
 							value,
-							label: FILTER_LABELS[value],
+							label: MATCH[IMPORT_MATCH[value]].label,
 						})),
 						value: status,
 						onChange: (value) => setStatus((value as Status) ?? undefined),
@@ -201,7 +192,14 @@ function ImportResult() {
 										confirm.mutateAsync({ itemId: item.id, same: true }),
 									done: "Counted as in the library",
 								}
-							: undefined,
+							: item.status === "missing"
+								? {
+										icon: "Search",
+										label: `Search for ${item.title} now`,
+										onAct: () => searchItem.mutateAsync({ itemId: item.id }),
+										done: "Searching Soulseek",
+									}
+								: undefined,
 					more: (item) =>
 						item.status === "uncertain"
 							? [

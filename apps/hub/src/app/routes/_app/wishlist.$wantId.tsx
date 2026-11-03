@@ -57,6 +57,16 @@ function WantRecord() {
 			<Section
 				title="Search"
 				items={want.at((each) => [
+					...(each.trackId
+						? [
+								{
+									key: "track",
+									label: "In the library",
+									title: wantName(each),
+									href: `/library/${each.trackId}`,
+								},
+							]
+						: []),
 					{
 						key: "next",
 						label: "Next search",

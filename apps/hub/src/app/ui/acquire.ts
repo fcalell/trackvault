@@ -4,6 +4,7 @@ import type {
 	StatusMark,
 	Tone,
 } from "@fcalell/ui-core/descriptors";
+import { trackTitle } from "./track.ts";
 
 // What the acquisition places say of an inbox item, a download or a want, in words.
 
@@ -72,19 +73,6 @@ export const WANT_SOURCES: Record<string, string> = {
 	youtube: "YouTube",
 };
 
-export const HAVE_LABELS: Record<string, string> = {
-	have: "In the library",
-	"other-version": "Other version",
-	maybe: "Maybe in the library",
-};
-
-export const IMPORT_STATUS: Record<string, ChipMark> = {
-	matched: { family: "green", label: "In the library" },
-	missing: { family: "red", label: "Missing" },
-	uncertain: { family: "amber", label: "Not sure" },
-	"other-version": { family: "teal", label: "Other mix" },
-};
-
 export const STEP_ICON: Record<string, IconName> = {
 	hash: "Hash",
 	fingerprint: "Fingerprint",
@@ -96,16 +84,33 @@ export const STEP_ICON: Record<string, IconName> = {
 	approve: "Check",
 };
 
-export const nameOf = (parts: {
-	artist: string | null;
-	title: string | null;
-}): string | null =>
-	parts.title ? [parts.artist, parts.title].filter(Boolean).join(" - ") : null;
+// One vocabulary for whether the library has a track, in every place that asks: a
+// search result, an import row, a want. The keys are the hub's `have` marks.
+export const MATCH = {
+	have: { family: "green", label: "In the library" },
+	"other-version": { family: "teal", label: "Other mix" },
+	maybe: { family: "amber", label: "Not sure" },
+	none: { family: "red", label: "Missing" },
+} as const satisfies Record<string, ChipMark>;
+
+// An import row's result in that vocabulary.
+export const IMPORT_MATCH = {
+	matched: "have",
+	"other-version": "other-version",
+	uncertain: "maybe",
+	missing: "none",
+} as const satisfies Record<string, keyof typeof MATCH>;
+
+// How a library copy differs in mix from the file in hand.
+export const VERSION: Record<string, string> = {
+	same: "Same mix",
+	different: MATCH["other-version"].label,
+	unknown: "Mix not known",
+};
 
 // "Artist - Title (Mix)" of a want.
 export const wantName = (want: {
 	artist: string;
 	title: string;
-	mix: string | null;
-}): string =>
-	`${want.artist} - ${want.title}${want.mix ? ` (${want.mix})` : ""}`;
+	mixName: string | null;
+}): string => `${want.artist} - ${trackTitle(want)}`;

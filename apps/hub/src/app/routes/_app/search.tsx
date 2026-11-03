@@ -36,7 +36,15 @@ function Search() {
 	const navigate = useNavigate();
 	const settings = orpc.soulseek.settings.read();
 	return (
-		<Pane title="Search" back={false} wide>
+		<Pane
+			title="Soulseek"
+			back={false}
+			wide
+			acts={[
+				{ icon: "Download", label: "Downloads", href: "/downloads" },
+				{ icon: "ListPlus", label: "Wishlist", href: "/wishlist" },
+			]}
+		>
 			<Banner
 				tone="attention"
 				sentence={settings.at((each) =>
