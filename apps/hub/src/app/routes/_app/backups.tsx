@@ -239,6 +239,7 @@ function Backups() {
 				/>
 				<Section
 					title="Restore"
+					folded
 					description="Run these on the machine the hub is on."
 					items={status.at((each) => [
 						{

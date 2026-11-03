@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
 import { EDIT_LABELS } from "../../shared/patch.ts";
 import { orpc } from "./api.ts";
-import { CHANGE_COLUMNS, CHANGE_ROW } from "./changes.ts";
+import { STORED_CHANGE_COLUMNS, STORED_CHANGE_ROW } from "./changes.ts";
 import { useDebounced } from "./debounced.ts";
 
 // What the Edit tags form has made: its own input, as the form's `onChange` hears it.
@@ -69,11 +69,9 @@ export function EditPreview({
 		>
 			<Table
 				label="Changes"
-				items={preview.at((each) =>
-					each.changes.map((row) => ({ ...row, id: row.key })),
-				)}
-				columns={CHANGE_COLUMNS}
-				row={CHANGE_ROW}
+				items={preview.at((each) => each.changes)}
+				columns={STORED_CHANGE_COLUMNS}
+				row={STORED_CHANGE_ROW}
 			/>
 		</Section>
 	);

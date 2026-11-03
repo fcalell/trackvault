@@ -1,7 +1,6 @@
 import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Card } from "@fcalell/plugin-react-ui/components/card";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
-import { Image } from "@fcalell/plugin-react-ui/components/image";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Picker } from "@fcalell/plugin-react-ui/components/picker";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
@@ -20,6 +19,7 @@ import {
 	ISSUE_LABELS,
 	type IssueFilter,
 } from "../../shared/library.ts";
+import { batchToast, namedBatch } from "../ui/batch.ts";
 import { age, bitrate, bpm, duration } from "../ui/figures.ts";
 import { fetchPeaks, trackRow } from "../ui/track.ts";
 import { orpc } from "./api.ts";
@@ -105,7 +105,6 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 	const analyse = useMutation(orpc.bulk.analyse.mutationOptions());
 	const addToSet = useMutation(orpc.sets.append.mutationOptions());
 	const { play } = useListPlay(use(ListSource));
-	const hasArt = useRead(track)?.hasArt;
 	return (
 		<Pane
 			title={track.at((each) => each.title ?? "Untitled")}
@@ -114,6 +113,12 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 			record={{
 				within,
 				overline: [track.at((each) => each.artist ?? "Unknown artist")],
+				image: {
+					src: track.at((each) =>
+						each.hasArt ? `/media/${encodeURIComponent(id)}/art?size=320` : "",
+					),
+					alt: "Cover art",
+				},
 				facts: [
 					track.at((each) => bitrate(each.format, each.bitrate)),
 					track.at((each) => duration(each.durationMs) ?? "No length"),
@@ -193,7 +198,9 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 						isrc: each.isrc ?? "",
 						comment: each.comment ?? "",
 					}))}
-					submit={{ done: "Saved" }}
+					onDone={(answer) => {
+						if (answer.batch) batchToast({ id: answer.batch }, "Saved");
+					}}
 					fields={{
 						title: { label: "Title" },
 						artist: { label: "Artist" },
@@ -211,21 +218,6 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 						comment: { label: "Comment", control: "prose" },
 					}}
 				/>
-			</Section>
-			<Section title="Cover" read={track}>
-				<Card>
-					{hasArt ? (
-						<Image
-							src={`/media/${encodeURIComponent(id)}/art?size=320`}
-							alt="Cover art"
-							fit="thumb"
-						/>
-					) : (
-						<Text kind="meta">
-							No cover is embedded. Fetch art looks one up.
-						</Text>
-					)}
-				</Card>
 			</Section>
 			<Section
 				title="Analysis"
@@ -258,9 +250,12 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 										act: {
 											icon: "Check" as const,
 											label: "Use analysis",
-											onAct: () =>
-												update.mutateAsync({ id, bpm: bpm(found.bpm) }),
-											done: "Tempo set. Undo the batch in History.",
+											onAct: async () =>
+												namedBatch(
+													await update.mutateAsync({ id, bpm: bpm(found.bpm) }),
+													"Tempo set",
+													"The tempo was already that",
+												),
 										},
 									}
 								: {}),
@@ -280,8 +275,12 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 										act: {
 											icon: "Check" as const,
 											label: "Use analysis",
-											onAct: () => update.mutateAsync({ id, key: found.key }),
-											done: "Key set. Undo the batch in History.",
+											onAct: async () =>
+												namedBatch(
+													await update.mutateAsync({ id, key: found.key }),
+													"Key set",
+													"The key was already that",
+												),
 										},
 									}
 								: {}),

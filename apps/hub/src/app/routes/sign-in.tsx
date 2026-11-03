@@ -50,14 +50,21 @@ function SignIn() {
 					submit: { label: "Verify", ...(oauthQuery() ? {} : { to: "/" }) },
 					onDone: (answer) => followRedirect(answer),
 				}}
-			>
-				<Button act="quiet" label="Back" onAct={() => setSentTo(undefined)} />
-				<Button
-					act="quiet"
-					label="Resend"
-					onAct={() => sendOtp.mutateAsync({ email: sentTo })}
-				/>
-			</Gate>
+				acts={
+					<>
+						<Button
+							act="quiet"
+							label="Back"
+							onAct={() => setSentTo(undefined)}
+						/>
+						<Button
+							act="quiet"
+							label="Resend"
+							onAct={() => sendOtp.mutateAsync({ email: sentTo })}
+						/>
+					</>
+				}
+			/>
 		);
 	}
 	return (

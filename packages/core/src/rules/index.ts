@@ -11,6 +11,7 @@ export {
 export {
 	collapseWhitespace,
 	extractFeaturing,
+	joinFeatures,
 	normalizeMixBrackets,
 	normalizeSeparators,
 	sentenceCase,

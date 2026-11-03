@@ -1,6 +1,7 @@
 import type { Snapshots } from "@fcalell/plugin-node/ws";
 import { defineFixtures } from "@fcalell/plugin-screens/fixtures";
 import type { AppRouter } from "../../.stack/worker";
+import type { InboxFilterGroup } from "../shared/acquire.ts";
 import type {
 	jobsChannel,
 	libraryChannel,
@@ -432,14 +433,12 @@ const INBOX_ITEMS = [
 ];
 
 // The states each group of the inbox holds.
-const INBOX_GROUP_STATES: Record<
-	"ready" | "review" | "processing" | "done",
-	string[]
-> = {
+const INBOX_GROUP_STATES: Record<InboxFilterGroup, string[]> = {
 	ready: ["awaiting-approval"],
 	review: ["duplicate", "needs-review", "failed"],
 	processing: ["queued", "processing"],
 	done: ["approved", "rejected"],
+	waiting: ["awaiting-approval", "duplicate", "needs-review", "failed"],
 };
 
 const TRANSFERS = [
@@ -999,6 +998,7 @@ const AUTOTAG_SETTINGS = {
 	artMinSide: 500,
 	analyseAuto: true,
 	analyseFillConfidence: 70,
+	analyseWindow: "60" as const,
 	ready: ["MusicBrainz", "AcoustID", "Deezer"],
 };
 
@@ -1076,7 +1076,7 @@ export default defineFixtures<
 					undone: false,
 				},
 			],
-			update: ({ id }) => record(Number(id.replace("track-", "")) || 0),
+			update: () => ({ batch: "batch-1" }),
 		},
 		autotag: {
 			settings: () => AUTOTAG_SETTINGS,
@@ -1190,13 +1190,7 @@ export default defineFixtures<
 				total: 3,
 				sampled: 3,
 				touched: 3,
-				changes: CHANGE_ROWS.map((row) => ({
-					key: row.id,
-					label: `${row.artist} - ${row.title} (${row.mixName})`,
-					field: row.field,
-					before: row.before,
-					after: row.after,
-				})),
+				changes: CHANGE_ROWS,
 			}),
 			edit: () => job("edit", "running", 1),
 			rules: () => job("rules", "running", 1),
@@ -1503,8 +1497,8 @@ export default defineFixtures<
 			rename: () => undefined,
 			move: () => undefined,
 			remove: () => undefined,
-			add: () => ({ added: 3, job: null }),
-			removeTracks: () => ({ removed: 3, job: null }),
+			add: () => ({ added: 3, batch: "batch-1" }),
+			removeTracks: () => ({ removed: 3, batch: "batch-1" }),
 			reorder: () => undefined,
 			forTrack: () =>
 				PLAYLISTS.slice(1, 3).map(({ id, name }) => ({ id, name })),
@@ -1685,6 +1679,25 @@ export default defineFixtures<
 			cancel: () => undefined,
 			retry: () => undefined,
 			clear: () => undefined,
+		},
+		connectedApps: {
+			list: () => [
+				{
+					id: "grant-1",
+					name: "Claude",
+					uri: "https://claude.ai",
+					scopes: ["mcp", "offline_access"],
+					connectedAt: new Date(Date.now() - 12 * 86_400_000),
+				},
+				{
+					id: "grant-2",
+					name: "Inspector",
+					uri: null,
+					scopes: ["mcp"],
+					connectedAt: null,
+				},
+			],
+			revoke: () => undefined,
 		},
 		wishlist: {
 			list: ({ offset = 0, limit = 200 }) => ({

@@ -72,17 +72,17 @@ const TONES: Record<JobView["state"], Tone> = {
 	cancelled: "idle",
 };
 
-// How far a running or queued job has come is a fact; its message (or, failed,
-// its error) is the row's line.
+const counted = (job: JobView): boolean =>
+	job.total > 0 && (job.state === "running" || job.state === "queued");
+
+// How far a running or queued job has come is a fact and the row's bar; its
+// message (or, failed, its error) is the row's line.
 function progress(job: JobView): string[] {
-	if (job.state === "failed" && job.error) return [];
-	if (job.total > 0 && (job.state === "running" || job.state === "queued")) {
-		return [
-			`${Math.round((job.done / job.total) * 100)}%`,
-			`${count(job.done)} of ${count(job.total)}`,
-		];
-	}
-	return [];
+	if (!counted(job)) return [];
+	return [
+		`${Math.round((job.done / job.total) * 100)}%`,
+		`${count(job.done)} of ${count(job.total)}`,
+	];
 }
 
 const sentence = (job: JobView): string | undefined =>
@@ -103,6 +103,7 @@ function Jobs() {
 			title: (KINDS[job.kind] ?? { title: job.kind }).title,
 			facts: [{ tone: TONES[job.state] }, ...progress(job)],
 			line: sentence(job),
+			progress: counted(job) ? { value: job.done, max: job.total } : undefined,
 			trailing: { age: job.createdAt },
 			act:
 				job.state === "queued" || job.state === "running"

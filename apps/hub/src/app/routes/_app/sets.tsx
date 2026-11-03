@@ -205,7 +205,7 @@ function SetBuilder() {
 						(track, at): Row =>
 							trackRow(track, {
 								key: track.id,
-								label: `Step ${at + 1}`,
+								label: String(at + 1),
 								leading: { icon: "Music" },
 								facts: [
 									...(track.weak

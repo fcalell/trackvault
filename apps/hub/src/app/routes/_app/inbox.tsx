@@ -9,10 +9,12 @@ import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import {
 	INBOX_GROUP_LABELS,
+	type InboxFilterGroup,
 	type InboxGroup,
 } from "../../../shared/acquire.ts";
 import { orpc } from "../../lib/api.ts";
 import { INBOX_STATE, SOURCE_LABELS } from "../../ui/acquire.ts";
+import { queuedBatch } from "../../ui/batch.ts";
 import { age, bitrate, duration, size } from "../../ui/figures.ts";
 import { trackTitle } from "../../ui/track.ts";
 
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/_app/inbox")({
 });
 
 type Item = AppRouter["inbox"]["list"]["__output"]["data"][number];
-type Filter = { group?: InboxGroup | undefined };
+type Filter = { group?: InboxFilterGroup | undefined };
 
 // A duplicate or a doubt says why; a new track that is ready has nothing to add to "Ready".
 const why = (row: Item): string | null =>
@@ -96,15 +98,11 @@ function Inbox() {
 	const keep = useMutation(orpc.inbox.keep.mutationOptions());
 	const retry = useMutation(orpc.inbox.retry.mutationOptions());
 	const choosable = (reach?.ready ?? 0) + (reach?.review ?? 0);
+
 	const ticked =
 		"ids" in picked
 			? picked.ids.length
-			: Math.max(
-					0,
-					(picked.query.group === "ready"
-						? (reach?.ready ?? 0)
-						: (reach?.review ?? 0)) - picked.except.length,
-				);
+			: Math.max(0, choosable - picked.except.length);
 	const nothing = ticked === 0 ? "Choose files first." : undefined;
 
 	const row = {
@@ -115,8 +113,11 @@ function Inbox() {
 				? {
 						icon: "Check" as const,
 						label: `Approve ${item.title}`,
-						onAct: () => approve.mutateAsync({ items: { ids: [item.id] } }),
-						done: "Filing the track",
+						onAct: () =>
+							queuedBatch(
+								approve.mutateAsync({ items: { ids: [item.id] } }),
+								"Filing the track",
+							),
 					}
 				: item.trackId
 					? {
@@ -161,7 +162,11 @@ function Inbox() {
 
 	const band = (group: InboxGroup, choosing: boolean) =>
 		!choosing && reach?.[group] === 0 ? null : (
-			<Section key={group} title={INBOX_GROUP_LABELS[group]}>
+			<Section
+				key={group}
+				title={INBOX_GROUP_LABELS[group]}
+				folded={group === "done"}
+			>
 				{choosing ? (
 					<Table
 						label={INBOX_GROUP_LABELS[group]}
@@ -202,11 +207,12 @@ function Inbox() {
 								"Each moves to the folder its target names and joins the library with the cleaned tags. Undo the batch in History.",
 						},
 						onAct: () =>
-							approve.mutateAsync({
-								items: { query: { group: "ready" }, except: [] },
-							}),
-						done: "Filing tracks",
-						to: "/jobs",
+							queuedBatch(
+								approve.mutateAsync({
+									items: { query: { group: "ready" }, except: [] },
+								}),
+								"Filing tracks",
+							),
 					},
 					{
 						icon: "RefreshCw",
@@ -223,7 +229,9 @@ function Inbox() {
 							noun: "files",
 							onAll: (all) =>
 								setPicked(
-									all ? { query: { group: "ready" }, except: [] } : { ids: [] },
+									all
+										? { query: { group: "waiting" }, except: [] }
+										: { ids: [] },
 								),
 						}}
 						acts={[
@@ -255,9 +263,11 @@ function Inbox() {
 							{
 								label: "Approve",
 								blocked: nothing,
-								onAct: () => approve.mutateAsync({ items: picked }),
-								done: "Filing tracks",
-								to: "/jobs",
+								onAct: () =>
+									queuedBatch(
+										approve.mutateAsync({ items: picked }),
+										"Filing tracks",
+									),
 							},
 						]}
 					/>
