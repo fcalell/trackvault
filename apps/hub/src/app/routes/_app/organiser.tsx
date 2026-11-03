@@ -44,7 +44,7 @@ function Organiser() {
 					key: preset.label,
 					leading: { icon: "FolderTree" as const },
 					title: preset.label,
-					meta: [{ code: preset.template }],
+					facts: [{ code: preset.template }],
 					act: {
 						icon: "Check" as const,
 						label: `Use ${preset.label}`,

@@ -36,12 +36,10 @@ export const JOB_STATE: Record<JobView["state"], StatusMark> = {
 	cancelled: { tone: "idle" },
 };
 
-// The sentence a job row carries: its message, its failure, its count.
-export function jobMeta(job: JobView): string[] {
-	if (job.state === "failed" && job.error) return [job.error];
-	const parts: string[] = [];
-	if (job.message) parts.push(job.message);
-	return parts;
+// The sentence a job row carries: its failure, else its message.
+export function jobLine(job: JobView): string | undefined {
+	if (job.state === "failed" && job.error) return job.error;
+	return job.message || undefined;
 }
 
 export const jobKind = (kind: string): { title: string; icon: IconName } =>

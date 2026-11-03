@@ -37,9 +37,9 @@ function Issues() {
 	const summary = orpc.health.summary.read();
 	const toRow = (issue: Issue): Row => ({
 		key: issue.value,
-		leading: { status: issue.count > 0 ? "attention" : "done" },
+		leading: { tone: issue.count > 0 ? "attention" : "done" },
 		title: ISSUE_LABELS[issue.value],
-		meta: [WHY[issue.value]],
+		line: WHY[issue.value],
 		trailing: { count: issue.count },
 		href: issue.count > 0 ? `/library?issue=${issue.value}` : undefined,
 		dim: issue.count === 0,
@@ -66,7 +66,7 @@ function Issues() {
 						key: "integrity",
 						leading: { icon: "ShieldCheck" as const },
 						title: "Decode every file",
-						meta: [
+						facts: [
 							`${count.format(each.checked.integrity)} of ${count.format(each.total)} checked`,
 						],
 						act: {
@@ -81,7 +81,7 @@ function Issues() {
 						key: "bitrate",
 						leading: { icon: "Gauge" as const },
 						title: "Measure the spectrum",
-						meta: [
+						facts: [
 							`${count.format(each.checked.bitrate)} of ${count.format(each.total)} checked`,
 						],
 						act: {

@@ -1,4 +1,5 @@
 import { useMutation, useWindow } from "@fcalell/plugin-api/tanstack-query";
+import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
@@ -16,6 +17,7 @@ import {
 import { clock, quality, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { type EditInput, EditPreview, useEditFields } from "./bulk-edit.tsx";
+import { useChosen } from "./chosen.ts";
 import { useDebounced } from "./debounced.ts";
 import { pathsOf } from "./playlists.tsx";
 import { setQueueSource } from "./queue.ts";
@@ -167,10 +169,13 @@ export function LibraryPane({
 	const autotag = useMutation(orpc.bulk.autotag.mutationOptions());
 	const fetchArt = useMutation(orpc.bulk.art.mutationOptions());
 	const analyse = useMutation(orpc.bulk.analyse.mutationOptions());
-	const nothing =
-		"ids" in picked && picked.ids.length === 0
-			? "Choose tracks first."
-			: undefined;
+	const { chosen, blocked: nothing } = useChosen(
+		tracks,
+		picked,
+		setPicked,
+		query,
+		"tracks",
+	);
 
 	// The player's queue is the rows loaded, in the list's order.
 	const view = useWindow(tracks);
@@ -183,7 +188,7 @@ export function LibraryPane({
 		<Pane
 			title={title}
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "RefreshCw",
 					label: "Scan now",
@@ -192,128 +197,10 @@ export function LibraryPane({
 					to: "/jobs",
 				},
 			]}
-		>
-			<Toolbar
-				search={{
-					value: text,
-					onChange: setText,
-					placeholder: "Search title, artist, label",
-				}}
-				filters={[
-					{
-						label: "Genre",
-						placeholder: "Any genre",
-						options: facets.at((each) =>
-							each.genres.map((genre) => ({
-								value: genre.value,
-								label: genre.value,
-								description: count.format(genre.count),
-							})),
-						),
-						value: genre,
-						onChange: (value) => setGenre(value ?? undefined),
-					},
-					{
-						label: "Key",
-						placeholder: "Any key",
-						options: facets.at((each) =>
-							each.keys
-								.toSorted((a, b) => camelot(a.value) - camelot(b.value))
-								.map((key) => ({
-									value: key.value,
-									label: key.value,
-									description: count.format(key.count),
-								})),
-						),
-						value: key,
-						onChange: (value) => setKey(value ?? undefined),
-					},
-					{
-						label: "BPM",
-						placeholder: "Any tempo",
-						options: BPM_RANGES.map(({ value, label }) => ({ value, label })),
-						value: bpm,
-						onChange: (value) => setBpm(value ?? undefined),
-					},
-					{
-						label: "Energy",
-						placeholder: "Any energy",
-						options: facets.at((each) =>
-							each.energies.map((row) => ({
-								value: String(row.value),
-								label: String(row.value),
-								description: count.format(row.count),
-							})),
-						),
-						value: energy === undefined ? undefined : String(energy),
-						onChange: (value) => setEnergy(value ? Number(value) : undefined),
-					},
-					{
-						label: "Played",
-						placeholder: "Any",
-						options: [{ value: "never", label: "Never played" }],
-						value: never ? "never" : undefined,
-						onChange: (value) => setNever(value ? true : undefined),
-					},
-					{
-						label: "Tag",
-						placeholder: "Any tag",
-						options: facets.at((each) =>
-							each.tags.map((row) => ({
-								value: String(row.id),
-								label: row.name,
-								description: count.format(row.count),
-							})),
-						),
-						value: tag === undefined ? undefined : String(tag),
-						onChange: (value) => setTag(value ? Number(value) : undefined),
-					},
-					{
-						label: "Issue",
-						placeholder: "No filter",
-						options: facets.at((each) =>
-							each.issues.map((issue) => ({
-								value: issue.value,
-								label: ISSUE_LABELS[issue.value],
-								description: count.format(issue.count),
-							})),
-						),
-						value: issue,
-						onChange: (value) =>
-							setIssue((value as (typeof ISSUE_FILTERS)[number]) ?? undefined),
-					},
-				]}
-			/>
-			<Table
-				label="Tracks"
-				items={tracks}
-				columns={LIBRARY_COLUMNS}
-				row={{
-					id: (row) => row.id,
-					href: (row) => `${base}/${row.id}`,
-					// Shift+Enter on the active row plays it; Next and Previous follow the list.
-					act: (row) => ({
-						icon: "Play",
-						label: `Play ${row.title ?? "Untitled"}`,
-						onAct: () => {
-							const at =
-								rows?.findIndex(
-									(each) => (each as ListRow | undefined)?.id === row.id,
-								) ?? -1;
-							player.play(
-								toTrack(row),
-								at >= 0
-									? windowQueue(tracks, { track: toTrack, at })
-									: undefined,
-							);
-						},
-					}),
-				}}
-				selected={open}
-				drag={{ kind: "track" }}
-				choose={{ picked, onPick: setPicked, noun: "tracks" }}
-				select={{
-					acts: [
+			foot={
+				<ActionBar
+					chosen={chosen}
+					acts={[
 						{
 							label: "Add to playlist",
 							blocked: nothing,
@@ -427,8 +314,129 @@ export function LibraryPane({
 								after: <EditPreview picked={picked} edit={edit} />,
 							}),
 						},
-					],
+					]}
+				/>
+			}
+		>
+			<Toolbar
+				search={{
+					value: text,
+					onChange: setText,
+					placeholder: "Search title, artist, label",
 				}}
+				filters={[
+					{
+						label: "Genre",
+						placeholder: "Any genre",
+						options: facets.at((each) =>
+							each.genres.map((genre) => ({
+								value: genre.value,
+								label: genre.value,
+								line: count.format(genre.count),
+							})),
+						),
+						value: genre,
+						onChange: (value) => setGenre(value ?? undefined),
+					},
+					{
+						label: "Key",
+						placeholder: "Any key",
+						options: facets.at((each) =>
+							each.keys
+								.toSorted((a, b) => camelot(a.value) - camelot(b.value))
+								.map((key) => ({
+									value: key.value,
+									label: key.value,
+									line: count.format(key.count),
+								})),
+						),
+						value: key,
+						onChange: (value) => setKey(value ?? undefined),
+					},
+					{
+						label: "BPM",
+						placeholder: "Any tempo",
+						options: BPM_RANGES.map(({ value, label }) => ({ value, label })),
+						value: bpm,
+						onChange: (value) => setBpm(value ?? undefined),
+					},
+					{
+						label: "Energy",
+						placeholder: "Any energy",
+						options: facets.at((each) =>
+							each.energies.map((row) => ({
+								value: String(row.value),
+								label: String(row.value),
+								line: count.format(row.count),
+							})),
+						),
+						value: energy === undefined ? undefined : String(energy),
+						onChange: (value) => setEnergy(value ? Number(value) : undefined),
+					},
+					{
+						label: "Played",
+						placeholder: "Any",
+						options: [{ value: "never", label: "Never played" }],
+						value: never ? "never" : undefined,
+						onChange: (value) => setNever(value ? true : undefined),
+					},
+					{
+						label: "Tag",
+						placeholder: "Any tag",
+						options: facets.at((each) =>
+							each.tags.map((row) => ({
+								value: String(row.id),
+								label: row.name,
+								line: count.format(row.count),
+							})),
+						),
+						value: tag === undefined ? undefined : String(tag),
+						onChange: (value) => setTag(value ? Number(value) : undefined),
+					},
+					{
+						label: "Issue",
+						placeholder: "No filter",
+						options: facets.at((each) =>
+							each.issues.map((issue) => ({
+								value: issue.value,
+								label: ISSUE_LABELS[issue.value],
+								line: count.format(issue.count),
+							})),
+						),
+						value: issue,
+						onChange: (value) =>
+							setIssue((value as (typeof ISSUE_FILTERS)[number]) ?? undefined),
+					},
+				]}
+			/>
+			<Table
+				label="Tracks"
+				items={tracks}
+				columns={LIBRARY_COLUMNS}
+				row={{
+					id: (row) => row.id,
+					href: (row) => `${base}/${row.id}`,
+					// Shift+Enter on the active row plays it; Next and Previous follow the list.
+					act: (row) => ({
+						icon: "Play",
+						label: `Play ${row.title ?? "Untitled"}`,
+						onAct: () => {
+							const at =
+								rows?.findIndex(
+									(each) => (each as ListRow | undefined)?.id === row.id,
+								) ?? -1;
+							player.play(
+								toTrack(row),
+								at >= 0
+									? windowQueue(tracks, { track: toTrack, at })
+									: undefined,
+							);
+						},
+					}),
+				}}
+				selected={open}
+				drag={{ kind: "track" }}
+				choose={{ picked, onPick: setPicked }}
 			/>
 		</Pane>
 	);

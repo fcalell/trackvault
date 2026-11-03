@@ -57,7 +57,7 @@ function SetBuilder() {
 		<Pane
 			title="Set builder"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "Save",
 					label: "Save as a playlist",
@@ -134,7 +134,7 @@ function SetBuilder() {
 							key: each.id,
 							leading: { icon: "Music" },
 							title: each.title ?? "Untitled",
-							meta: facts(each),
+							facts: facts(each),
 							act: {
 								icon: "Plus",
 								label: `Add ${each.title ?? "Untitled"} to the set`,
@@ -177,18 +177,16 @@ function SetBuilder() {
 							key: track.id,
 							leading: { icon: "Music" },
 							title: `${at + 1}. ${track.title ?? "Untitled"}`,
-							meta: [
+							facts: [
+								...(track.weak
+									? [{ tone: "attention" as const, label: "Weak step" }]
+									: []),
 								...facts(track),
 								...(track.score !== null
 									? [`${track.score}% from the last`]
 									: []),
 							],
-							...(track.weak
-								? {
-										status: { tone: "attention" as const, label: "Weak step" },
-										warning: track.why ?? "",
-									}
-								: {}),
+							...(track.weak && track.why ? { line: track.why } : {}),
 							href: `/library/${track.id}`,
 							act: {
 								icon: "X",
@@ -213,7 +211,8 @@ function SetBuilder() {
 							key: each.id,
 							leading: { icon: "Music" },
 							title: each.title ?? "Untitled",
-							meta: [...facts(each), each.why],
+							facts: facts(each),
+							line: each.why,
 							trailing: { value: `${each.score}%` },
 							act: {
 								icon: "Plus",

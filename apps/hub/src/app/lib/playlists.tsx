@@ -117,7 +117,7 @@ export function SmartPreview({ rule }: { rule: SmartRule | undefined }) {
 						key: row.id,
 						leading: { icon: "Music" },
 						title: row.title ?? "Untitled",
-						meta: [row.artist ?? "Unknown artist"],
+						facts: [row.artist ?? "Unknown artist"],
 					}),
 				),
 			)}

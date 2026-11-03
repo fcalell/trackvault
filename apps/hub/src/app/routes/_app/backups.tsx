@@ -1,6 +1,7 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
+import type { Fact } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { BACKUP_KINDS } from "../../../shared/backups.ts";
@@ -11,7 +12,7 @@ import {
 	dateTime,
 	JOB_STATE,
 	jobKind,
-	jobMeta,
+	jobLine,
 	size,
 } from "../../ui/backups.ts";
 
@@ -29,25 +30,28 @@ function localRow(
 	verify: (name: string) => Promise<unknown>,
 	remove: (name: string) => Promise<unknown>,
 ): Row {
+	const check: Fact =
+		backup.state === "verified"
+			? { tone: "done", label: "Checked" }
+			: backup.state === "failed"
+				? { tone: "failed", label: "Failed its check" }
+				: { tone: "waiting", label: "Not checked" };
 	return {
 		key: backup.name,
 		leading: { icon: "DatabaseBackup" },
 		title: dateTime(backup.takenAt),
-		meta: [
-			size(backup.size),
-			backup.tracks !== null
-				? `${count.format(backup.tracks)} tracks`
-				: undefined,
-			backup.compression === "none" ? "uncompressed" : backup.compression,
-			backup.kind === "manual" ? "by hand" : undefined,
-			backup.offsite ? "Offsite" : undefined,
-		].filter((part): part is string => typeof part === "string"),
-		status:
-			backup.state === "verified"
-				? { tone: "done", label: "Checked" }
-				: backup.state === "failed"
-					? { tone: "failed", label: "Failed its check" }
-					: { tone: "waiting", label: "Not checked" },
+		facts: [
+			check,
+			...[
+				size(backup.size),
+				backup.tracks !== null
+					? `${count.format(backup.tracks)} tracks`
+					: undefined,
+				backup.compression === "none" ? "uncompressed" : backup.compression,
+				backup.kind === "manual" ? "by hand" : undefined,
+				backup.offsite ? "Offsite" : undefined,
+			].filter((part): part is string => part !== undefined),
+		],
 		trailing: { age: backup.takenAt.toISOString() },
 		more: [
 			{
@@ -72,7 +76,7 @@ const remoteRow = (item: Remote): Row => ({
 	key: item.key,
 	leading: { icon: "Cloud" },
 	title: dateTime(item.takenAt),
-	meta: [size(item.size), item.encrypted ? "Encrypted" : "Not encrypted"],
+	facts: [size(item.size), item.encrypted ? "Encrypted" : "Not encrypted"],
 	trailing: { age: item.takenAt.toISOString() },
 });
 
@@ -91,8 +95,8 @@ function Backups() {
 		key: job.id,
 		leading: { icon: jobKind(job.kind).icon },
 		title: jobKind(job.kind).title,
-		meta: jobMeta(job),
-		status: JOB_STATE[job.state],
+		facts: [JOB_STATE[job.state]],
+		line: jobLine(job),
 		trailing: { age: job.createdAt },
 	});
 
@@ -101,7 +105,7 @@ function Backups() {
 			title="Backups"
 			read={jobsLive}
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "DatabaseBackup",
 					label: "Back up now",
@@ -142,7 +146,7 @@ function Backups() {
 						title: each.enabled
 							? `Next backup ${each.nextAt ? dateTime(each.nextAt) : ""}`
 							: "Daily backup is off",
-						meta: [each.dir],
+						facts: [{ code: each.dir }],
 						...(each.freeBytes !== null
 							? { trailing: { value: `${size(each.freeBytes)} free` } }
 							: {}),
@@ -153,11 +157,9 @@ function Backups() {
 						title: each.offsite.enabled
 							? "Offsite storage is on"
 							: "Offsite storage is off",
-						meta: [
-							each.offsite.configured
-								? `${count.format(each.offsite.files)} audio files, ${size(each.offsite.bytes)} sent`
-								: "Not set up: the bucket and keys are in Settings",
-						],
+						line: each.offsite.configured
+							? `${count.format(each.offsite.files)} audio files, ${size(each.offsite.bytes)} sent`
+							: "Not set up: the bucket and keys are in Settings",
 						act: {
 							icon: "Settings" as const,
 							label: "Open settings",

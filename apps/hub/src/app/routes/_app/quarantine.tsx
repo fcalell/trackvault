@@ -43,7 +43,7 @@ function Quarantine() {
 		<Pane
 			title="Quarantine"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "ArchiveRestore",
 					label: "Restore all",

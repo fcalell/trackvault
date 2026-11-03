@@ -2,7 +2,7 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { type Row, Section } from "@fcalell/plugin-react-ui/components/section";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
-import type { Tone } from "@fcalell/ui-core/descriptors";
+import type { Fact, Tone } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
@@ -53,38 +53,39 @@ function Devices() {
 
 	const toRow = (device: Device): Row => {
 		const rb = device.rekordbox;
-		const meta = [
-			[device.platform, device.hostname].filter(Boolean).join(" · ") ||
-				undefined,
+		const words = [
+			device.platform,
+			device.hostname,
 			device.state === "waiting"
 				? `Key ${device.keyStart ?? ""}…`
 				: `${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count.format(device.files.pending)} waiting` : ""}`,
-			rb?.installed
-				? `Rekordbox ${rb.appVersion ?? ""} · ${WRITE[rb.writeSupport] ?? rb.writeSupport}`.replace(
-						"  ",
-						" ",
-					)
-				: undefined,
+			rb?.installed ? `Rekordbox ${rb.appVersion ?? ""}`.trim() : undefined,
 			rb?.installed && rb.pendingExport > 0
 				? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
 				: undefined,
 			device.unmatched
 				? `${noun(device.unmatched, "track")} not matched`
 				: undefined,
-		].filter((part): part is string => typeof part === "string");
+		].filter((part): part is string => Boolean(part));
+		const facts: Fact[] = [
+			STATE[device.state],
+			...(device.files.failed > 0
+				? [{ warning: `${noun(device.files.failed, "file")} failed` }]
+				: rb?.writeSupport === "cloud-sync"
+					? [{ warning: "Cloud Library Sync is on" }]
+					: []),
+			...words,
+		];
 		return {
 			key: device.id,
 			leading: {
 				icon: device.platform === "darwin" ? "Laptop" : "MonitorSmartphone",
 			},
 			title: device.name,
-			status: STATE[device.state],
-			meta,
-			...(device.files.failed > 0
-				? { warning: `${noun(device.files.failed, "file")} failed` }
-				: rb?.writeSupport === "cloud-sync"
-					? { warning: "Cloud Library Sync is on" }
-					: {}),
+			facts,
+			...(rb?.installed
+				? { line: WRITE[rb.writeSupport] ?? rb.writeSupport }
+				: {}),
 			...(device.lastSeenAt
 				? { trailing: { age: device.lastSeenAt.toISOString() } }
 				: {}),
@@ -140,7 +141,7 @@ function Devices() {
 			<Pane
 				title="Devices"
 				back={false}
-				actions={[
+				acts={[
 					{
 						icon: "Plus",
 						label: "Pair a device",

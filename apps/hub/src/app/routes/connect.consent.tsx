@@ -43,7 +43,7 @@ function ConnectConsent() {
 						key: "client",
 						label: "Client",
 						title: each.client_name ?? each.client_id,
-						meta: each.client_uri ? [each.client_uri] : [],
+						line: each.client_uri ?? undefined,
 					},
 				])}
 			/>

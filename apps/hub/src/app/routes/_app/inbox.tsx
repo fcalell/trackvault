@@ -1,4 +1,5 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
+import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
@@ -12,6 +13,7 @@ import {
 	type InboxGroup,
 } from "../../../shared/acquire.ts";
 import { orpc } from "../../lib/api.ts";
+import { useChosen } from "../../lib/chosen.ts";
 import {
 	DECISION,
 	INBOX_STATE,
@@ -107,17 +109,21 @@ function Inbox() {
 	const reject = useMutation(orpc.inbox.reject.mutationOptions());
 	const keep = useMutation(orpc.inbox.keep.mutationOptions());
 	const retry = useMutation(orpc.inbox.retry.mutationOptions());
-	const nothing =
-		"ids" in picked && picked.ids.length === 0
-			? "Choose files first."
-			: undefined;
+	const files = orpc.inbox.list.window(query);
+	const { chosen, blocked: nothing } = useChosen(
+		files,
+		picked,
+		setPicked,
+		query,
+		"files",
+	);
 
 	return (
 		<>
 			<Pane
 				title="Inbox"
 				back={false}
-				actions={[
+				acts={[
 					{
 						icon: "CheckCheck",
 						label: "Approve everything that is ready",
@@ -140,6 +146,45 @@ function Inbox() {
 						done: "Looking in the inbox",
 					},
 				]}
+				foot={
+					<ActionBar
+						chosen={chosen}
+						acts={[
+							{
+								label: "Keep it anyway",
+								blocked: nothing,
+								onAct: () => keep.mutateAsync({ items: picked }),
+								done: "Running the pipeline again",
+							},
+							{
+								label: "Try again",
+								blocked: nothing,
+								onAct: () => retry.mutateAsync({ items: picked }),
+								done: "Running the pipeline again",
+							},
+							{
+								label: "Reject",
+								destructive: true,
+								blocked: nothing,
+								confirm: {
+									title: "Reject the chosen files?",
+									sentence:
+										"They leave the inbox and wait in the quarantine's folder until its days are up.",
+								},
+								onAct: () => reject.mutateAsync({ items: picked }),
+								done: "Rejecting",
+								to: "/jobs",
+							},
+							{
+								label: "Approve",
+								blocked: nothing,
+								onAct: () => approve.mutateAsync({ items: picked }),
+								done: "Filing tracks",
+								to: "/jobs",
+							},
+						]}
+					/>
+				}
 			>
 				<Toolbar
 					filters={[
@@ -150,7 +195,7 @@ function Inbox() {
 								INBOX_GROUPS.map((value) => ({
 									value,
 									label: INBOX_GROUP_LABELS[value],
-									description: String(each[value]),
+									line: String(each[value]),
 								})),
 							),
 							value: group,
@@ -160,7 +205,7 @@ function Inbox() {
 				/>
 				<Table
 					label="Inbox"
-					items={orpc.inbox.list.window(query)}
+					items={files}
 					columns={COLUMNS}
 					row={{
 						id: (row) => row.id,
@@ -212,43 +257,7 @@ function Inbox() {
 						],
 					}}
 					selected={open}
-					choose={{ picked, onPick: setPicked, noun: "files" }}
-					select={{
-						acts: [
-							{
-								label: "Keep it anyway",
-								blocked: nothing,
-								onAct: () => keep.mutateAsync({ items: picked }),
-								done: "Running the pipeline again",
-							},
-							{
-								label: "Try again",
-								blocked: nothing,
-								onAct: () => retry.mutateAsync({ items: picked }),
-								done: "Running the pipeline again",
-							},
-							{
-								label: "Reject",
-								destructive: true,
-								blocked: nothing,
-								confirm: {
-									title: "Reject the chosen files?",
-									sentence:
-										"They leave the inbox and wait in the quarantine's folder until its days are up.",
-								},
-								onAct: () => reject.mutateAsync({ items: picked }),
-								done: "Rejecting",
-								to: "/jobs",
-							},
-							{
-								label: "Approve",
-								blocked: nothing,
-								onAct: () => approve.mutateAsync({ items: picked }),
-								done: "Filing tracks",
-								to: "/jobs",
-							},
-						],
-					}}
+					choose={{ picked, onPick: setPicked }}
 				/>
 			</Pane>
 			<Outlet />

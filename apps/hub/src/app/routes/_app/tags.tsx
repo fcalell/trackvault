@@ -23,7 +23,9 @@ function Tags() {
 		key: String(tag.id),
 		leading: { icon: "Tag" },
 		title: tag.name,
-		meta: [tag.tracks === 1 ? "1 track" : `${count.format(tag.tracks)} tracks`],
+		facts: [
+			tag.tracks === 1 ? "1 track" : `${count.format(tag.tracks)} tracks`,
+		],
 		act: {
 			icon: "Library",
 			label: `Show ${tag.name} in the library`,
@@ -57,7 +59,7 @@ function Tags() {
 		<Pane
 			title="Custom tags"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "Plus",
 					label: "New tag",

@@ -68,7 +68,7 @@ function Rules() {
 		key: rule.id,
 		leading: { icon: rule.builtin ? "Sparkles" : "WandSparkles" },
 		title: rule.name,
-		meta: [rule.summary],
+		line: rule.summary,
 		switch: {
 			checked: rule.enabled,
 			onChange: (checked) =>
@@ -113,7 +113,7 @@ function Rules() {
 		<Pane
 			title="Cleanup rules"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "Eye",
 					label: "Preview on the library",

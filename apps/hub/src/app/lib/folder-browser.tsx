@@ -30,7 +30,7 @@ export function FolderBrowser({
 								key: "..",
 								leading: { icon: "CornerLeftUp" as const },
 								title: "Parent folder",
-								meta: [each.parent],
+								facts: [{ code: each.parent }],
 								onOpen: () => onPath(each.parent as string),
 							},
 						]),

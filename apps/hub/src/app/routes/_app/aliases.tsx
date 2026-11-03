@@ -32,7 +32,7 @@ function Aliases() {
 			key: `${kind}-${row.canonical}`,
 			leading: { icon: "Merge" },
 			title: row.canonical,
-			meta: row.variants.map(
+			facts: row.variants.map(
 				(variant) => `${variant.value} (${count.format(variant.count)})`,
 			),
 			act: {
@@ -56,7 +56,7 @@ function Aliases() {
 			key: `${kind}-alias-${row.id}`,
 			leading: { icon: "ArrowRight" },
 			title: row.alias,
-			meta: [`is ${row.canonical}`],
+			facts: [`is ${row.canonical}`],
 			act: {
 				icon: "X",
 				label: `Remove ${row.alias}`,
@@ -90,7 +90,7 @@ function Aliases() {
 		<Pane
 			title="Aliases"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "Replace",
 					label: "Preview unify on the library",

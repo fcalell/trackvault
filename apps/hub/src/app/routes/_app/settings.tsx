@@ -52,7 +52,7 @@ function Settings() {
 		<Pane
 			title="Settings"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "RefreshCw",
 					label: "Scan now",
@@ -91,7 +91,7 @@ function Settings() {
 						key: "browse",
 						leading: { icon: "FolderSearch" },
 						title: "Browse the hub's folders",
-						meta: ["Pick the folder instead of typing its path"],
+						line: "Pick the folder instead of typing its path",
 						act: {
 							icon: "FolderOpen",
 							label: "Browse folders",
@@ -180,7 +180,7 @@ function Settings() {
 							key: "test",
 							leading: { icon: "PlugZap" },
 							title: "Test the connection",
-							meta: ["Asks slskd who it is and whether it is online"],
+							line: "Asks slskd who it is and whether it is online",
 							act: {
 								icon: "Play",
 								label: "Test the connection",
@@ -424,9 +424,7 @@ function Settings() {
 							key: "now",
 							leading: { icon: "DatabaseBackup" },
 							title: "Back up now",
-							meta: [
-								"Takes a backup and trims old ones, as the daily one does",
-							],
+							line: "Takes a backup and trims old ones, as the daily one does",
 							act: {
 								icon: "Play",
 								label: "Back up now",
@@ -524,7 +522,7 @@ function Settings() {
 							key: "test",
 							leading: { icon: "PlugZap" },
 							title: "Test the connection",
-							meta: ["Writes, reads and deletes a small object in the bucket"],
+							line: "Writes, reads and deletes a small object in the bucket",
 							act: {
 								icon: "Play",
 								label: "Test the connection",
@@ -536,9 +534,7 @@ function Settings() {
 							key: "send",
 							leading: { icon: "CloudUpload" },
 							title: "Send everything now",
-							meta: [
-								"Database backups and the music files, as the switches above say",
-							],
+							line: "Database backups and the music files, as the switches above say",
 							act: {
 								icon: "Play",
 								label: "Send now",
@@ -551,11 +547,9 @@ function Settings() {
 							key: "key",
 							leading: { icon: "KeyRound" },
 							title: "Encryption key",
-							meta: [
-								key
-									? "Copy it somewhere other than the hub"
-									: "Shown on request; it opens every encrypted file",
-							],
+							line: key
+								? "Copy it somewhere other than the hub"
+								: "Shown on request; it opens every encrypted file",
 							act: key
 								? {
 										icon: "EyeOff",
@@ -611,7 +605,7 @@ function Settings() {
 						key: "passkey",
 						leading: { icon: "KeyRound" },
 						title: "Passkey",
-						meta: ["Sign in with this device instead of a code"],
+						line: "Sign in with this device instead of a code",
 						act: {
 							icon: "Plus",
 							label: "Add a passkey",

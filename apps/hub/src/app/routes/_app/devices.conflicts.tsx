@@ -1,4 +1,5 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
+import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
@@ -7,6 +8,7 @@ import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
+import { useChosen } from "../../lib/chosen.ts";
 
 export const Route = createFileRoute("/_app/devices/conflicts")({
 	component: Conflicts,
@@ -61,20 +63,22 @@ function Conflicts() {
 	const [picked, setPicked] = useState<Picked<{ state: "open" | "resolved" }>>({
 		ids: [],
 	});
-	const nothing =
-		"ids" in picked && picked.ids.length === 0
-			? "Choose conflicts first."
-			: undefined;
+	const conflicts = orpc.devices.conflicts.window({ state: "open" });
+	const { chosen, blocked: nothing } = useChosen(
+		conflicts,
+		picked,
+		setPicked,
+		{ state: "open" },
+		"conflicts",
+	);
 	return (
-		<Pane title="Conflicts" back="/devices">
-			<Table
-				label="Conflicts"
-				items={orpc.devices.conflicts.window({ state: "open" })}
-				columns={COLUMNS}
-				row={{ id: (row) => String(row.id) }}
-				choose={{ picked, onPick: setPicked, noun: "conflicts" }}
-				select={{
-					acts: [
+		<Pane
+			title="Conflicts"
+			back="/devices"
+			foot={
+				<ActionBar
+					chosen={chosen}
+					acts={[
 						{
 							label: "Take Rekordbox",
 							blocked: nothing,
@@ -89,8 +93,16 @@ function Conflicts() {
 								resolve.mutateAsync({ conflicts: picked, take: "hub" }),
 							done: "Kept TrackVault's values",
 						},
-					],
-				}}
+					]}
+				/>
+			}
+		>
+			<Table
+				label="Conflicts"
+				items={conflicts}
+				columns={COLUMNS}
+				row={{ id: (row) => String(row.id) }}
+				choose={{ picked, onPick: setPicked }}
 			/>
 		</Pane>
 	);

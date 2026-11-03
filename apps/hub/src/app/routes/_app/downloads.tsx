@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_app/downloads")({
 
 const ACTIVE = new Set(["requested", "queued", "downloading", "completed"]);
 
-function meta(t: TransferView): string[] {
+function facts(t: TransferView): string[] {
 	const parts = [t.username];
 	if (t.state === "downloading" && t.size > 0)
 		parts.push(
@@ -22,10 +22,13 @@ function meta(t: TransferView): string[] {
 		);
 	else if (t.size > 0) parts.push(megabytes(t.size));
 	if (t.rawState && t.state === "queued") parts.push(t.rawState);
-	if (t.error && (t.state === "failed" || t.state === "cancelled"))
-		parts.push(t.error);
 	return parts;
 }
+
+const line = (t: TransferView): string | undefined =>
+	t.error && (t.state === "failed" || t.state === "cancelled")
+		? t.error
+		: undefined;
 
 // Soulseek downloads as slskd moves them, live; a finished file goes to the inbox on
 // its own, and the pipeline takes it from there.
@@ -37,8 +40,8 @@ function Downloads() {
 		key: t.id,
 		leading: { icon: "Download" },
 		title: [t.artist, t.title ?? t.name].filter(Boolean).join(" - "),
-		meta: meta(t),
-		status: TRANSFER_STATE[t.state] ?? { tone: "idle" },
+		facts: [TRANSFER_STATE[t.state] ?? { tone: "idle" }, ...facts(t)],
+		line: line(t),
 		trailing: { age: t.updatedAt },
 		...(t.state === "imported" && t.inboxItemId
 			? {
@@ -71,7 +74,7 @@ function Downloads() {
 			title="Downloads"
 			read={transfersLive}
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "BrushCleaning",
 					label: "Clear finished",

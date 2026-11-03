@@ -96,7 +96,7 @@ function Wishlist() {
 			<Pane
 				title="Wishlist"
 				back={false}
-				actions={[
+				acts={[
 					{
 						icon: "Plus",
 						label: "Add a track",
@@ -172,17 +172,17 @@ function Wishlist() {
 							leading: { icon: "ListMusic" as const },
 							title: each.name,
 							href: `/import/${each.id}`,
-							meta:
+							facts:
 								each.state === "ready"
 									? [
 											`${each.matched} of ${each.tracks} in the library`,
 											`${each.missing + each.otherVersion} missing`,
 										]
-									: [
-											each.state === "failed"
-												? (each.error ?? "Failed")
-												: "Reading",
-										],
+									: each.state === "failed"
+										? []
+										: ["Reading"],
+							line:
+								each.state === "failed" ? (each.error ?? "Failed") : undefined,
 							trailing: { age: each.createdAt.toISOString() },
 						})),
 					)}
@@ -197,7 +197,7 @@ function Wishlist() {
 								WISHLIST_VIEWS.map((value) => ({
 									value,
 									label: WISHLIST_VIEW_LABELS[value],
-									description: String(each[value]),
+									line: String(each[value]),
 								})),
 							),
 							value: view,

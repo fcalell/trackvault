@@ -23,7 +23,7 @@ function Batch() {
 			noun="batch"
 			read={batch}
 			back="/history"
-			actions={[
+			acts={[
 				{
 					icon: "Undo2",
 					label: "Undo batch",

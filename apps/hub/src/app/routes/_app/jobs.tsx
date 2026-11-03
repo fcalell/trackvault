@@ -49,15 +49,18 @@ const TONES: Record<JobView["state"], Tone> = {
 
 const count = new Intl.NumberFormat("en");
 
-function detail(job: JobView): string[] {
-	const parts: string[] = [];
-	if (job.state === "failed" && job.error) return [job.error];
-	if (job.message) parts.push(job.message);
+// How far a running or queued job has come is a fact; its message (or, failed,
+// its error) is the row's line.
+function progress(job: JobView): string[] {
+	if (job.state === "failed" && job.error) return [];
 	if (job.total > 0 && (job.state === "running" || job.state === "queued")) {
-		parts.push(`${count.format(job.done)} of ${count.format(job.total)}`);
+		return [`${count.format(job.done)} of ${count.format(job.total)}`];
 	}
-	return parts;
+	return [];
 }
+
+const sentence = (job: JobView): string | undefined =>
+	(job.state === "failed" && job.error ? job.error : job.message) || undefined;
 
 // Every job the hub has run or is running, live: a scan fills its row as it reads.
 function Jobs() {
@@ -66,8 +69,8 @@ function Jobs() {
 		key: job.id,
 		leading: { icon: (KINDS[job.kind] ?? { icon: "Cog" }).icon },
 		title: (KINDS[job.kind] ?? { title: job.kind }).title,
-		meta: detail(job),
-		status: { tone: TONES[job.state] },
+		facts: [{ tone: TONES[job.state] }, ...progress(job)],
+		line: sentence(job),
 		trailing: { age: job.createdAt },
 		act:
 			job.state === "queued" || job.state === "running"

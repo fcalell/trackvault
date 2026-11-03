@@ -122,7 +122,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					track.at((each) => each.genre ?? "No genre"),
 				],
 			}}
-			actions={[
+			acts={[
 				{
 					icon: "Play",
 					label: "Play",
@@ -202,7 +202,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 									title: each.analysis.bpm
 										? `${each.analysis.bpm} BPM`
 										: "Not measured",
-									meta:
+									facts:
 										each.analysis.bpmConfidence === null
 											? []
 											: [`${each.analysis.bpmConfidence}% sure`],
@@ -211,7 +211,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 									key: "key",
 									label: "Key",
 									title: each.analysis.key ?? "Not measured",
-									meta:
+									facts:
 										each.analysis.keyConfidence === null
 											? []
 											: [`${each.analysis.keyConfidence}% sure`],
@@ -222,7 +222,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 									title: each.analysis.energy
 										? String(each.analysis.energy)
 										: "Not measured",
-									meta:
+									facts:
 										each.analysis.energyConfidence === null
 											? []
 											: [`${each.analysis.energyConfidence}% sure`],
@@ -234,7 +234,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 										each.analysis.lufs === null
 											? "Not measured"
 											: `${Math.round(each.analysis.lufs * 10) / 10} LUFS`,
-									meta:
+									facts:
 										each.analysis.loudnessRange === null
 											? []
 											: [
@@ -255,7 +255,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					ISSUES.filter(([, bit]) => (each.issues & bit) !== 0).map(
 						([name]) => ({
 							key: name,
-							leading: { status: "attention" as const },
+							leading: { tone: "attention" as const },
 							title: ISSUE_LABELS[name],
 						}),
 					),

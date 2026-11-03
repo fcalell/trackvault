@@ -29,7 +29,7 @@ export function toTrack(row: TrackFacts, peaks?: ArrayLike<number>): Track {
 		src: `/media/${encodeURIComponent(row.id)}`,
 		key: row.id,
 		title: row.title ?? "Untitled",
-		meta: row.artist ?? undefined,
+		line: row.artist ?? undefined,
 		artwork: row.hasArt
 			? `/media/${encodeURIComponent(row.id)}/art?size=320`
 			: undefined,

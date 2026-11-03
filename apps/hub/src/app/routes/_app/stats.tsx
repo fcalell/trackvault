@@ -21,7 +21,7 @@ const playedRow = (each: Played): Row => ({
 	key: each.id,
 	leading: { icon: "Music" },
 	title: each.title ?? "Untitled",
-	meta: [each.artist ?? "Unknown artist"],
+	facts: [each.artist ?? "Unknown artist"],
 	trailing: { count: each.playCount },
 	href: `/library/${each.id}`,
 });
@@ -142,7 +142,7 @@ function LibraryStats() {
 							key: `${row.format}-${row.codec}`,
 							leading: { icon: "FileAudio" },
 							title: row.format.toUpperCase(),
-							meta: [row.codec],
+							facts: [row.codec],
 							trailing: { count: row.count },
 						}),
 					),

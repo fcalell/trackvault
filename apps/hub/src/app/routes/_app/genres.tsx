@@ -31,7 +31,7 @@ function Genres() {
 		key: `genre-${genre.id}`,
 		leading: { icon: "Music" },
 		title: genre.name,
-		meta: [`${count.format(genre.tracks)} tracks`],
+		facts: [`${count.format(genre.tracks)} tracks`],
 		more: [
 			{
 				label: "Add an alias",
@@ -58,7 +58,7 @@ function Genres() {
 		children: genre.aliases.map((alias) => ({
 			key: `alias-${alias.id}`,
 			title: alias.alias,
-			meta: ["Alias"],
+			facts: ["Alias"],
 			act: {
 				icon: "X" as const,
 				label: `Remove ${alias.alias}`,
@@ -71,7 +71,7 @@ function Genres() {
 		key: `unknown-${row.value}`,
 		leading: { icon: "CircleHelp" },
 		title: row.value,
-		meta: [
+		facts: [
 			`${count.format(row.count)} tracks`,
 			row.suggestions.length > 0
 				? `Closest: ${row.suggestions.join(", ")}`
@@ -117,7 +117,7 @@ function Genres() {
 		<Pane
 			title="Genres"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "Replace",
 					label: "Preview unify on the library",

@@ -2,6 +2,7 @@ import { preload, useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
+import type { ChipMark } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
@@ -26,6 +27,11 @@ const KINDS = {
 	acoustic: "Sounds the same",
 	fuzzy: "Same artist and title",
 } as const;
+
+const decisionFacts = (kind: string): ChipMark[] => {
+	const mark = DECISION[kind];
+	return mark ? [mark] : [];
+};
 
 // One inbox item: where it stands in the pipeline, the verdict and why, what the
 // cleanup would do to its tags, the library tracks it matched, and where it will be
@@ -64,7 +70,7 @@ function Item() {
 					item.at((each) => megabytes(each.size)),
 				],
 			}}
-			actions={[
+			acts={[
 				{
 					icon: "Check",
 					label: "Approve",
@@ -120,14 +126,16 @@ function Item() {
 								{
 									key: "decision",
 									label: "Decision",
-									chip: DECISION[each.decision.kind],
 									title: each.decision.reason,
 									wrap: true,
-									meta: each.decision.replaces
-										? [`Replaces ${each.decision.replaces.label}`]
-										: each.overridden
-											? ["Your call"]
-											: [],
+									facts: [
+										...decisionFacts(each.decision.kind),
+										...(each.decision.replaces
+											? [`Replaces ${each.decision.replaces.label}`]
+											: each.overridden
+												? ["Your call"]
+												: []),
+									],
 								},
 								...(each.target
 									? [
@@ -179,10 +187,8 @@ function Item() {
 						key: step.id,
 						leading: { icon: STEP_ICON[step.id] ?? ("Cog" as const) },
 						title: step.label,
-						status: {
-							tone: STEP_TONE[step.status] ?? ("idle" as const),
-						},
-						meta: step.reason ? [step.reason] : [],
+						facts: [{ tone: STEP_TONE[step.status] ?? ("idle" as const) }],
+						line: step.reason ?? undefined,
 					})),
 				)}
 			/>
@@ -222,7 +228,7 @@ function Item() {
 						leading: { icon: "Music" as const },
 						title: match.label,
 						href: `/library/${match.trackId}`,
-						meta: [
+						facts: [
 							KINDS[match.kind],
 							match.version === "different"
 								? "Another version"

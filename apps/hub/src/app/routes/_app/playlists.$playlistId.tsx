@@ -3,6 +3,7 @@ import {
 	useMutation,
 	useRead,
 } from "@fcalell/plugin-api/tanstack-query";
+import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
@@ -10,6 +11,7 @@ import type { Picked } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { orpc } from "../../lib/api.ts";
+import { useChosen } from "../../lib/chosen.ts";
 import { LIBRARY_COLUMNS } from "../../lib/library.tsx";
 import { SmartPreview, type SmartRule } from "../../lib/playlists.tsx";
 import { SMART_FIELDS } from "./playlists.tsx";
@@ -38,10 +40,13 @@ function Playlist() {
 	const [picked, setPicked] = useState<Picked<{ playlistId: string }>>({
 		ids: [],
 	});
-	const nothing =
-		"ids" in picked && picked.ids.length === 0
-			? "Choose tracks first."
-			: undefined;
+	const { chosen, blocked: nothing } = useChosen(
+		tracks,
+		picked,
+		setPicked,
+		{ playlistId },
+		"tracks",
+	);
 	const manual = kind === "manual";
 	const [rule, setRule] = useState<SmartRule>();
 
@@ -51,7 +56,7 @@ function Playlist() {
 			noun="playlist"
 			read={playlist}
 			back="/playlists"
-			actions={[
+			acts={[
 				{
 					icon: "Pencil",
 					label: "Rename",
@@ -111,6 +116,30 @@ function Playlist() {
 					to: "/playlists",
 				},
 			]}
+			foot={
+				<ActionBar
+					chosen={chosen}
+					acts={
+						manual
+							? [
+									{
+										label: "Remove from playlist",
+										destructive: true,
+										blocked: nothing,
+										confirm: {
+											title: "Remove the chosen tracks?",
+											sentence:
+												"They leave this playlist and stay in the library. Undo the batch in History.",
+										},
+										onAct: () =>
+											removeTracks.mutateAsync({ playlistId, tracks: picked }),
+										done: "Removed from the playlist",
+									},
+								]
+							: []
+					}
+				/>
+			}
 		>
 			<Table
 				label="Tracks"
@@ -135,26 +164,7 @@ function Playlist() {
 							},
 						}
 					: {})}
-				choose={{ picked, onPick: setPicked, noun: "tracks" }}
-				select={{
-					acts: manual
-						? [
-								{
-									label: "Remove from playlist",
-									destructive: true,
-									blocked: nothing,
-									confirm: {
-										title: "Remove the chosen tracks?",
-										sentence:
-											"They leave this playlist and stay in the library. Undo the batch in History.",
-									},
-									onAct: () =>
-										removeTracks.mutateAsync({ playlistId, tracks: picked }),
-									done: "Removed from the playlist",
-								},
-							]
-						: [],
-				}}
+				choose={{ picked, onPick: setPicked }}
 			/>
 		</Pane>
 	);

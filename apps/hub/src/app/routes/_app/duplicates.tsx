@@ -50,7 +50,7 @@ function Duplicates() {
 				title: [member.artist, member.title ?? "Untitled"]
 					.filter(Boolean)
 					.join(" - "),
-				meta: [
+				facts: [
 					quality(member.format, member.bitrate),
 					clock(member.durationMs) ?? "No length",
 					member.id === group.keeperId
@@ -96,7 +96,7 @@ function Duplicates() {
 		<Pane
 			title="Duplicates"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "Search",
 					label: "Find duplicates",

@@ -39,7 +39,7 @@ function WantRecord() {
 					),
 				],
 			}}
-			actions={[
+			acts={[
 				{
 					icon: "Search",
 					label: "Search now",

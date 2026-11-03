@@ -75,7 +75,7 @@ function Playlists() {
 						: "ListMusic",
 		},
 		title: node.name,
-		meta:
+		facts:
 			node.kind === "folder"
 				? []
 				: [
@@ -163,7 +163,7 @@ function Playlists() {
 			<Pane
 				title="Playlists"
 				back={false}
-				actions={[
+				acts={[
 					{
 						icon: "Plus",
 						label: "New playlist",

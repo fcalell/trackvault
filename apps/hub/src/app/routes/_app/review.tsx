@@ -1,4 +1,5 @@
 import { preload, useMutation } from "@fcalell/plugin-api/tanstack-query";
+import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
@@ -15,6 +16,7 @@ import {
 } from "../../../shared/intelligence.ts";
 import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
+import { useChosen } from "../../lib/chosen.ts";
 
 export const Route = createFileRoute("/_app/review")({
 	loader: ({ context }) =>
@@ -78,15 +80,18 @@ function Review() {
 		ids: [],
 	});
 	const waiting = view === "pending";
-	const nothing =
-		"ids" in picked && picked.ids.length === 0
-			? "Choose fields first."
-			: undefined;
+	const { chosen, blocked: nothing } = useChosen(
+		items,
+		picked,
+		setPicked,
+		{ state: view },
+		"fields",
+	);
 	return (
 		<Pane
 			title="Review"
 			back={false}
-			actions={[
+			acts={[
 				{
 					icon: "CheckCheck",
 					label: "Accept all above a confidence",
@@ -121,6 +126,30 @@ function Review() {
 					done: "Rejected",
 				},
 			]}
+			foot={
+				<ActionBar
+					chosen={chosen}
+					acts={[
+						{
+							label: "Accept",
+							blocked: waiting
+								? nothing
+								: "Only waiting fields can be decided.",
+							onAct: () => accept.mutateAsync({ proposals: picked }),
+							done: "Applying the tags",
+							to: "/jobs",
+						},
+						{
+							label: "Reject",
+							blocked: waiting
+								? nothing
+								: "Only waiting fields can be decided.",
+							onAct: () => reject.mutateAsync({ proposals: picked }),
+							done: "Rejected",
+						},
+					]}
+				/>
+			}
 		>
 			<Toolbar
 				filters={[
@@ -131,7 +160,7 @@ function Review() {
 							PROPOSAL_VIEWS.map((value) => ({
 								value,
 								label: PROPOSAL_STATE_LABELS[value],
-								description: String(each[value]),
+								line: String(each[value]),
 							})),
 						),
 						value: view,
@@ -171,28 +200,7 @@ function Review() {
 								]
 							: undefined,
 				}}
-				choose={{ picked, onPick: setPicked, noun: "fields" }}
-				select={{
-					acts: [
-						{
-							label: "Accept",
-							blocked: waiting
-								? nothing
-								: "Only waiting fields can be decided.",
-							onAct: () => accept.mutateAsync({ proposals: picked }),
-							done: "Applying the tags",
-							to: "/jobs",
-						},
-						{
-							label: "Reject",
-							blocked: waiting
-								? nothing
-								: "Only waiting fields can be decided.",
-							onAct: () => reject.mutateAsync({ proposals: picked }),
-							done: "Rejected",
-						},
-					],
-				}}
+				choose={{ picked, onPick: setPicked }}
 			/>
 		</Pane>
 	);

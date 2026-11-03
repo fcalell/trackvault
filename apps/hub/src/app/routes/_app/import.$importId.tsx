@@ -84,7 +84,7 @@ function ImportResult() {
 					imported.at((each) => `${each.uncertain} not sure`),
 				],
 			}}
-			actions={[
+			acts={[
 				{
 					icon: "ListMusic",
 					label: "Make a playlist from what the library has",
@@ -133,7 +133,7 @@ function ImportResult() {
 								{
 									key: "reading",
 									title: "Reading the list and matching it with the library",
-									status: { tone: "running" as const },
+									facts: [{ tone: "running" as const }],
 								},
 							]
 						: []),
@@ -142,7 +142,7 @@ function ImportResult() {
 								{
 									key: "failed",
 									title: each.error ?? "The import failed",
-									status: { tone: "failed" as const },
+									facts: [{ tone: "failed" as const }],
 									wrap: true,
 								},
 							]
@@ -151,7 +151,7 @@ function ImportResult() {
 						key: `warning-${index}`,
 						title: warning,
 						wrap: true,
-						warning: "Heads up",
+						facts: [{ warning: "Heads up" }],
 					})),
 				])}
 			/>
