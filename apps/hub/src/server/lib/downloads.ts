@@ -18,6 +18,7 @@ export async function startDownload(
 		| "size"
 		| "artist"
 		| "title"
+		| "mix"
 		| "format"
 		| "bitrate"
 		| "score"
@@ -74,6 +75,7 @@ export async function startDownload(
 				size: candidate.size,
 				artist: candidate.artist,
 				title: candidate.title,
+				mix: candidate.mix,
 				format: candidate.format,
 				bitrate: candidate.bitrate,
 				score: candidate.score,

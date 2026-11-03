@@ -9,8 +9,10 @@ import {
 	imports as importsTable,
 	settings as settingsTable,
 	tracks,
+	wishlist as wishlistTable,
 } from "../../schema/index.ts";
 import playlistImport from "../../server/jobs/playlist-import.ts";
+import wishlistJob from "../../server/jobs/wishlist.ts";
 import { db } from "../../server/lib/db.ts";
 import {
 	addMembers,
@@ -18,8 +20,9 @@ import {
 	PlaylistError,
 } from "../../server/lib/playlists.ts";
 import { readSettings } from "../../server/lib/settings.ts";
+import { NotConfigured, slskdConfigured } from "../../server/lib/slskd.ts";
 import { notifyPlaylists } from "../../server/lib/sync/wake.ts";
-import { addWants } from "../../server/lib/wishlist.ts";
+import { addWants, wantKey } from "../../server/lib/wishlist.ts";
 import { enqueue } from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
 
@@ -78,11 +81,18 @@ const item = z.object({
 	id: z.number(),
 	artist: z.string(),
 	title: z.string(),
-	mix: z.string().nullable(),
+	mixName: z.string().nullable(),
 	status: z.enum(STATUSES),
 	confidence: z.number(),
-	trackId: z.string().nullable(),
-	match: z.string().nullable(),
+	// The library track it matched.
+	match: z
+		.object({
+			id: z.string(),
+			artist: z.string().nullable(),
+			title: z.string().nullable(),
+			mixName: z.string().nullable(),
+		})
+		.nullable(),
 	resolution: z.enum(["wishlist", "confirmed", "ignored"]).nullable(),
 });
 
@@ -209,28 +219,37 @@ export const imports = {
 			const best = rows
 				.map((r) => (r.trackIds as string[])[0])
 				.filter(Boolean) as string[];
-			const labels = new Map<string, string>();
+			const matched = new Map<
+				string,
+				{
+					id: string;
+					artist: string | null;
+					title: string | null;
+					mixName: string | null;
+				}
+			>();
 			if (best.length > 0)
 				for (const t of database
-					.select({ id: tracks.id, title: tracks.title, artist: tracks.artist })
+					.select({
+						id: tracks.id,
+						title: tracks.title,
+						artist: tracks.artist,
+						mixName: tracks.mixName,
+					})
 					.from(tracks)
 					.where(inArray(tracks.id, best))
 					.all())
-					labels.set(
-						t.id,
-						[t.artist, t.title ?? "Untitled"].filter(Boolean).join(" - "),
-					);
+					matched.set(t.id, t);
 			const data = rows.map((r) => {
 				const trackId = (r.trackIds as string[])[0] ?? null;
 				return {
 					id: r.id,
 					artist: r.artist,
 					title: r.title,
-					mix: r.mix,
+					mixName: r.mix,
 					status: r.status,
 					confidence: r.confidence,
-					trackId,
-					match: trackId ? (labels.get(trackId) ?? null) : null,
+					match: trackId ? (matched.get(trackId) ?? null) : null,
 					resolution: r.resolution,
 				};
 			});
@@ -346,6 +365,42 @@ export const imports = {
 				)
 				.run();
 			return { added: made.added, existing: made.existing };
+		}),
+
+	// Adds one missing track to the wishlist and searches Soulseek for it now.
+	searchItem: procedure({
+		auth: true,
+		writes: ["wishlist", "importItems", "jobs"],
+	})
+		.input(z.object({ itemId: z.number().int() }))
+		.output(jobViewSchema)
+		.mutation(({ input }) => {
+			if (!slskdConfigured())
+				throw new ApiError("BAD_REQUEST", {
+					message: new NotConfigured().message,
+				});
+			const row = db()
+				.select()
+				.from(importItems)
+				.where(eq(importItems.id, input.itemId))
+				.get();
+			if (!row) throw new ApiError("NOT_FOUND");
+			const want = wantOf(row);
+			const made = addWants([want]);
+			const id =
+				made.ids[0] ??
+				db()
+					.select({ id: wishlistTable.id })
+					.from(wishlistTable)
+					.where(eq(wishlistTable.key, wantKey(want)))
+					.get()?.id;
+			if (id === undefined) throw new ApiError("INTERNAL_SERVER_ERROR");
+			db()
+				.update(importItems)
+				.set({ resolution: "wishlist" })
+				.where(eq(importItems.id, row.id))
+				.run();
+			return enqueue(wishlistJob, { wantIds: [id] });
 		}),
 
 	// An uncertain match: the same track (it counts as matched), or not (it is missing).

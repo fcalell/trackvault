@@ -217,7 +217,6 @@ export function rankCandidates(
 		if (fit.reject) reject("wrong version");
 
 		const fmt = formatScore(file, formats);
-		reasons.push(`format ${fmt.label}`);
 		if (fmt.score < (options.minFormatScore ?? 0))
 			reject(`format ${fmt.label} below preference`);
 
@@ -242,9 +241,6 @@ export function rankCandidates(
 		if (options.maxQueue !== undefined && file.queueLength > options.maxQueue)
 			reject(`queue ${file.queueLength}`);
 		const peer = peerScore(file);
-		reasons.push(
-			file.freeUploadSlots ? "free slot" : `queue ${file.queueLength}`,
-		);
 
 		const score =
 			100 *

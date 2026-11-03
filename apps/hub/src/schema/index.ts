@@ -1009,6 +1009,7 @@ export const downloads = sqliteTable(
 		size: integer("size").notNull().default(0),
 		artist: text("artist"),
 		title: text("title"),
+		mix: text("mix"),
 		format: text("format"),
 		bitrate: integer("bitrate"),
 		state: text("state", { enum: DOWNLOAD_STATES })

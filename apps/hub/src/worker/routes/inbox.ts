@@ -20,6 +20,8 @@ import {
 	getItem,
 	type ItemRow,
 	itemLabel,
+	itemName,
+	libraryCopies,
 	matchesOf,
 	type Override,
 	patchItem,
@@ -79,6 +81,11 @@ const listRow = z.object({
 	label: z.string(),
 	source: z.enum(["upload", "soulseek", "watch", "agent"]),
 	sourceRef: z.string().nullable(),
+	artist: z.string().nullable(),
+	title: z.string(),
+	mixName: z.string().nullable(),
+	// The library track an approved item became.
+	trackId: z.string().nullable(),
 	state: z.enum([
 		"queued",
 		"processing",
@@ -111,6 +118,8 @@ function asListRow(row: ItemRow): z.infer<typeof listRow> {
 	return {
 		id: row.id,
 		label: itemLabel(row),
+		...itemName(row),
+		trackId: row.trackId,
 		source: row.source,
 		sourceRef: row.sourceRef,
 		state: row.state,
@@ -214,7 +223,7 @@ export const inbox = {
 				string,
 				string | number | null
 			>;
-			const matches = matchesOf(row);
+			const matches = libraryCopies(matchesOf(row));
 			const fields = [
 				"title",
 				"artist",
@@ -243,6 +252,12 @@ export const inbox = {
 			return {
 				id: row.id,
 				label: itemLabel(row),
+				...itemName(row),
+				trackId: row.trackId,
+				genre: word(effective.genre),
+				key: word(effective.key),
+				bpm: word(effective.bpm),
+				year: word(effective.year),
 				path: row.path,
 				source: row.source,
 				sourceRef: row.sourceRef,
@@ -258,9 +273,7 @@ export const inbox = {
 					? {
 							kind: decision.kind,
 							reason: decision.reason,
-							replaces: replaced
-								? { trackId: replaced.trackId, label: replaced.label }
-								: null,
+							replaces: replaced ? { trackId: replaced.trackId } : null,
 						}
 					: null,
 				overridden: row.override !== null,

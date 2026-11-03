@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 import { and, eq } from "@fcalell/plugin-db/orm";
 import { defineService } from "@fcalell/plugin-node/server";
 import { isUnderRoot, safeJoin } from "@trackvault/core/paths";
-import { files } from "../../schema/index.ts";
+import { files, inboxItems } from "../../schema/index.ts";
 import { artSize, thumbnail } from "../lib/art.ts";
 import { db } from "../lib/db.ts";
 import { verifyMediaToken } from "../lib/media-token.ts";
@@ -93,13 +93,20 @@ async function serve(
 	if (id === "" || id.includes("/")) return plain(404, "Not found");
 	const root = readSettings().libraryRoot;
 	if (!root) return plain(404, "The library folder is not set");
-	const row = db()
-		.select({ path: files.path })
-		.from(files)
-		.where(and(eq(files.trackId, id), eq(files.state, "ok")))
-		.orderBy(files.id)
-		.limit(1)
-		.get();
+	// A track's file, or the file of an inbox item (the preview before it is filed).
+	const row =
+		db()
+			.select({ path: files.path })
+			.from(files)
+			.where(and(eq(files.trackId, id), eq(files.state, "ok")))
+			.orderBy(files.id)
+			.limit(1)
+			.get() ??
+		db()
+			.select({ path: inboxItems.path })
+			.from(inboxItems)
+			.where(eq(inboxItems.id, id))
+			.get();
 	if (!row) return plain(404, "Not found");
 
 	let absolute: string;

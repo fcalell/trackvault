@@ -1,6 +1,6 @@
 import { desc, eq } from "@fcalell/plugin-db/orm";
 import type { ChannelHandle } from "@fcalell/plugin-node/server";
-import { downloads } from "../../schema/index.ts";
+import { downloads, wishlist } from "../../schema/index.ts";
 import type { TransferView, transfersChannel } from "../../shared/channels.ts";
 import { db } from "./db.ts";
 
@@ -19,6 +19,15 @@ const basename = (path: string): string =>
 		.filter(Boolean)
 		.pop() ?? path;
 
+// "Artist - Title (Mix)" of the want a download is for.
+function wantName(id: number | null): string | null {
+	if (id === null) return null;
+	const want = db().select().from(wishlist).where(eq(wishlist.id, id)).get();
+	return want
+		? `${want.artist} - ${want.title}${want.mix ? ` (${want.mix})` : ""}`
+		: null;
+}
+
 export function transferView(row: DownloadRow): TransferView {
 	return {
 		id: row.id,
@@ -26,6 +35,7 @@ export function transferView(row: DownloadRow): TransferView {
 		name: basename(row.filename),
 		artist: row.artist,
 		title: row.title,
+		mixName: row.mix,
 		format: row.format,
 		bitrate: row.bitrate,
 		state: row.state,
@@ -35,6 +45,7 @@ export function transferView(row: DownloadRow): TransferView {
 		speed: row.speed,
 		error: row.error,
 		wantId: row.wantId,
+		want: wantName(row.wantId),
 		inboxItemId: row.inboxItemId,
 		createdAt: row.createdAt.toISOString(),
 		updatedAt: row.updatedAt.toISOString(),

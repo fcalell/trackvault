@@ -7,11 +7,13 @@ import {
 	desc,
 	eq,
 	inArray,
+	isNotNull,
 	notInArray,
 	type SQL,
 } from "@fcalell/plugin-db/orm";
 import { makeWant } from "@trackvault/core/playlist-import";
 import {
+	inboxItems,
 	searchResults,
 	tracks,
 	wishlist as wishlistTable,
@@ -50,7 +52,7 @@ const wantRow = z.object({
 	id: z.number(),
 	artist: z.string(),
 	title: z.string(),
-	mix: z.string().nullable(),
+	mixName: z.string().nullable(),
 	status: z.enum([
 		"wanted",
 		"searching",
@@ -69,14 +71,19 @@ const wantRow = z.object({
 	bestScore: z.number().nullable(),
 	note: z.string().nullable(),
 	betterCopy: z.boolean(),
+	// The library track a filed download of this want became.
+	trackId: z.string().nullable(),
 	createdAt: z.date(),
 });
 
-const asRow = (row: WantRow): z.infer<typeof wantRow> => ({
+const asRow = (
+	row: WantRow,
+	trackId: string | null,
+): z.infer<typeof wantRow> => ({
 	id: row.id,
 	artist: row.artist,
 	title: row.title,
-	mix: row.mix,
+	mixName: row.mix,
 	status: row.status,
 	source: row.source,
 	sourceRef: row.sourceRef,
@@ -86,8 +93,25 @@ const asRow = (row: WantRow): z.infer<typeof wantRow> => ({
 	bestScore: row.bestScore,
 	note: row.note,
 	betterCopy: row.betterThanTrackId !== null,
+	trackId,
 	createdAt: row.createdAt,
 });
+
+// The track each want's filed download became, by want id.
+function filedTracks(ids: readonly number[]): Map<number, string> {
+	const filed = new Map<number, string>();
+	if (ids.length === 0) return filed;
+	for (const item of db()
+		.select({ wantId: inboxItems.wantId, trackId: inboxItems.trackId })
+		.from(inboxItems)
+		.where(
+			and(inArray(inboxItems.wantId, [...ids]), isNotNull(inboxItems.trackId)),
+		)
+		.all())
+		if (item.wantId !== null && item.trackId !== null)
+			filed.set(item.wantId, item.trackId);
+	return filed;
+}
 
 function idsOf(selection: z.infer<typeof wantsInput>): number[] {
 	const raw =
@@ -115,25 +139,29 @@ export const wishlist = {
 		auth: true,
 		paginated: "window",
 		maxLimit: 200,
-		reads: ["wishlist"],
+		reads: ["wishlist", "inboxItems"],
 	})
 		.input(filter)
 		.query(({ input }) => {
 			const database = db();
 			const where = whereOf(input);
-			const data = database
+			const rows = database
 				.select()
 				.from(wishlistTable)
 				.where(where)
 				.orderBy(desc(wishlistTable.createdAt), desc(wishlistTable.id))
 				.limit(input.limit)
 				.offset(input.offset)
-				.all()
-				.map(asRow);
+				.all();
+			const filed = filedTracks(rows.map((row) => row.id));
 			const total =
 				database.select({ n: count() }).from(wishlistTable).where(where).get()
 					?.n ?? 0;
-			return { data, total, offset: input.offset };
+			return {
+				data: rows.map((row) => asRow(row, filed.get(row.id) ?? null)),
+				total,
+				offset: input.offset,
+			};
 		}),
 
 	counts: procedure({ auth: true, reads: ["wishlist"] })
@@ -152,7 +180,10 @@ export const wishlist = {
 		}),
 
 	// One want, and the number of candidates its last search kept.
-	get: procedure({ auth: true, reads: ["wishlist", "searchResults"] })
+	get: procedure({
+		auth: true,
+		reads: ["wishlist", "searchResults", "inboxItems"],
+	})
 		.input(z.object({ id: z.number().int() }))
 		.output(wantRow.extend({ candidates: z.number() }))
 		.query(({ input }) => {
@@ -168,7 +199,10 @@ export const wishlist = {
 					.from(searchResults)
 					.where(eq(searchResults.searchId, searchIdOf(row.id)))
 					.get()?.n ?? 0;
-			return { ...asRow(row), candidates };
+			return {
+				...asRow(row, filedTracks([row.id]).get(row.id) ?? null),
+				candidates,
+			};
 		}),
 
 	add: procedure({ auth: true, writes: ["wishlist"] })

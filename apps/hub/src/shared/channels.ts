@@ -79,6 +79,7 @@ export const transferViewSchema = z.object({
 	name: z.string(),
 	artist: z.string().nullable(),
 	title: z.string().nullable(),
+	mixName: z.string().nullable(),
 	format: z.string().nullable(),
 	bitrate: z.number().nullable(),
 	state: z.enum(transferStates),
@@ -88,6 +89,8 @@ export const transferViewSchema = z.object({
 	speed: z.number(),
 	error: z.string().nullable(),
 	wantId: z.number().nullable(),
+	// What the want is called: its artist, title and mix.
+	want: z.string().nullable(),
 	inboxItemId: z.string().nullable(),
 	createdAt: z.string(),
 	updatedAt: z.string(),

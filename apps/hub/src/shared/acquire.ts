@@ -39,7 +39,7 @@ export const INBOX_GROUPS = ["ready", "review", "processing", "done"] as const;
 export type InboxGroup = (typeof INBOX_GROUPS)[number];
 
 export const INBOX_GROUP_LABELS: Record<InboxGroup, string> = {
-	ready: "Ready to approve",
+	ready: "Ready",
 	review: "Needs you",
 	processing: "Processing",
 	done: "Done",
