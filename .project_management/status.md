@@ -11,6 +11,8 @@ The revamp onto `@fcalell/stack` replaces the earlier Electron/SolidJS phases. V
 | R4 | Intelligence | Hub side built; providers, MCP client flow unverified against the real thing | Auto-tag, cover art, analysis, set builder, MCP, stats |
 | R5 | Reach | In progress: backups, offsite and the phone built; CDJ export with other work | Phone, backups, S3/R2, CDJ export |
 
+The current work: `fix-plan.md` (design critique, table grid and stack UI audit; reports in `review/`).
+
 Decisions D1–D11 are settled (`revamp-plan.md` §11). 
 
 ## R0 progress
