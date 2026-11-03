@@ -84,6 +84,14 @@ const COLUMNS: TableColumn<Item>[] = [
 	},
 ];
 
+// What an empty band says; the Ready and Needs a look bands stand even when empty.
+const NOTHING: Record<InboxGroup, string> = {
+	ready: "No file is ready to approve.",
+	review: "No file needs a look.",
+	processing: "No file is being processed.",
+	done: "No file was approved or rejected yet.",
+};
+
 // New music, held until you say yes. Files from your devices, Soulseek downloads and
 // anything dropped in the library's Inbox folder run through the pipeline (hash,
 // fingerprint, duplicate check, tag rules, names, target path) and wait here for
@@ -173,6 +181,7 @@ function Inbox() {
 						items={orpc.inbox.list.window({ group })}
 						columns={COLUMNS}
 						row={row}
+						empty={{ sentence: NOTHING[group] }}
 						selected={open}
 						choose={{ picked, onPick: setPicked }}
 					/>
@@ -182,6 +191,7 @@ function Inbox() {
 						items={orpc.inbox.list.window({ group })}
 						columns={COLUMNS}
 						row={row}
+						empty={{ sentence: NOTHING[group] }}
 						selected={open}
 					/>
 				)}

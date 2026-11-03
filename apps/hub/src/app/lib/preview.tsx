@@ -89,6 +89,7 @@ function PreviewRows({ kind, fields }: Preview) {
 			items={orpc.previews.list.window({ jobId: latest.job.id })}
 			columns={STORED_CHANGE_COLUMNS}
 			row={STORED_CHANGE_ROW}
+			empty={{ sentence: "The plan holds no change." }}
 		/>
 	);
 }

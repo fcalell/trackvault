@@ -76,6 +76,43 @@ function Playlist() {
 		drag: { kind: "track" },
 	};
 
+	const addTracks = {
+		label: "Add tracks",
+		sheet: sheetOf({
+			title: "Add tracks",
+			description:
+				"Search the library and add tracks to the end of the playlist.",
+			submit: { label: "Done" },
+			children: <AddTracks playlistId={playlistId} />,
+		}),
+	};
+	const editRule = {
+		label: "Edit rule",
+		sheet: sheetOf({
+			title: "Edit rule",
+			form: {
+				act: orpc.playlists.updateSmart,
+				given: { id: playlistId },
+				values: playlist.at((each) => ({
+					match: each.rule?.match ?? ("all" as const),
+					conditions: each.rule?.conditions ?? [],
+					sortBy: each.rule?.sortBy,
+					descending: each.rule?.descending,
+					limit: each.rule?.limit,
+				})),
+				fields: {
+					match: SMART_FIELDS.match,
+					conditions: SMART_FIELDS.conditions,
+					sortBy: SMART_FIELDS.sortBy,
+					descending: SMART_FIELDS.descending,
+					limit: SMART_FIELDS.limit,
+				},
+				after: (input) => <SmartPreview rule={input} />,
+				submit: { label: "Save", done: "Rule saved" },
+			},
+		}),
+	};
+
 	return (
 		<ListSource value={tracks}>
 			<Pane
@@ -100,21 +137,7 @@ function Playlist() {
 					],
 				}}
 				acts={[
-					...(manual
-						? [
-								{
-									icon: "Plus" as const,
-									label: "Add tracks",
-									sheet: sheetOf({
-										title: "Add tracks",
-										description:
-											"Search the library and add tracks to the end of the playlist.",
-										submit: { label: "Done" },
-										children: <AddTracks playlistId={playlistId} />,
-									}),
-								},
-							]
-						: []),
+					...(manual ? [{ icon: "Plus" as const, ...addTracks }] : []),
 					{
 						icon: "Pencil",
 						label: "Rename",
@@ -130,35 +153,7 @@ function Playlist() {
 						}),
 					},
 					...(kind === "smart"
-						? [
-								{
-									icon: "WandSparkles" as const,
-									label: "Edit rule",
-									sheet: sheetOf({
-										title: "Edit rule",
-										form: {
-											act: orpc.playlists.updateSmart,
-											given: { id: playlistId },
-											values: playlist.at((each) => ({
-												match: each.rule?.match ?? ("all" as const),
-												conditions: each.rule?.conditions ?? [],
-												sortBy: each.rule?.sortBy,
-												descending: each.rule?.descending,
-												limit: each.rule?.limit,
-											})),
-											fields: {
-												match: SMART_FIELDS.match,
-												conditions: SMART_FIELDS.conditions,
-												sortBy: SMART_FIELDS.sortBy,
-												descending: SMART_FIELDS.descending,
-												limit: SMART_FIELDS.limit,
-											},
-											after: (input) => <SmartPreview rule={input} />,
-											submit: { label: "Save", done: "Rule saved" },
-										},
-									}),
-								},
-							]
+						? [{ icon: "WandSparkles" as const, ...editRule }]
 						: []),
 					{
 						icon: "Trash2",
@@ -220,9 +215,20 @@ function Playlist() {
 							done: "Playlist reordered",
 						}}
 						choose={{ picked, onPick: setPicked }}
+						empty={{
+							sentence: "This playlist has no track yet.",
+							act: addTracks,
+						}}
 					/>
 				) : (
-					<Table {...shared} columns={TRACK_COLUMNS} />
+					<Table
+						{...shared}
+						columns={TRACK_COLUMNS}
+						empty={{
+							sentence: "No track in the library matches this rule.",
+							act: editRule,
+						}}
+					/>
 				)}
 			</Pane>
 			<Outlet />

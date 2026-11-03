@@ -101,6 +101,7 @@ export function Candidates({
 }) {
 	const download = useMutation(orpc.soulseek.download.mutationOptions());
 	const want = useMutation(orpc.wishlist.add.mutationOptions());
+	const searchNow = useMutation(orpc.wishlist.searchNow.mutationOptions());
 	const ask = (c: Candidate) =>
 		download.mutateAsync({
 			resultId: c.id,
@@ -155,6 +156,19 @@ export function Candidates({
 						: []),
 				],
 			}}
+			empty={
+				wantId === undefined
+					? { sentence: "The search found no candidate." }
+					: {
+							sentence: "The last search found no candidate.",
+							act: {
+								label: "Search again",
+								onAct: () =>
+									searchNow.mutateAsync({ wants: { ids: [String(wantId)] } }),
+								done: "Searching Soulseek",
+							},
+						}
+			}
 		/>
 	);
 }

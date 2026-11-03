@@ -211,6 +211,17 @@ function ImportResult() {
 								]
 							: [],
 				}}
+				empty={
+					status
+						? {
+								sentence: `No track is marked ${MATCH[IMPORT_MATCH[status]].label}.`,
+								act: {
+									label: "Show every track",
+									onAct: () => setStatus(undefined),
+								},
+							}
+						: { sentence: "This import lists no track." }
+				}
 			/>
 		</Pane>
 	);

@@ -119,6 +119,26 @@ function Wishlist() {
 				}),
 		},
 	});
+	const addTrack = {
+		label: "Add a track",
+		sheet: sheetOf({
+			title: "Add a track",
+			description: "A track the library lacks.",
+			form: {
+				act: orpc.wishlist.add,
+				fields: {
+					artist: { label: "Artist" },
+					title: { label: "Title" },
+					mix: {
+						label: "Mix",
+						description:
+							"Extended Mix, a remix... leave empty for the original.",
+					},
+				},
+				submit: { label: "Add", done: "Added to the wishlist" },
+			},
+		}),
+	};
 	return (
 		<>
 			<Pane
@@ -126,27 +146,7 @@ function Wishlist() {
 				back={false}
 				wide
 				acts={[
-					{
-						icon: "Plus",
-						label: "Add a track",
-						sheet: sheetOf({
-							title: "Add a track",
-							description: "A track the library lacks.",
-							form: {
-								act: orpc.wishlist.add,
-								fields: {
-									artist: { label: "Artist" },
-									title: { label: "Title" },
-									mix: {
-										label: "Mix",
-										description:
-											"Extended Mix, a remix... leave empty for the original.",
-									},
-								},
-								submit: { label: "Add", done: "Added to the wishlist" },
-							},
-						}),
-					},
+					{ icon: "Plus", ...addTrack },
 					{
 						icon: "Search",
 						label: "Search what is due",
@@ -278,6 +278,21 @@ function Wishlist() {
 						],
 					}}
 					selected={open}
+					empty={
+						view
+							? {
+									sentence: `No wishlist item is listed under ${WISHLIST_VIEW_LABELS[view]}.`,
+									act: {
+										label: "Show every wishlist item",
+										onAct: () => setView(undefined),
+									},
+								}
+							: {
+									sentence:
+										"The wishlist is empty. Add a track the library lacks and the hub searches Soulseek for it.",
+									act: addTrack,
+								}
+					}
 				/>
 			</Pane>
 			<Outlet />

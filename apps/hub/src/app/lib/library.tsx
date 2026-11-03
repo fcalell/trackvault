@@ -107,6 +107,24 @@ export function LibraryPane({
 	);
 
 	const { act, playing } = useListPlay(tracks);
+	const scan = {
+		label: "Scan now",
+		onAct: () => orpc.scan.start.call(),
+		done: "Scan started",
+		to: "/jobs",
+	};
+	const filtered = Object.values(query).some((each) => each !== undefined);
+	const clear = () => {
+		setText("");
+		setGenre(undefined);
+		setKey(undefined);
+		setIssue(undefined);
+		setTag(undefined);
+		setBpm(undefined);
+		setEnergy(undefined);
+		setNever(undefined);
+		setPicked({ ids: [] });
+	};
 
 	return (
 		<ListSource value={tracks}>
@@ -114,15 +132,7 @@ export function LibraryPane({
 				title={title}
 				back={false}
 				wide
-				acts={[
-					{
-						icon: "RefreshCw",
-						label: "Scan now",
-						onAct: () => orpc.scan.start.call(),
-						done: "Scan started",
-						to: "/jobs",
-					},
-				]}
+				acts={[{ icon: "RefreshCw", ...scan }]}
 				foot={
 					<ActionBar
 						chosen={chosen}
@@ -372,6 +382,18 @@ export function LibraryPane({
 					current={playing}
 					drag={{ kind: "track" }}
 					choose={{ picked, onPick: setPicked }}
+					empty={
+						filtered
+							? {
+									sentence: "No track matches these filters.",
+									act: { label: "Clear filters", onAct: clear },
+								}
+							: {
+									sentence:
+										"The library has no track yet. A scan reads the music folder on the hub and adds what it finds.",
+									act: scan,
+								}
+					}
 				/>
 			</Pane>
 			{children}

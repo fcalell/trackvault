@@ -258,6 +258,26 @@ function AutoTagReview() {
 							: undefined,
 				}}
 				choose={{ picked, onPick: setPicked }}
+				empty={
+					view !== "pending" || source !== undefined || confidence !== undefined
+						? {
+								sentence: "No track matches these filters.",
+								act: {
+									label: "Clear filters",
+									onAct: () => {
+										setView("pending");
+										setSource(undefined);
+										setConfidence(undefined);
+										setPicked({ ids: [] });
+									},
+								},
+							}
+						: {
+								sentence:
+									"No track waits for a decision. Auto-tag a track in the library and what the lookup providers find waits here.",
+								act: { label: "Open the library", href: "/library" },
+							}
+				}
 			/>
 		</Pane>
 	);
