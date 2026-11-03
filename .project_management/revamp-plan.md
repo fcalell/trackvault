@@ -366,9 +366,6 @@ Gaps found building R5 (phone), still open:
 - `tsc` on the phone needs `allowImportingTsExtensions` because the hub's declaration references `@trackvault/core` sources by `.ts` path.
 - The phone screens were type-checked and linted only: no emulator is available here (`phone-render.md`, `phone-capture.md` need one), so nothing has been drawn or run, the dock, the lock screen and the sign-in included.
 
-Gaps found adopting stack's phone and deploy changes:
-- `stack build` bundles the server, its worker threads and `loadModules` directories, but not a second entry point: the restore tools (`scripts/restore.ts`, `scripts/restore-offsite.ts`, run by hand on a box that holds only `dist/`) are bundled by the hub's own `scripts/bundle-extras.ts` after `stack build`, which keeps `esbuild` as a hub dependency. `ls dist/server` after `pnpm build` holds `server.mjs`, `workers/`, `migrations/` and, from that script, `restore.mjs` and `restore-offsite.mjs`. A build step for extra node entries would remove the script.
-
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
 ## 11. Decisions

@@ -21,6 +21,7 @@
 		"src/shared",
 		"src/server",
 		"scripts",
+		"src/bin",
 		".stack/worker.ts",
 		".stack/procedure.ts"
 	]

@@ -5,7 +5,7 @@
 //   OFFSITE_REGION=auto OFFSITE_ACCESS_KEY=... OFFSITE_SECRET_KEY=... [OFFSITE_PREFIX=...] \
 //   OFFSITE_KEY=<64 hex, if encrypted> \
 //   DB_FILE=/var/lib/trackvault/trackvault.sqlite \
-//     node scripts/restore-offsite.ts --library /srv/music [--db-only] [--at <db object name>]
+//     node src/bin/restore-offsite.ts --library /srv/music [--db-only] [--at <db object name>]
 //
 // Stop the hub first. Run it again after an interruption: files already in place with
 // the right hash are passed over and partial downloads continue. The library folder
@@ -37,7 +37,7 @@ import {
 	checkDatabase,
 	decompressFile,
 	installDatabase,
-} from "../src/server/lib/backup/files.ts";
+} from "../server/lib/backup/files.ts";
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {

@@ -1,8 +1,8 @@
 // Restores the hub's database from a local backup.
 //
 //   DB_FILE=/var/lib/trackvault/trackvault.sqlite \
-//     node scripts/restore.ts /var/lib/trackvault/backups/trackvault-<time>.sqlite.zst
-//   node scripts/restore.ts --list [--dir <backup folder>]
+//     node src/bin/restore.ts /var/lib/trackvault/backups/trackvault-<time>.sqlite.zst
+//   node src/bin/restore.ts --list [--dir <backup folder>]
 //
 // It stops nothing: stop the hub first (systemctl stop trackvault). It refuses if the
 // database is open in another process. The backup is unpacked beside the target and
@@ -19,7 +19,7 @@ import {
 	installDatabase,
 	listLocal,
 	removeBackup,
-} from "../src/server/lib/backup/files.ts";
+} from "../server/lib/backup/files.ts";
 
 const args = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -49,7 +49,7 @@ const target = args.find(
 );
 if (!target) {
 	console.error(
-		"Usage: node scripts/restore.ts <backup file> [--db <path>] [--dir <folder>] | --list",
+		"Usage: node src/bin/restore.ts <backup file> [--db <path>] [--dir <folder>] | --list",
 	);
 	process.exit(2);
 }
@@ -60,7 +60,7 @@ const parsed = parseBackupName(basename(source));
 if (!existsSync(source) || !parsed || parsed.encrypted) {
 	console.error(
 		parsed?.encrypted
-			? "That file is encrypted: restore it with scripts/restore-offsite.ts."
+			? "That file is encrypted: restore it with src/bin/restore-offsite.ts."
 			: `Not a backup file: ${source}`,
 	);
 	process.exit(2);

@@ -8,6 +8,6 @@
 		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
 	},
 	"include": ["src", ".stack/routes.d.ts"],
-	"exclude": ["src/worker", "src/server"],
+	"exclude": ["src/worker", "src/server", "src/bin"],
 	"references": [{ "path": "./tsconfig.worker.json" }]
 }

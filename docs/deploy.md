@@ -37,11 +37,10 @@ git clone <trackvault-repo> trackvault && cd trackvault && pnpm install
 TRACKVAULT_DOMAIN=trackvault.example.com pnpm build     # writes apps/hub/dist/
 ```
 
-`pnpm build` runs `stack build` (client, then the server bundle) and
-`apps/hub/scripts/bundle-extras.ts`, which writes the two restore tools beside `server.mjs`
-(`stack build` itself bundles the scan and backup-check worker threads and the job kinds).
-`dist/` holds `client/` and `server/` (`server.mjs`, `workers/`, `migrations/`, `node_modules/`
-with only the native addon). Copy it to the box:
+`pnpm build` runs `stack build` (client, then the server bundle). It also bundles the scan and
+backup-check worker threads, the job kinds and the two restore tools (every `apps/hub/src/bin/*.ts`).
+`dist/` holds `client/` and `server/` (`server.mjs`, `workers/`, `bin/`, `migrations/`,
+`node_modules/` with only the native addon). Copy it to the box:
 
 ```bash
 sudo useradd --system --create-home --home-dir /opt/trackvault trackvault
@@ -176,9 +175,9 @@ Settings has a Backups and an Offsite storage section; the Backups place shows t
 ```bash
 sudo systemctl stop trackvault
 sudo -u trackvault env DB_FILE=/var/lib/trackvault/trackvault.sqlite \
-  node /opt/trackvault/dist/server/restore.mjs --list --dir /srv/trackvault-backups
+  node /opt/trackvault/dist/server/bin/restore.mjs --list --dir /srv/trackvault-backups
 sudo -u trackvault env DB_FILE=/var/lib/trackvault/trackvault.sqlite \
-  node /opt/trackvault/dist/server/restore.mjs /srv/trackvault-backups/trackvault-<time>.sqlite.zst
+  node /opt/trackvault/dist/server/bin/restore.mjs /srv/trackvault-backups/trackvault-<time>.sqlite.zst
 sudo systemctl start trackvault        # applies any newer migrations on start
 ```
 
@@ -196,7 +195,7 @@ sudo -u trackvault env \
   OFFSITE_REGION=auto OFFSITE_ACCESS_KEY=... OFFSITE_SECRET_KEY=... \
   OFFSITE_KEY=<the 64 characters, if encrypted> OFFSITE_PREFIX=<folder, if set> \
   DB_FILE=/var/lib/trackvault/trackvault.sqlite \
-  node /opt/trackvault/dist/server/restore-offsite.mjs --library /srv/music
+  node /opt/trackvault/dist/server/bin/restore-offsite.mjs --library /srv/music
 sudo systemctl start trackvault
 ```
 

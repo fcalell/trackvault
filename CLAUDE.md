@@ -55,8 +55,7 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
   src/shared/        channels (jobs, library, devices, transfers), acquire (quality and view labels), playlists + smart-lines (the smart-rule editor's language)
   src/app/           the web UI, from stack's roster only
   scripts/fake-slskd.ts   a tiny slskd stand-in (search, transfers, downloads) to run the Soulseek flow without slskd
-  scripts/restore.ts, scripts/restore-offsite.ts   restore the database from a local backup, or rebuild database and library from the bucket (hub stopped; see docs/deploy.md; built to dist/server/restore*.mjs)
-  scripts/bundle-extras.ts   after `stack build`: bundles the restore tools beside server.mjs (the worker threads and job kinds are bundled by `stack build`)
+  src/bin/restore.ts, src/bin/restore-offsite.ts   (every src/bin/*.ts is a tool `stack build` bundles to dist/server/bin/<name>.mjs) restore the database from a local backup, or rebuild database and library from the bucket (hub stopped; see docs/deploy.md; built to dist/server/bin/restore*.mjs)
   scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export; scripts/bench-r4.ts times the stats panels and set suggestions; scripts/verify-r4.ts runs auto-tag, art, analysis and the set builder end to end with mocked providers (DB_FILE=<migrated scratch copy>)
 apps/phone/          the phone app: a client-only stack Expo app of the hub (`nativeUi({ server: "../hub" })`: no backend, no schema, the
                      hub's `AppRouter` from `.stack/server`); signs in by email code (traded for a device key) or a pasted key;
