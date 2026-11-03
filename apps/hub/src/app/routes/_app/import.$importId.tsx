@@ -47,10 +47,14 @@ const COLUMNS: TableColumn<Item>[] = [
 	{
 		key: "match",
 		label: "Library track",
+		cell: (item) => item.match,
+	},
+	{
+		key: "confidence",
+		label: "Sure",
+		kind: "number",
 		cell: (item) =>
-			item.match
-				? `${item.match} · ${Math.round(item.confidence * 100)}%`
-				: null,
+			item.match ? `${Math.round(item.confidence * 100)}%` : null,
 	},
 ];
 

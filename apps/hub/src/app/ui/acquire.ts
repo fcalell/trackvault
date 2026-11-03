@@ -74,7 +74,7 @@ export const WANT_SOURCES: Record<string, string> = {
 
 export const HAVE_LABELS: Record<string, string> = {
 	have: "In the library",
-	"other-version": "Another version in the library",
+	"other-version": "Other version",
 	maybe: "Maybe in the library",
 };
 

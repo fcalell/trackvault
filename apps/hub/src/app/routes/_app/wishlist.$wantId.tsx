@@ -36,9 +36,6 @@ function WantRecord() {
 				facts: [
 					want.at((each) => WANT_STATE[each.status]?.label ?? each.status),
 					want.at((each) => `${each.attempts} searches`),
-					want.at((each) =>
-						each.betterCopy ? "Wants a better copy" : "Wants any copy",
-					),
 				],
 			}}
 			acts={[
@@ -66,6 +63,11 @@ function WantRecord() {
 							each.status === "wanted" || each.status === "searching"
 								? (until(each.nextSearchAt) ?? "When the runner looks")
 								: "Not scheduled",
+					},
+					{
+						key: "wants",
+						label: "Wants",
+						title: each.betterCopy ? "A better copy" : "Any copy",
 					},
 					{
 						key: "last",

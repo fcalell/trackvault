@@ -52,13 +52,7 @@ function Item() {
 			back="/inbox"
 			record={{
 				within: "Inbox",
-				overline: [
-					item.at((each) =>
-						each.sourceRef
-							? `${SOURCE_LABELS[each.source]} · ${each.sourceRef}`
-							: SOURCE_LABELS[each.source],
-					),
-				],
+				overline: [item.at((each) => SOURCE_LABELS[each.source])],
 				facts: [
 					item.at((each) => INBOX_STATE[each.state]?.label ?? each.state),
 					item.at((each) =>
@@ -180,15 +174,25 @@ function Item() {
 			/>
 			<Section
 				title="Pipeline"
-				items={item.at((each) =>
-					each.steps.map((step) => ({
+				items={item.at((each) => [
+					...(each.sourceRef
+						? [
+								{
+									key: "source",
+									label: "From",
+									title: each.sourceRef,
+									wrap: true,
+								},
+							]
+						: []),
+					...each.steps.map((step) => ({
 						key: step.id,
 						leading: { icon: STEP_ICON[step.id] ?? ("Cog" as const) },
 						title: step.label,
 						facts: [{ tone: STEP_TONE[step.status] ?? ("idle" as const) }],
 						line: step.reason ?? undefined,
 					})),
-				)}
+				])}
 			/>
 			<Section
 				title="Tags"

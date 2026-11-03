@@ -39,17 +39,17 @@ const COLUMNS: TableColumn<Candidate>[] = [
 		family: "green",
 		cell: (c) => (c.have === "none" ? null : (HAVE_LABELS[c.have] ?? null)),
 	},
+	{ key: "peer", label: "Peer", cell: (c) => c.username },
 	{
-		key: "peer",
-		label: "Peer",
-		cell: (c) =>
-			`${c.username} · ${c.freeSlot ? "free slot" : `queue ${c.queueLength}`}`,
+		key: "queue",
+		label: "Queue",
+		cell: (c) => (c.freeSlot ? "Free slot" : `${c.queueLength} ahead`),
 	},
 	{
 		key: "why",
 		label: "Why",
 		wrap: true,
-		cell: (c) => c.reasons.join(" · "),
+		cell: (c) => c.reasons.join("; "),
 	},
 	{ key: "size", label: "Size", hidden: true, cell: (c) => size(c.size) },
 	{

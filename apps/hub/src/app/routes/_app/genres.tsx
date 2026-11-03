@@ -70,12 +70,11 @@ function Genres() {
 		key: `unknown-${row.value}`,
 		leading: { icon: "CircleHelp" },
 		title: row.value,
-		facts: [
-			`${count(row.count)} tracks`,
+		facts: [`${count(row.count)} tracks`],
+		line:
 			row.suggestions.length > 0
 				? `Closest: ${row.suggestions.join(", ")}`
 				: "No close genre",
-		],
 		pick:
 			row.suggestions.length > 0
 				? {

@@ -32,6 +32,13 @@ const WRITE: Record<string, string> = {
 	unknown: "Rekordbox writes unknown",
 };
 
+// What the agent reports as `platform`, in words.
+const PLATFORMS: Record<string, string> = {
+	darwin: "macOS",
+	win32: "Windows",
+	linux: "Linux",
+};
+
 const noun = (n: number, word: string): string =>
 	`${count(n)} ${word}${n === 1 ? "" : "s"}`;
 
@@ -53,15 +60,11 @@ function Devices() {
 	const toRow = (device: Device): Row => {
 		const rb = device.rekordbox;
 		const words = [
-			device.platform,
-			device.hostname,
-			device.state === "waiting"
-				? `Key ${device.keyStart ?? ""}…`
-				: `${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
-			rb?.installed ? `Rekordbox ${rb.appVersion ?? ""}`.trim() : undefined,
-			rb?.installed && rb.pendingExport > 0
-				? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
+			device.platform
+				? (PLATFORMS[device.platform] ?? device.platform)
 				: undefined,
+			device.hostname,
+			rb?.installed ? `Rekordbox ${rb.appVersion ?? ""}`.trim() : undefined,
 			device.unmatched
 				? `${noun(device.unmatched, "track")} not matched`
 				: undefined,
@@ -75,6 +78,17 @@ function Devices() {
 					: []),
 			...words,
 		];
+		const line = [
+			device.state === "waiting"
+				? `Key ${device.keyStart ?? ""}…`
+				: `${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
+			rb?.installed && rb.pendingExport > 0
+				? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
+				: undefined,
+			rb?.installed ? (WRITE[rb.writeSupport] ?? rb.writeSupport) : undefined,
+		]
+			.filter((sentence): sentence is string => Boolean(sentence))
+			.join(". ");
 		return {
 			key: device.id,
 			leading: {
@@ -82,9 +96,7 @@ function Devices() {
 			},
 			title: device.name,
 			facts,
-			...(rb?.installed
-				? { line: WRITE[rb.writeSupport] ?? rb.writeSupport }
-				: {}),
+			line,
 			...(device.lastSeenAt
 				? { trailing: { age: age(device.lastSeenAt) } }
 				: {}),
