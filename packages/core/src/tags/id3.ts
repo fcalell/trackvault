@@ -61,13 +61,18 @@ type Source = (offset: number, length: number) => Promise<Buffer>;
 
 // The frames of the ID3v2 tag at the start of the file, or null when there is
 // none. `wanted` picks the frames whose bodies are loaded.
+// `origin` is where the tag starts (0 for an MP3, the chunk data of an AIFF or WAV
+// ID3 chunk), `size` the end of what may be read.
 export async function readId3(
 	fh: FileHandle,
 	size: number,
 	wanted: (id: string) => boolean,
+	origin = 0,
 ): Promise<Id3Tag | null> {
-	const head = Buffer.allocUnsafe(Math.min(size, 64 * 1024));
-	const { bytesRead } = await fh.read(head, 0, head.length, 0);
+	const head = Buffer.allocUnsafe(
+		Math.max(0, Math.min(size - origin, 64 * 1024)),
+	);
+	const { bytesRead } = await fh.read(head, 0, head.length, origin);
 	const cache = head.subarray(0, bytesRead);
 	if (cache.length < 10 || !isId3v2Header(cache, 0)) return null;
 	const major = cache[3] as number;
@@ -77,11 +82,11 @@ export async function readId3(
 
 	let source: Source;
 	let base = 10;
-	let end = Math.min(10 + bodySize, size);
+	let end = Math.min(10 + bodySize, size - origin);
 	if (major === 3 && (flags & 0x80) !== 0) {
 		// Whole-tag unsynchronisation (v2.2 and v2.3): decode it once.
 		const raw = Buffer.allocUnsafe(end - 10);
-		await fh.read(raw, 0, raw.length, 10);
+		await fh.read(raw, 0, raw.length, origin + 10);
 		const plain = deunsync(raw);
 		source = async (offset, length) => plain.subarray(offset, offset + length);
 		base = 0;
@@ -91,7 +96,7 @@ export async function readId3(
 			if (offset + length <= cache.length)
 				return cache.subarray(offset, offset + length);
 			const out = Buffer.allocUnsafe(length);
-			const { bytesRead: got } = await fh.read(out, 0, length, offset);
+			const { bytesRead: got } = await fh.read(out, 0, length, origin + offset);
 			return out.subarray(0, got);
 		};
 	}

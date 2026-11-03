@@ -1,5 +1,10 @@
 import { hashFile } from "./hash/index.ts";
-import { type AudioInfo, readTags, type TrackTags } from "./tags/index.ts";
+import {
+	type AudioInfo,
+	formatOf,
+	readTags,
+	type TrackTags,
+} from "./tags/index.ts";
 
 export interface FileAnalysis {
 	tags: TrackTags;
@@ -25,10 +30,12 @@ export async function analyzeFile(path: string): Promise<FileAnalysis> {
 	return {
 		tags: read?.tags ?? EMPTY_TAGS,
 		audio: read?.audio ?? {
-			format: "mp3",
+			format: formatOf(path)?.name ?? "unknown",
+			codec: "",
 			bitrateKbps: 0,
 			sampleRate: 0,
 			channels: 0,
+			bitDepth: 0,
 			durationMs: 0,
 		},
 		hasArt: read?.hasArt ?? false,

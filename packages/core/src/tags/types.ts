@@ -1,3 +1,5 @@
+import type { FileHandle } from "node:fs/promises";
+
 // The tags the library edits, in one shape for every container format. A value
 // is the file's own text/number; `null` reads as "absent".
 export interface TrackTags {
@@ -49,11 +51,32 @@ export const TAG_FIELDS = [
 ] as const satisfies ReadonlyArray<keyof TrackTags>;
 
 export interface AudioInfo {
+	// The container family: "mp3", "flac", "m4a", "aiff" or "wav".
 	format: string;
+	// What is coded inside: "mp3", "flac", "aac", "alac", "pcm", ... ("" when unknown).
+	codec: string;
 	bitrateKbps: number;
 	sampleRate: number;
 	channels: number;
+	// Bits per sample of a lossless/PCM stream; 0 for a lossy codec or when unknown.
+	bitDepth: number;
 	durationMs: number;
+}
+
+// The audio bytes of a file, [start, end): what the audio hash covers. Tags,
+// pictures, padding and every other chunk or atom sit outside of it, so a tag edit
+// never moves the identity. `found` is false when the file holds no audio stream
+// (the span is then everything after the leading metadata).
+export interface AudioPayload {
+	start: number;
+	end: number;
+	found: boolean;
+}
+
+// An embedded picture as the file carries it (any MIME type).
+export interface EmbeddedPicture {
+	mime: string;
+	data: Uint8Array;
 }
 
 export interface TagReadResult {
@@ -74,4 +97,13 @@ export interface TagWriter {
 export interface TagFormat extends TagReader, TagWriter {
 	readonly name: string;
 	readonly extensions: readonly string[];
+	// True when the first bytes of a file (past any leading ID3v2 tag) are this
+	// container: the extension is a hint, the magic wins.
+	sniff(head: Buffer): boolean;
+	// The same reads on an open handle, for callers that already hold one.
+	readFrom(fh: FileHandle, size: number): Promise<TagReadResult>;
+	probeFrom(fh: FileHandle, size: number): Promise<AudioInfo>;
+	payloadOf(fh: FileHandle, size: number): Promise<AudioPayload>;
+	// The front cover (else the first picture), or null.
+	pictureOf(fh: FileHandle, size: number): Promise<EmbeddedPicture | null>;
 }

@@ -1,11 +1,10 @@
-import { mkdtemp, open, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { run } from "../exec/index.ts";
 import { TokenBucket } from "../providers/http.ts";
 import type { Candidate } from "../providers/types.ts";
-import { readId3 } from "../tags/id3.ts";
-import { type CoverPicture, writeTags } from "../tags/index.ts";
+import { type CoverPicture, readPicture, writeTags } from "../tags/index.ts";
 import { type ImageInfo, imageInfo } from "./image.ts";
 
 export { type ImageInfo, imageInfo } from "./image.ts";
@@ -181,7 +180,7 @@ export async function resizeCover(
 	}
 }
 
-// Embeds the picture as the file's front cover (APIC), replacing any others.
+// Embeds the picture as the file's front cover, replacing any others.
 export function embedCover(path: string, picture: CoverPicture): Promise<void> {
 	return writeTags(path, { picture });
 }
@@ -190,34 +189,14 @@ export function removeCover(path: string): Promise<void> {
 	return writeTags(path, { picture: null });
 }
 
-// The first embedded picture of an MP3, with its measured size; null when none.
+// The embedded picture of a file (any format), with its measured size; null when none.
 export async function readEmbeddedCover(
 	path: string,
 ): Promise<CoverImage | null> {
-	const fh = await open(path, "r");
-	try {
-		const { size } = await fh.stat();
-		const tag = await readId3(fh, size, (id) => id === "APIC");
-		const frame = tag?.frames.find(
-			(f) => f.id === "APIC" && f.body.length > 16 && !f.opaque,
-		);
-		if (!frame) return null;
-		const body = frame.body;
-		const enc = body[0] as number;
-		const mimeEnd = body.indexOf(0, 1);
-		let at = mimeEnd + 2; // NUL + picture type
-		// Description ends with one NUL (Latin-1/UTF-8) or an aligned double NUL (UTF-16).
-		if (enc === 1 || enc === 2) {
-			while (at + 1 < body.length && !(body[at] === 0 && body[at + 1] === 0))
-				at += 2;
-			at += 2;
-		} else {
-			at = body.indexOf(0, at) + 1;
-		}
-		const data = new Uint8Array(body.subarray(at));
-		const info = imageInfo(data);
-		return info ? { ...info, data, url: "", source: "embedded" } : null;
-	} finally {
-		await fh.close();
-	}
+	const picture = await readPicture(path);
+	if (!picture) return null;
+	const info = imageInfo(picture.data);
+	return info
+		? { ...info, data: picture.data, url: "", source: "embedded" }
+		: null;
 }

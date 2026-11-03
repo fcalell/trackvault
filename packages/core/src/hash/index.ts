@@ -1,49 +1,57 @@
-import { createHash, type Hash } from "node:crypto";
-import { type FileHandle, open } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { open } from "node:fs/promises";
 import { type Mp3Layout, readMp3Layout } from "../mp3/layout.ts";
+import { detectFormat } from "../tags/index.ts";
+import type { AudioPayload } from "../tags/types.ts";
+import { feed, give, take, u32 } from "./stream.ts";
 
 export interface FileIdentity {
-	// Identity of the audio payload alone: tags, covers, padding, the Xing/Info
-	// header frame and the ID3v1/APE trailers are excluded, so a tag edit keeps it.
+	// Identity of the audio payload alone: tags, covers, padding and every container
+	// chunk or atom around the audio are excluded (for MP3 also the Xing/Info header
+	// frame and the ID3v1/APE trailers), so a tag edit keeps it.
 	audioHash: string;
 	// Identity of the whole file. It hashes the head and tail bytes (every tag)
 	// with the audio hash between them, so each audio byte is read and hashed once.
 	fileHash: string;
 	size: number;
-	// False when no MPEG frame was found: the file is not decodable as MP3.
+	// False when no audio stream was found: the file is not decodable.
 	framesFound: boolean;
-	layout: Mp3Layout;
+	// The MP3 layout; null for the other formats.
+	layout: Mp3Layout | null;
 }
 
-const CHUNK = 1 << 20;
-const pool: Buffer[] = [];
-
-function take(): Buffer {
-	return pool.pop() ?? Buffer.allocUnsafe(CHUNK);
-}
-
-async function feed(
-	fh: FileHandle,
-	start: number,
-	end: number,
-	buffer: Buffer,
-	...hashes: Hash[]
-): Promise<void> {
-	let position = start;
-	while (position < end) {
-		const want = Math.min(buffer.length, end - position);
-		const { bytesRead } = await fh.read(buffer, 0, want, position);
-		if (bytesRead === 0) break;
-		const slice = buffer.subarray(0, bytesRead);
-		for (const hash of hashes) hash.update(slice);
-		position += bytesRead;
+// Where the audio of the file is: the MP3 layout, or the container's own payload.
+async function locate(
+	path: string,
+	fh: Awaited<ReturnType<typeof open>>,
+	size: number,
+): Promise<{ payload: AudioPayload; layout: Mp3Layout | null }> {
+	const format = await detectFormat(fh, size, path);
+	if (!format || format.name === "mp3") {
+		const layout = await readMp3Layout(fh, size);
+		return {
+			layout,
+			payload: {
+				start: layout.payloadStart,
+				end: layout.payloadEnd,
+				found: layout.framesFound,
+			},
+		};
 	}
-}
-
-function u32(value: number): Buffer {
-	const b = Buffer.allocUnsafe(4);
-	b.writeUInt32BE(value >>> 0);
-	return b;
+	let payload: AudioPayload;
+	try {
+		payload = await format.payloadOf(fh, size);
+	} catch {
+		payload = { start: 0, end: size, found: false };
+	}
+	return {
+		layout: null,
+		payload: {
+			start: Math.min(payload.start, size),
+			end: Math.max(Math.min(payload.end, size), Math.min(payload.start, size)),
+			found: payload.found,
+		},
+	};
 }
 
 export async function hashFile(path: string): Promise<FileIdentity> {
@@ -51,11 +59,11 @@ export async function hashFile(path: string): Promise<FileIdentity> {
 	const buffer = take();
 	try {
 		const { size } = await fh.stat();
-		const layout = await readMp3Layout(fh, size);
+		const { payload, layout } = await locate(path, fh, size);
 		const audio = createHash("sha256");
 		const file = createHash("sha256");
-		const headEnd = layout.payloadStart;
-		const tailStart = layout.payloadEnd;
+		const headEnd = payload.start;
+		const tailStart = payload.end;
 
 		file.update("tvf1");
 		file.update(u32(headEnd));
@@ -70,11 +78,11 @@ export async function hashFile(path: string): Promise<FileIdentity> {
 			audioHash: audioDigest.toString("hex"),
 			fileHash: file.digest("hex"),
 			size,
-			framesFound: layout.framesFound,
+			framesFound: payload.found,
 			layout,
 		};
 	} finally {
-		if (pool.length < 8) pool.push(buffer);
+		give(buffer);
 		await fh.close();
 	}
 }
@@ -90,10 +98,10 @@ export async function refreshFileHash(
 	const buffer = take();
 	try {
 		const { size } = await fh.stat();
-		const layout = await readMp3Layout(fh, size);
+		const { payload } = await locate(path, fh, size);
 		const file = createHash("sha256");
-		const headEnd = layout.payloadStart;
-		const tailStart = layout.payloadEnd;
+		const headEnd = payload.start;
+		const tailStart = payload.end;
 		file.update("tvf1");
 		file.update(u32(headEnd));
 		await feed(fh, 0, headEnd, buffer, file);
@@ -102,7 +110,7 @@ export async function refreshFileHash(
 		await feed(fh, tailStart, size, buffer, file);
 		return { fileHash: file.digest("hex"), size };
 	} finally {
-		if (pool.length < 8) pool.push(buffer);
+		give(buffer);
 		await fh.close();
 	}
 }

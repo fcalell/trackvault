@@ -1,4 +1,4 @@
-import { open, rename, rm } from "node:fs/promises";
+import { type FileHandle, open, rename, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { type Mp3Layout, readMp3Layout } from "../mp3/layout.ts";
 import {
@@ -18,6 +18,8 @@ import {
 } from "./id3.ts";
 import type {
 	AudioInfo,
+	AudioPayload,
+	EmbeddedPicture,
 	TagFormat,
 	TagPatch,
 	TagReadResult,
@@ -27,7 +29,7 @@ import type {
 const ENERGY_NAMES = ["energylevel", "energy"];
 const WMP = "Windows Media Player 9 Series";
 // The padding a rewritten tag keeps, so the next edits fit in place.
-const PADDING = 4096;
+export const PADDING = 4096;
 const COPY_CHUNK = 1 << 20;
 
 // The frames a read decodes. Everything else (covers, lyrics, ...) is skipped
@@ -49,7 +51,8 @@ const READ = new Set([
 	"POPM",
 	"TXXX",
 ]);
-const wantedOnRead = (id: string): boolean => READ.has(id) || id === "APIC";
+// A cover (APIC) is noted by its size alone: its bytes are never loaded on a read.
+export const wantedOnRead = (id: string): boolean => READ.has(id);
 const wantedOnWrite = (): boolean => true;
 
 // ID3v1 genre numbers, as the old "(17)" and "17" forms of TCON name them.
@@ -170,7 +173,9 @@ function findUserText(
 	return null;
 }
 
-function readFrames(tag: Id3Tag | null): TrackTags & { hasArt: boolean } {
+export function readFrames(
+	tag: Id3Tag | null,
+): TrackTags & { hasArt: boolean } {
 	const frames = tag?.frames ?? [];
 	const energy = number(findUserText(frames, ENERGY_NAMES)?.value);
 	const rated = popularimeters(frames);
@@ -203,9 +208,11 @@ function audioOf(layout: Mp3Layout): AudioInfo {
 	if (!header)
 		return {
 			format: "mp3",
+			codec: "mp3",
 			bitrateKbps: 0,
 			sampleRate: 0,
 			channels: 0,
+			bitDepth: 0,
 			durationMs: 0,
 		};
 	const payload = Math.max(0, layout.payloadEnd - layout.payloadStart);
@@ -214,6 +221,8 @@ function audioOf(layout: Mp3Layout): AudioInfo {
 			(layout.vbr.frames * header.samplesPerFrame) / header.sampleRate;
 		return {
 			format: "mp3",
+			codec: "mp3",
+			bitDepth: 0,
 			bitrateKbps:
 				seconds > 0
 					? Math.round((payload * 8) / seconds / 1000)
@@ -225,6 +234,8 @@ function audioOf(layout: Mp3Layout): AudioInfo {
 	}
 	return {
 		format: "mp3",
+		codec: "mp3",
+		bitDepth: 0,
 		bitrateKbps: header.bitrateKbps,
 		sampleRate: header.sampleRate,
 		channels: header.channels,
@@ -232,20 +243,72 @@ function audioOf(layout: Mp3Layout): AudioInfo {
 	};
 }
 
+async function readFrom(fh: FileHandle, size: number): Promise<TagReadResult> {
+	const [tag, layout] = await Promise.all([
+		readId3(fh, size, wantedOnRead),
+		readMp3Layout(fh, size),
+	]);
+	const { hasArt, ...tags } = readFrames(tag);
+	return { tags, audio: audioOf(layout), hasArt };
+}
+
 async function read(path: string): Promise<TagReadResult> {
 	const fh = await open(path, "r");
 	try {
-		const { size } = await fh.stat();
-		const [tag, layout] = await Promise.all([
-			readId3(fh, size, wantedOnRead),
-			readMp3Layout(fh, size),
-		]);
-		const { hasArt, ...tags } = readFrames(tag);
-		return { tags, audio: audioOf(layout), hasArt };
+		return await readFrom(fh, (await fh.stat()).size);
 	} finally {
 		await fh.close();
 	}
 }
+
+async function probeFrom(fh: FileHandle, size: number): Promise<AudioInfo> {
+	return audioOf(await readMp3Layout(fh, size));
+}
+
+async function payloadOf(fh: FileHandle, size: number): Promise<AudioPayload> {
+	const layout = await readMp3Layout(fh, size);
+	return {
+		start: layout.payloadStart,
+		end: layout.payloadEnd,
+		found: layout.framesFound,
+	};
+}
+
+// The picture of an APIC frame body: the front cover (type 3) if there is one, else
+// the first. `origin` is where the ID3 tag starts (an AIFF/WAV chunk's data).
+export async function id3Picture(
+	fh: FileHandle,
+	size: number,
+	origin = 0,
+): Promise<EmbeddedPicture | null> {
+	const tag = await readId3(fh, size, (id) => id === "APIC", origin);
+	let fallback: EmbeddedPicture | null = null;
+	for (const frame of tag?.frames ?? []) {
+		if (frame.id !== "APIC" || frame.body.length <= 16 || frame.opaque)
+			continue;
+		const body = frame.body;
+		const enc = body[0] as number;
+		const mimeEnd = body.indexOf(0, 1);
+		if (mimeEnd === -1) continue;
+		const mime = body.toString("latin1", 1, mimeEnd);
+		const type = body[mimeEnd + 1];
+		let at = mimeEnd + 2;
+		// Description ends with one NUL (Latin-1/UTF-8) or an aligned double NUL (UTF-16).
+		if (enc === 1 || enc === 2) {
+			while (at + 1 < body.length && !(body[at] === 0 && body[at + 1] === 0))
+				at += 2;
+			at += 2;
+		} else {
+			at = body.indexOf(0, at) + 1;
+		}
+		const picture = { mime, data: new Uint8Array(body.subarray(at)) };
+		if (type === 3) return picture;
+		fallback ??= picture;
+	}
+	return fallback;
+}
+
+const pictureOf = (fh: FileHandle, size: number) => id3Picture(fh, size);
 
 // --- writing -------------------------------------------------------------
 
@@ -268,7 +331,11 @@ function setText(
 		frames.push(textFrame(version, id, value));
 }
 
-function apply(frames: Id3Frame[], version: 3 | 4, patch: TagPatch): void {
+export function apply(
+	frames: Id3Frame[],
+	version: 3 | 4,
+	patch: TagPatch,
+): void {
 	setText(frames, version, "TIT2", patch.title);
 	setText(frames, version, "TPE1", patch.artist);
 	setText(frames, version, "TPE2", patch.albumArtist);
@@ -356,7 +423,11 @@ function apply(frames: Id3Frame[], version: 3 | 4, patch: TagPatch): void {
 
 // Frames whose id differs between the versions are converted, or dropped when
 // they have no equivalent (the date parts of v2.3, the v2.4 sort frames).
-function convert(frames: Id3Frame[], from: number, to: 3 | 4): Id3Frame[] {
+export function convert(
+	frames: Id3Frame[],
+	from: number,
+	to: 3 | 4,
+): Id3Frame[] {
 	if (from === to) return frames;
 	if (to === 4)
 		return frames.filter(
@@ -443,6 +514,13 @@ async function write(path: string, patch: TagPatch): Promise<void> {
 export const mp3Tags: TagFormat = {
 	name: "mp3",
 	extensions: [".mp3"],
+	// An MPEG frame sync; a file that opens with an ID3 tag is sniffed past it, and
+	// whatever no other format claims is taken for MP3 there.
+	sniff: (head) => head[0] === 0xff && ((head[1] as number) & 0xe0) === 0xe0,
 	read,
 	write,
+	readFrom,
+	probeFrom,
+	payloadOf,
+	pictureOf,
 };
