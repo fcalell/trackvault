@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "@fcalell/plugin-db/orm";
 import { files } from "../../schema/index.ts";
+import { openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { type FileMove, moveTracked } from "../lib/file-ops.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
@@ -34,6 +35,12 @@ export default defineJob<RestorePayload, RestoreResult>({
 				and(inArray(files.id, payload.fileIds), eq(files.state, "quarantined")),
 			)
 			.all();
+		const info = {
+			batchId: id,
+			origin: "ui" as const,
+			label: "Restore from quarantine",
+		};
+		openBatch(info);
 		const release = await acquireFs(signal);
 		try {
 			const taken = new Set<string>();
@@ -55,15 +62,10 @@ export default defineJob<RestorePayload, RestoreResult>({
 				});
 			}
 			progress(0, moves.length, "Restoring files");
-			const moved = await moveTracked(
-				root,
-				moves,
-				{ batchId: id, origin: "ui", label: "Restore from quarantine" },
-				{
-					signal,
-					progress: (done) => progress(done, moves.length, "Restoring files"),
-				},
-			);
+			const moved = await moveTracked(root, moves, info, {
+				signal,
+				progress: (done) => progress(done, moves.length, "Restoring files"),
+			});
 			await removeEmptyFolders(
 				root,
 				moves.map((move) => move.from),

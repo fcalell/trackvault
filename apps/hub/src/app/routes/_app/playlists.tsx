@@ -12,6 +12,7 @@ import {
 	pathsOf,
 	SmartPreview,
 } from "../../lib/playlists.tsx";
+import { namedBatch } from "../../ui/batch.ts";
 
 export const Route = createFileRoute("/_app/playlists")({
 	component: Playlists,
@@ -187,12 +188,15 @@ function Playlists() {
 									? {
 											accepts: "track",
 											label: `Add to ${node.name}`,
-											onDrop: (drag) =>
-												add.mutateAsync({
-													playlistId: node.id,
-													tracks: drag.picked,
-												}),
-											done: `Added to ${node.name}`,
+											onDrop: async (drag) =>
+												namedBatch(
+													await add.mutateAsync({
+														playlistId: node.id,
+														tracks: drag.picked,
+													}),
+													`Added to ${node.name}`,
+													`They are already in ${node.name}`,
+												),
 										}
 									: undefined,
 						more: ({ node }) => [

@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `analyse_window` text DEFAULT '60' NOT NULL;

@@ -1,4 +1,4 @@
-import { applyPatches, flushTagWrites } from "../lib/changes.ts";
+import { applyPatches, flushTagWrites, openBatch } from "../lib/changes.ts";
 import { defineJob } from "../lib/job.ts";
 import { type Selection, selectedIds } from "../lib/selection.ts";
 import type { TagValues } from "../lib/track-fields.ts";
@@ -30,6 +30,7 @@ export default defineJob<EditPayload, EditResult>({
 		const total = ids.length;
 		progress(0, total, "Editing tags");
 		const info = { batchId: id, origin: "ui" as const, label: "Edit tags" };
+		openBatch(info);
 		const applied = applyPatches(
 			ids.map((trackId) => ({ id: trackId, patch: payload.patch })),
 			info,

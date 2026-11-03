@@ -33,7 +33,12 @@ import { retryItems } from "../../server/lib/inbox/run.ts";
 import { readSettings } from "../../server/lib/settings.ts";
 import { requestInbox } from "../../server/services/inbox.ts";
 import { enqueue } from "../../server/services/jobs.ts";
-import { INBOX_GROUPS, type InboxGroup } from "../../shared/acquire.ts";
+import {
+	INBOX_FILTERS,
+	INBOX_GROUPS,
+	type InboxFilterGroup,
+	type InboxGroup,
+} from "../../shared/acquire.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
 
 const STATES_OF: Record<InboxGroup, ItemRow["state"][]> = {
@@ -42,6 +47,10 @@ const STATES_OF: Record<InboxGroup, ItemRow["state"][]> = {
 	processing: ["queued", "processing"],
 	done: ["approved", "rejected"],
 };
+const STATES_OF_FILTER: Record<InboxFilterGroup, ItemRow["state"][]> = {
+	...STATES_OF,
+	waiting: [...STATES_OF.ready, ...STATES_OF.review],
+};
 // Without a filter the inbox lists what is still open.
 const OPEN: ItemRow["state"][] = [
 	...STATES_OF.ready,
@@ -49,12 +58,15 @@ const OPEN: ItemRow["state"][] = [
 	...STATES_OF.processing,
 ];
 
-const inboxFilter = z.object({ group: z.enum(INBOX_GROUPS).optional() });
+const inboxFilter = z.object({ group: z.enum(INBOX_FILTERS).optional() });
 type InboxFilter = z.infer<typeof inboxFilter>;
 const itemsInput = selector(inboxFilter);
 
 const whereOf = (filter: InboxFilter): SQL | undefined =>
-	inArray(inboxItems.state, filter.group ? STATES_OF[filter.group] : OPEN);
+	inArray(
+		inboxItems.state,
+		filter.group ? STATES_OF_FILTER[filter.group] : OPEN,
+	);
 
 function idsOf(selection: z.infer<typeof itemsInput>): string[] {
 	if ("ids" in selection) return selection.ids;
@@ -83,7 +95,6 @@ const listRow = z.object({
 	sourceRef: z.string().nullable(),
 	artist: z.string().nullable(),
 	title: z.string(),
-	mixName: z.string().nullable(),
 	// The library track an approved item became.
 	trackId: z.string().nullable(),
 	state: z.enum([

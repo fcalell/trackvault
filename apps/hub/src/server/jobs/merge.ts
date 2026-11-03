@@ -7,7 +7,7 @@ import {
 	tracks,
 	trackTags,
 } from "../../schema/index.ts";
-import { applyPatches, flushTagWrites } from "../lib/changes.ts";
+import { applyPatches, flushTagWrites, openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { type FileMove, moveTracked } from "../lib/file-ops.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
@@ -64,6 +64,7 @@ export default defineJob<MergePayload, MergeResult>({
 			origin: "ui" as const,
 			label: "Merge duplicates",
 		};
+		openBatch(info);
 		const release = await acquireFs(signal);
 		try {
 			const moves: FileMove[] = [];

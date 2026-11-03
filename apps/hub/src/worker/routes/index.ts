@@ -4,6 +4,7 @@ export * from "./autotag.ts";
 export * from "./backups.ts";
 export * from "./bulk.ts";
 export * from "./cleanup.ts";
+export * from "./connected-apps.ts";
 export * from "./devices.ts";
 export * from "./dupes.ts";
 export * from "./fs.ts";

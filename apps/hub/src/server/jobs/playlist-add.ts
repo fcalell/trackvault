@@ -1,4 +1,4 @@
-import { CHUNK } from "../lib/changes.ts";
+import { CHUNK, openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { defineJob } from "../lib/job.ts";
 import {
@@ -33,6 +33,7 @@ export default defineJob<PlaylistAddPayload, PlaylistAddResult>({
 			origin: "ui" as const,
 			label: `Add to ${playlist.name}`,
 		};
+		openBatch(info);
 		let added = 0;
 		progress(0, ids.length, "Adding tracks");
 		for (let i = 0; i < ids.length; i += CHUNK) {

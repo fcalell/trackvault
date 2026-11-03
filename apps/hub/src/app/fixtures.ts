@@ -1,6 +1,7 @@
 import type { Snapshots } from "@fcalell/plugin-node/ws";
 import { defineFixtures } from "@fcalell/plugin-screens/fixtures";
 import type { AppRouter } from "../../.stack/worker";
+import type { InboxFilterGroup } from "../shared/acquire.ts";
 import type {
 	jobsChannel,
 	libraryChannel,
@@ -35,8 +36,7 @@ const CHANGE_ROWS = [
 		id: "1",
 		entity: "track",
 		entityId: "track-1",
-		title: "Midnight Echo",
-		mixName: "Extended Mix",
+		title: "Midnight Echo (Extended Mix)",
 		artist: "Kalomi",
 		field: "genre",
 		before: "Tech-House",
@@ -46,8 +46,7 @@ const CHANGE_ROWS = [
 		id: "2",
 		entity: "track",
 		entityId: "track-2",
-		title: "Velvet Signal",
-		mixName: "Original Mix",
+		title: "Velvet Signal (Original Mix)",
 		artist: "Rendor",
 		field: "genre",
 		before: "DnB",
@@ -57,8 +56,7 @@ const CHANGE_ROWS = [
 		id: "3",
 		entity: "track",
 		entityId: "track-3",
-		title: "Neon Drift",
-		mixName: "Extended Mix",
+		title: "Neon Drift (Extended Mix)",
 		artist: "Sha & Tormar",
 		field: "artist",
 		before: "Sha & Tormar feat. Lio",
@@ -79,9 +77,8 @@ const BATCH = {
 const GROUP_MEMBERS = (base: number) => [
 	{
 		id: `track-${base}`,
-		title: "Midnight Echo",
+		title: "Midnight Echo (Original Mix)",
 		artist: "Kalomi",
-		mixName: "Original Mix",
 		format: "mp3",
 		bitrate: 320,
 		durationMs: 372_000,
@@ -94,9 +91,8 @@ const GROUP_MEMBERS = (base: number) => [
 	},
 	{
 		id: `track-${base + 1}`,
-		title: "Midnight Echo",
+		title: "Midnight Echo (Original Mix)",
 		artist: "Kalomi",
-		mixName: "Original Mix",
 		format: "mp3",
 		bitrate: 192,
 		durationMs: 372_000,
@@ -323,8 +319,7 @@ const INBOX_ITEMS = [
 		id: "item-1",
 		label: "Kalomi - Midnight Echo (Extended Mix)",
 		artist: "Kalomi",
-		title: "Midnight Echo",
-		mixName: "Extended Mix",
+		title: "Midnight Echo (Extended Mix)",
 		trackId: null,
 		source: "soulseek" as const,
 		sourceRef: "dj_wax",
@@ -346,7 +341,6 @@ const INBOX_ITEMS = [
 		label: "Rendor - Velvet Signal",
 		artist: "Rendor",
 		title: "Velvet Signal",
-		mixName: null,
 		trackId: null,
 		source: "agent" as const,
 		sourceRef: "DJ Mac",
@@ -368,7 +362,6 @@ const INBOX_ITEMS = [
 		label: "Sha & Tormar - Neon Drift",
 		artist: "Sha & Tormar",
 		title: "Neon Drift",
-		mixName: null,
 		trackId: null,
 		source: "watch" as const,
 		sourceRef: null,
@@ -389,8 +382,7 @@ const INBOX_ITEMS = [
 		id: "item-4",
 		label: "Lio - Glass Hours (Dub)",
 		artist: "Lio",
-		title: "Glass Hours",
-		mixName: "Dub",
+		title: "Glass Hours (Dub)",
 		trackId: null,
 		source: "upload" as const,
 		sourceRef: null,
@@ -412,7 +404,6 @@ const INBOX_ITEMS = [
 		label: "Kalomi - Lost Signal",
 		artist: "Kalomi",
 		title: "Lost Signal",
-		mixName: null,
 		trackId: "track-1",
 		source: "soulseek" as const,
 		sourceRef: "bassline",
@@ -432,14 +423,12 @@ const INBOX_ITEMS = [
 ];
 
 // The states each group of the inbox holds.
-const INBOX_GROUP_STATES: Record<
-	"ready" | "review" | "processing" | "done",
-	string[]
-> = {
+const INBOX_GROUP_STATES: Record<InboxFilterGroup, string[]> = {
 	ready: ["awaiting-approval"],
 	review: ["duplicate", "needs-review", "failed"],
 	processing: ["queued", "processing"],
 	done: ["approved", "rejected"],
+	waiting: ["awaiting-approval", "duplicate", "needs-review", "failed"],
 };
 
 const TRANSFERS = [
@@ -448,8 +437,7 @@ const TRANSFERS = [
 		username: "dj_wax",
 		name: "Kalomi - Midnight Echo (Extended Mix).mp3",
 		artist: "Kalomi",
-		title: "Midnight Echo",
-		mixName: "Extended Mix",
+		title: "Midnight Echo (Extended Mix)",
 		format: "mp3",
 		bitrate: 320,
 		state: "downloading" as const,
@@ -470,7 +458,6 @@ const TRANSFERS = [
 		name: "Rendor - Velvet Signal.flac",
 		artist: "Rendor",
 		title: "Velvet Signal",
-		mixName: null,
 		format: "flac",
 		bitrate: null,
 		state: "imported" as const,
@@ -491,7 +478,6 @@ const TRANSFERS = [
 		name: "Lio - Glass Hours.mp3",
 		artist: "Lio",
 		title: "Glass Hours",
-		mixName: null,
 		format: "mp3",
 		bitrate: 256,
 		state: "failed" as const,
@@ -523,8 +509,7 @@ const CANDIDATES = [
 		queueLength: 0,
 		freeSlot: true,
 		artist: "Kalomi",
-		title: "Midnight Echo",
-		mixName: "Extended Mix",
+		title: "Midnight Echo (Extended Mix)",
 		score: 94.5,
 		rejected: false,
 		recommended: true,
@@ -550,7 +535,6 @@ const CANDIDATES = [
 		freeSlot: false,
 		artist: "Kalomi",
 		title: "Midnight Echo",
-		mixName: null,
 		score: 81,
 		rejected: false,
 		recommended: false,
@@ -576,7 +560,6 @@ const CANDIDATES = [
 		freeSlot: false,
 		artist: null,
 		title: "midnight echo remix",
-		mixName: null,
 		score: 22,
 		rejected: true,
 		recommended: false,
@@ -593,8 +576,7 @@ const WANTS = [
 	{
 		id: 1,
 		artist: "Kalomi",
-		title: "Midnight Echo",
-		mixName: "Extended Mix",
+		title: "Midnight Echo (Extended Mix)",
 		status: "found" as const,
 		source: "spotify",
 		sourceRef: "spotify:playlist:abc",
@@ -611,7 +593,6 @@ const WANTS = [
 		id: 2,
 		artist: "Rendor",
 		title: "Velvet Signal",
-		mixName: null,
 		status: "wanted" as const,
 		source: "manual",
 		sourceRef: "track:track-2",
@@ -647,15 +628,13 @@ const IMPORT_ITEMS = [
 	{
 		id: 1,
 		artist: "Kalomi",
-		title: "Midnight Echo",
-		mixName: "Extended Mix",
+		title: "Midnight Echo (Extended Mix)",
 		status: "matched" as const,
 		confidence: 0.97,
 		match: {
 			id: "track-1",
 			artist: "Kalomi",
-			title: "Midnight Echo",
-			mixName: "Extended Mix",
+			title: "Midnight Echo (Extended Mix)",
 		},
 		resolution: null,
 	},
@@ -663,7 +642,6 @@ const IMPORT_ITEMS = [
 		id: 2,
 		artist: "Lio",
 		title: "Glass Hours",
-		mixName: null,
 		status: "missing" as const,
 		confidence: 0,
 		match: null,
@@ -673,29 +651,25 @@ const IMPORT_ITEMS = [
 		id: 3,
 		artist: "Rendor",
 		title: "Velvet Signal",
-		mixName: null,
 		status: "uncertain" as const,
 		confidence: 0.82,
 		match: {
 			id: "track-2",
 			artist: "Rendor",
-			title: "Velvet Signal",
-			mixName: "Radio Edit",
+			title: "Velvet Signal (Radio Edit)",
 		},
 		resolution: null,
 	},
 	{
 		id: 4,
 		artist: "Kalomi",
-		title: "Midnight Echo",
-		mixName: "Dub Mix",
+		title: "Midnight Echo (Dub Mix)",
 		status: "other-version" as const,
 		confidence: 0.74,
 		match: {
 			id: "track-1",
 			artist: "Kalomi",
-			title: "Midnight Echo",
-			mixName: "Extended Mix",
+			title: "Midnight Echo (Extended Mix)",
 		},
 		resolution: null,
 	},
@@ -802,8 +776,7 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "track" as const,
 		refId: "track-3",
-		title: "Neon Drift",
-		mixName: "Extended Mix",
+		title: "Neon Drift (Extended Mix)",
 		artist: "Sha & Tormar",
 		field: "genre",
 		deviceValue: "Disco",
@@ -817,8 +790,7 @@ const CONFLICTS = [
 		device: "DJ Mac",
 		entity: "track" as const,
 		refId: "track-4",
-		title: "Lunar Ritual",
-		mixName: "Original Mix",
+		title: "Lunar Ritual (Original Mix)",
 		artist: "Elix",
 		field: "rating",
 		deviceValue: "5",
@@ -833,7 +805,6 @@ const CONFLICTS = [
 		entity: "playlist" as const,
 		refId: "pl-peak",
 		title: "Peak time",
-		mixName: null,
 		artist: null,
 		field: "order",
 		deviceValue: "3 moved, 2 added, 1 removed",
@@ -860,7 +831,6 @@ const track = (at: number) => ({
 	id: `track-${at}`,
 	title: `${TITLES[at % TITLES.length]} (${at % 3 === 0 ? "Extended Mix" : "Original Mix"})`,
 	artist: ARTISTS[at % ARTISTS.length] ?? null,
-	mixName: at % 3 === 0 ? "Extended Mix" : "Original Mix",
 	bpm: 120 + (at % 14),
 	key: KEYS[at % KEYS.length] ?? null,
 	genre: GENRES[at % GENRES.length] ?? null,
@@ -877,6 +847,7 @@ const track = (at: number) => ({
 
 const record = (at: number) => ({
 	...track(at),
+	mixName: at % 3 === 0 ? "Extended Mix" : "Original Mix",
 	codec: "mp3",
 	bitDepth: null,
 	seq: at + 1,
@@ -921,9 +892,8 @@ const record = (at: number) => ({
 const PROPOSALS = [
 	{
 		id: "track-1",
-		title: "Midnight Echo",
+		title: "Midnight Echo (Extended Mix)",
 		artist: "Kalomi",
-		mixName: "Extended Mix",
 		proposals: [
 			{
 				field: "genre",
@@ -945,9 +915,8 @@ const PROPOSALS = [
 	},
 	{
 		id: "track-2",
-		title: "Velvet Signal",
+		title: "Velvet Signal (Original Mix)",
 		artist: "Rendor",
-		mixName: "Original Mix",
 		proposals: [
 			{
 				field: "year",
@@ -963,8 +932,7 @@ const PROPOSALS = [
 
 const SET_TRACK = (at: number, score: number | null) => ({
 	id: `track-${at}`,
-	title: TITLES[at % TITLES.length] ?? null,
-	mixName: at % 2 === 0 ? "Extended Mix" : null,
+	title: `${TITLES[at % TITLES.length]} (${at % 2 === 0 ? "Extended Mix" : "Original Mix"})`,
 	artist: ARTISTS[at % ARTISTS.length] ?? null,
 	bpm: 124 + at,
 	key: KEYS[at % KEYS.length] ?? null,
@@ -999,6 +967,7 @@ const AUTOTAG_SETTINGS = {
 	artMinSide: 500,
 	analyseAuto: true,
 	analyseFillConfidence: 70,
+	analyseWindow: "60" as const,
 	ready: ["MusicBrainz", "AcoustID", "Deezer"],
 };
 
@@ -1055,8 +1024,7 @@ export default defineFixtures<
 			duplicates: () => [
 				{
 					id: "track-7",
-					title: "Midnight Echo",
-					mixName: "Original Mix",
+					title: "Midnight Echo (Original Mix)",
 					artist: "Kalomi",
 					format: "mp3",
 					bitrate: 192,
@@ -1076,7 +1044,7 @@ export default defineFixtures<
 					undone: false,
 				},
 			],
-			update: ({ id }) => record(Number(id.replace("track-", "")) || 0),
+			update: () => ({ batch: "batch-1" }),
 		},
 		autotag: {
 			settings: () => AUTOTAG_SETTINGS,
@@ -1159,7 +1127,6 @@ export default defineFixtures<
 				most: [1, 2, 3].map((at) => ({
 					id: `track-${at}`,
 					title: TITLES[at % TITLES.length] ?? null,
-					mixName: "Original Mix",
 					artist: ARTISTS[at % ARTISTS.length] ?? null,
 					playCount: 60 - at * 9,
 					lastPlayedAt: Date.now() - at * 86_400_000,
@@ -1167,7 +1134,6 @@ export default defineFixtures<
 				least: [4, 5].map((at) => ({
 					id: `track-${at}`,
 					title: TITLES[at % TITLES.length] ?? null,
-					mixName: "Original Mix",
 					artist: ARTISTS[at % ARTISTS.length] ?? null,
 					playCount: 1,
 					lastPlayedAt: Date.now() - at * 40 * 86_400_000,
@@ -1190,13 +1156,7 @@ export default defineFixtures<
 				total: 3,
 				sampled: 3,
 				touched: 3,
-				changes: CHANGE_ROWS.map((row) => ({
-					key: row.id,
-					label: `${row.artist} - ${row.title} (${row.mixName})`,
-					field: row.field,
-					before: row.before,
-					after: row.after,
-				})),
+				changes: CHANGE_ROWS,
 			}),
 			edit: () => job("edit", "running", 1),
 			rules: () => job("rules", "running", 1),
@@ -1429,9 +1389,8 @@ export default defineFixtures<
 				data: [
 					{
 						id: "1",
-						title: "Midnight Echo",
+						title: "Midnight Echo (Original Mix)",
 						artist: "Kalomi",
-						mixName: "Original Mix",
 						originalPath: "House/Kalomi - Midnight Echo.mp3",
 						size: 8_900_000,
 						batchId: "batch-1",
@@ -1443,7 +1402,6 @@ export default defineFixtures<
 						id: "2",
 						title: null,
 						artist: null,
-						mixName: null,
 						originalPath: "Inbox/unknown.mp3",
 						size: 4_200_000,
 						batchId: null,
@@ -1503,8 +1461,8 @@ export default defineFixtures<
 			rename: () => undefined,
 			move: () => undefined,
 			remove: () => undefined,
-			add: () => ({ added: 3, job: null }),
-			removeTracks: () => ({ removed: 3, job: null }),
+			add: () => ({ added: 3, batch: "batch-1" }),
+			removeTracks: () => ({ removed: 3, batch: "batch-1" }),
 			reorder: () => undefined,
 			forTrack: () =>
 				PLAYLISTS.slice(1, 3).map(({ id, name }) => ({ id, name })),
@@ -1540,8 +1498,7 @@ export default defineFixtures<
 				id,
 				label: "Kalomi - Midnight Echo (Extended Mix)",
 				artist: "Kalomi",
-				title: "Midnight Echo",
-				mixName: "Extended Mix",
+				title: "Midnight Echo (Extended Mix)",
 				trackId: null,
 				genre: "Tech House",
 				key: "8A",
@@ -1603,8 +1560,7 @@ export default defineFixtures<
 						format: "mp3",
 						bitrate: 192,
 						artist: "Kalomi",
-						title: "Midnight Echo",
-						mixName: "Original Mix",
+						title: "Midnight Echo (Original Mix)",
 						sampleRate: 44_100,
 						durationMs: 318_000,
 						size: 7_600_000,
@@ -1685,6 +1641,25 @@ export default defineFixtures<
 			cancel: () => undefined,
 			retry: () => undefined,
 			clear: () => undefined,
+		},
+		connectedApps: {
+			list: () => [
+				{
+					id: "grant-1",
+					name: "Claude",
+					uri: "https://claude.ai",
+					scopes: ["mcp", "offline_access"],
+					connectedAt: new Date(Date.now() - 12 * 86_400_000),
+				},
+				{
+					id: "grant-2",
+					name: "Inspector",
+					uri: null,
+					scopes: ["mcp"],
+					connectedAt: null,
+				},
+			],
+			revoke: () => undefined,
 		},
 		wishlist: {
 			list: ({ offset = 0, limit = 200 }) => ({

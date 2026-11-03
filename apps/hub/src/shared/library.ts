@@ -38,7 +38,6 @@ export type ListRow = {
 	id: string;
 	title: string | null;
 	artist: string | null;
-	mixName: string | null;
 	bpm: number | null;
 	key: string | null;
 	genre: string | null;

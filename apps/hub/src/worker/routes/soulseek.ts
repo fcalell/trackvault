@@ -9,6 +9,7 @@ import {
 	inArray,
 	notInArray,
 } from "@fcalell/plugin-db/orm";
+import { composeTitle } from "@trackvault/core/normalize";
 import {
 	downloads,
 	searchResults,
@@ -80,7 +81,6 @@ const resultRow = z.object({
 	freeSlot: z.boolean(),
 	artist: z.string().nullable(),
 	title: z.string().nullable(),
-	mixName: z.string().nullable(),
 	score: z.number(),
 	rejected: z.boolean(),
 	// The best of the search that the ranking did not turn down.
@@ -267,8 +267,7 @@ export const soulseek = {
 					queueLength: r.queueLength,
 					freeSlot: r.freeSlot,
 					artist: r.artist,
-					title: r.title,
-					mixName: r.mix,
+					title: r.title === null ? null : composeTitle(r.title, r.mix),
 					score: r.score,
 					rejected: r.rejected,
 					recommended: r.pos === 0 && !r.rejected,

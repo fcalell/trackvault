@@ -41,5 +41,5 @@ export function useListPlay(read: ListRead | undefined) {
 			onAct: () => (here ? player.toggle() : play(row)),
 		};
 	};
-	return { play, act };
+	return { play, act, playing: current.track?.key };
 }

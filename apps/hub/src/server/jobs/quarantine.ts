@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "@fcalell/plugin-db/orm";
 import { files } from "../../schema/index.ts";
+import { openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { type FileMove, moveTracked } from "../lib/file-ops.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
@@ -81,19 +82,20 @@ export default defineJob<QuarantinePayload, QuarantineResult>({
 					]
 				: [],
 		);
+		const info = {
+			batchId: id,
+			origin: "ui" as const,
+			label: payload.label ?? "Quarantine",
+		};
+		openBatch(info);
 		progress(0, moves.length, "Moving files to the quarantine");
 		const release = await acquireFs(signal);
 		try {
-			const moved = await moveTracked(
-				root,
-				moves,
-				{ batchId: id, origin: "ui", label: payload.label ?? "Quarantine" },
-				{
-					signal,
-					progress: (done) =>
-						progress(done, moves.length, "Moving files to the quarantine"),
-				},
-			);
+			const moved = await moveTracked(root, moves, info, {
+				signal,
+				progress: (done) =>
+					progress(done, moves.length, "Moving files to the quarantine"),
+			});
 			await removeEmptyFolders(
 				root,
 				moves.map((move) => move.from),

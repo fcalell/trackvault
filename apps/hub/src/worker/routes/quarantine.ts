@@ -61,7 +61,6 @@ export const quarantine = {
 					at: files.quarantinedAt,
 					title: tracks.title,
 					artist: tracks.artist,
-					mixName: tracks.mixName,
 				})
 				.from(files)
 				.leftJoin(tracks, eq(tracks.id, files.trackId))
@@ -89,7 +88,6 @@ export const quarantine = {
 					id: String(row.id),
 					title: row.title,
 					artist: row.artist,
-					mixName: row.mixName,
 					originalPath: row.originalPath ?? row.path,
 					size: row.size,
 					batchId: batchId && reasons.has(batchId) ? batchId : null,

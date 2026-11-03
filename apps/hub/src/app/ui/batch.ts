@@ -16,3 +16,13 @@ export async function queuedBatch<Job extends { id: string }>(
 	batchToast(job, sentence);
 	return job;
 }
+
+// An act that answers with the batch it wrote, or none when nothing changed.
+export function namedBatch(
+	answer: { batch: string | null },
+	sentence: string,
+	nothing: string,
+): void {
+	if (answer.batch) batchToast({ id: answer.batch }, sentence);
+	else toast(nothing);
+}

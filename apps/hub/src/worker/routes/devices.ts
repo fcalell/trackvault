@@ -74,7 +74,6 @@ const conflictView = z.object({
 	refId: z.string(),
 	// A track's title and mix name and its artist; a playlist's name is the title.
 	title: z.string(),
-	mixName: z.string().nullable(),
 	artist: z.string().nullable(),
 	field: z.string().nullable(),
 	deviceValue: z.string().nullable(),
@@ -339,7 +338,7 @@ export const devices = {
 				`SELECT c.id, c.device_id AS deviceId, coalesce(d.name, 'Device') AS device, c.entity, c.ref_id AS refId,
 					c.field, c.device_value AS deviceValue, c.hub_value AS hubValue, c.winner, c.at,
 					CASE c.entity WHEN 'track' THEN coalesce(t.title, 'Untitled') ELSE coalesce(p.name, 'Playlist') END AS title,
-					t.mix_name AS mixName, t.artist AS artist
+					t.artist AS artist
 				 FROM conflicts c LEFT JOIN devices d ON d.id = c.device_id
 				 LEFT JOIN tracks t ON c.entity = 'track' AND t.id = c.ref_id
 				 LEFT JOIN playlists p ON c.entity = 'playlist' AND p.id = c.ref_id
@@ -360,7 +359,6 @@ export const devices = {
 				winner: "device" | "hub";
 				at: number;
 				title: string;
-				mixName: string | null;
 				artist: string | null;
 			}>;
 			const total = (
@@ -376,7 +374,6 @@ export const devices = {
 					entity: row.entity,
 					refId: row.refId,
 					title: row.title,
-					mixName: row.mixName,
 					artist: row.artist,
 					field: row.field,
 					...sides(row),

@@ -12,12 +12,9 @@ export interface TrackFacts {
 	hasArt?: boolean;
 }
 
-// "Title (Mix)": the name a track goes by on every screen.
-export const trackTitle = (track: {
-	title: string | null;
-	mixName: string | null;
-}): string =>
-	`${track.title ?? "Untitled"}${track.mixName ? ` (${track.mixName})` : ""}`;
+// The name a track goes by on every screen: its stored title, which carries the mix.
+export const trackTitle = (track: { title: string | null }): string =>
+	track.title ?? "Untitled";
 
 // The one track row: its title with the mix, the artist under it (and a sentence
 // about it after the artist), and the leading mark, facts, trailing and acts the
@@ -25,7 +22,6 @@ export const trackTitle = (track: {
 export function trackRow(
 	track: {
 		title: string | null;
-		mixName: string | null;
 		artist: string | null;
 	},
 	row: Omit<RowItem, "title" | "line"> & { note?: string },

@@ -21,7 +21,6 @@ import {
 	libraryWhere,
 	prepareQuery,
 } from "../../server/lib/library-query.ts";
-import { labelOf } from "../../server/lib/selection.ts";
 import { readSettings } from "../../server/lib/settings.ts";
 import { TAG_KEYS } from "../../server/lib/track-fields.ts";
 import { enqueue } from "../../server/services/jobs.ts";
@@ -119,12 +118,23 @@ export const bulk = {
 					]);
 			}
 			const changes: Array<{
-				key: string;
-				label: string;
+				id: string;
+				entity: string;
+				entityId: string;
+				title: string | null;
+				artist: string | null;
 				field: string;
 				before: string | null;
 				after: string | null;
 			}> = [];
+			const onTrack = (row: (typeof rows)[number], key: string) => ({
+				id: `${row.id}:${key}`,
+				entity: "track",
+				entityId: row.id,
+				title: row.title,
+				artist: row.artist,
+				field: key,
+			});
 			let touched = 0;
 			for (const row of rows) {
 				let any = false;
@@ -138,9 +148,7 @@ export const bulk = {
 					if (next === was) continue;
 					any = true;
 					changes.push({
-						key: `${row.id}:${key}`,
-						label: labelOf(row),
-						field: key,
+						...onTrack(row, key),
 						before: word(was),
 						after: word(next),
 					});
@@ -154,9 +162,7 @@ export const bulk = {
 					if (next.size !== was.size || [...next].some((n) => !was.has(n))) {
 						any = true;
 						changes.push({
-							key: `${row.id}:tags`,
-							label: labelOf(row),
-							field: "tags",
+							...onTrack(row, "tags"),
 							before: [...was].sort().join(", ") || null,
 							after: [...next].sort().join(", ") || null,
 						});

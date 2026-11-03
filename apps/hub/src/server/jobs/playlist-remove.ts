@@ -1,4 +1,4 @@
-import { CHUNK } from "../lib/changes.ts";
+import { CHUNK, openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { defineJob } from "../lib/job.ts";
 import { getPlaylist, removeMembers } from "../lib/playlists.ts";
@@ -33,6 +33,7 @@ export default defineJob<PlaylistRemovePayload, { removed: number }>({
 			origin: "ui" as const,
 			label: `Remove from ${playlist.name}`,
 		};
+		openBatch(info);
 		let removed = 0;
 		progress(0, rows.length, "Removing tracks");
 		for (let i = 0; i < rows.length; i += CHUNK) {

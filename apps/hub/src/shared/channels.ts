@@ -81,7 +81,6 @@ export const transferViewSchema = z.object({
 	name: z.string(),
 	artist: z.string().nullable(),
 	title: z.string().nullable(),
-	mixName: z.string().nullable(),
 	format: z.string().nullable(),
 	bitrate: z.number().nullable(),
 	state: z.enum(transferStates),

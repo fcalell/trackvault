@@ -7,6 +7,7 @@ import {
 	count,
 	desc,
 	eq,
+	gt,
 	inArray,
 	isNotNull,
 	isNull,
@@ -26,7 +27,7 @@ const batchView = z.object({
 	count: z.number(),
 	at: z.date(),
 	undone: z.boolean(),
-	// A scan only reads the disk; its changes are not undone.
+	// A scan only reads the disk, and a run that changed nothing has nothing to put back.
 	undoable: z.boolean(),
 });
 
@@ -81,7 +82,7 @@ const asView = (row: typeof batches.$inferSelect) => ({
 	count: row.count,
 	at: row.at,
 	undone: row.undoneBy !== null,
-	undoable: row.origin !== "scan" && row.undoneBy === null,
+	undoable: row.origin !== "scan" && row.undoneBy === null && row.count > 0,
 });
 
 export const history = {
@@ -102,7 +103,9 @@ export const history = {
 		)
 		.query(({ input }) => {
 			const database = db();
+			// A run that changed nothing keeps its batch for the toast's link, not for the list.
 			const where = and(
+				gt(batches.count, 0),
 				input.q ? like(batches.label, `%${input.q}%`) : undefined,
 				input.origin ? like(batches.origin, `${input.origin}%`) : undefined,
 				input.state === "undone" ? isNotNull(batches.undoneBy) : undefined,
@@ -155,7 +158,6 @@ export const history = {
 					before: changes.before,
 					after: changes.after,
 					title: tracks.title,
-					mixName: tracks.mixName,
 					artist: tracks.artist,
 					playlist: playlists.name,
 				})
@@ -197,7 +199,6 @@ export const history = {
 				entity: row.entity,
 				entityId: row.entityId,
 				title: titleOf(row),
-				mixName: row.entity === "track" ? row.mixName : null,
 				artist: row.entity === "track" ? row.artist : null,
 				field: row.field,
 				before: describe(row.field, row.before, titles),

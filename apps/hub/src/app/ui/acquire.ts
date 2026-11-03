@@ -109,8 +109,5 @@ export const VERSION: Record<string, string> = {
 };
 
 // "Artist - Title (Mix)" of a want.
-export const wantName = (want: {
-	artist: string;
-	title: string;
-	mixName: string | null;
-}): string => `${want.artist} - ${trackTitle(want)}`;
+export const wantName = (want: { artist: string; title: string }): string =>
+	`${want.artist} - ${trackTitle(want)}`;

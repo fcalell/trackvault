@@ -11,6 +11,7 @@ import {
 	notInArray,
 	type SQL,
 } from "@fcalell/plugin-db/orm";
+import { composeTitle } from "@trackvault/core/normalize";
 import { makeWant } from "@trackvault/core/playlist-import";
 import {
 	inboxItems,
@@ -52,7 +53,6 @@ const wantRow = z.object({
 	id: z.number(),
 	artist: z.string(),
 	title: z.string(),
-	mixName: z.string().nullable(),
 	status: z.enum([
 		"wanted",
 		"searching",
@@ -82,8 +82,7 @@ const asRow = (
 ): z.infer<typeof wantRow> => ({
 	id: row.id,
 	artist: row.artist,
-	title: row.title,
-	mixName: row.mix,
+	title: composeTitle(row.title, row.mix),
 	status: row.status,
 	source: row.source,
 	sourceRef: row.sourceRef,

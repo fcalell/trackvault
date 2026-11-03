@@ -72,7 +72,6 @@ export const LIST_COLUMNS = {
 	id: tracks.id,
 	title: tracks.title,
 	artist: tracks.artist,
-	mixName: tracks.mixName,
 	bpm: tracks.bpm,
 	key: tracks.key,
 	genre: tracks.genre,

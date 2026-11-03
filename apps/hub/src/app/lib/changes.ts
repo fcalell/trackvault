@@ -35,17 +35,7 @@ export const FIELD_LABELS: Record<string, string> = {
 export const fieldLabel = (field: string): string =>
 	FIELD_LABELS[field] ?? field;
 
-// A row of a change table: a track, one field, what it was and what it becomes.
-export interface ChangeRow {
-	id: string;
-	label: string;
-	field: string;
-	before: string | null;
-	after: string | null;
-}
-
-// The columns every table of changes draws (preview of an edit, of rules, of the
-// organiser; a batch in the history): the track, the field, and the `change` cell.
+// The columns every table of changes draws: the field, and the `change` cell.
 const fieldColumns = <
 	T extends { field: string; before: string | null; after: string | null },
 >(): TableColumn<T>[] => [
@@ -63,22 +53,14 @@ const fieldColumns = <
 	},
 ];
 
-export const CHANGE_COLUMNS: TableColumn<ChangeRow>[] = [
-	{ key: "label", label: "Track", cell: (row) => row.label },
-	...fieldColumns<ChangeRow>(),
-];
-
-export const CHANGE_ROW = { id: (row: ChangeRow) => row.id };
-
-// A change the hub stored, as a batch of the history and a preview job list it: the
-// track (or the playlist) it was on, which the row links to, then the same field and
+// A change as a batch of the history, a preview job and an edit's preview list it: the
+// track (or the playlist) it was on, which the row links to, then the field and
 // change cells. A playlist's name is its `title`.
 export interface StoredChange {
 	id: string;
 	entity: string;
 	entityId: string;
 	title: string | null;
-	mixName: string | null;
 	artist: string | null;
 	field: string;
 	before: string | null;

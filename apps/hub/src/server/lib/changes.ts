@@ -109,6 +109,12 @@ export function ensureBatch(
 		.run();
 }
 
+// A job that writes a batch opens it before it reads anything, so the batch its act
+// linked to exists even when the run changes nothing (it then holds 0 changes).
+export function openBatch(info: BatchInfo): void {
+	db().transaction((tx) => ensureBatch(tx, info, 0, new Date()));
+}
+
 export interface ApplyResult {
 	// Tracks that changed.
 	tracks: number;

@@ -4,6 +4,7 @@ import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { createFileRoute } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
 import { STORED_CHANGE_COLUMNS, STORED_CHANGE_ROW } from "../../lib/changes.ts";
+import { queuedBatch } from "../../ui/batch.ts";
 import { count, date } from "../../ui/figures.ts";
 import { originLabel } from "../../ui/history.ts";
 
@@ -48,16 +49,17 @@ function Batch() {
 							? undefined
 							: each.undone
 								? "This batch was already undone"
-								: "A scan only reads the disk; there is nothing to undo",
+								: each.origin === "scan"
+									? "A scan only reads the disk; there is nothing to undo"
+									: "Nothing changed, so there is nothing to undo",
 					),
 					confirm: {
 						title: "Undo this batch?",
 						sentence:
 							"Each field goes back to what it was, unless it has changed since; files are tagged and moved back to match.",
 					},
-					onAct: () => undo.mutateAsync({ id: batchId }),
-					done: "Undoing the batch",
-					to: "/jobs",
+					onAct: () =>
+						queuedBatch(undo.mutateAsync({ id: batchId }), "Undoing the batch"),
 				},
 			]}
 		>

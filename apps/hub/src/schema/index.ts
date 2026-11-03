@@ -386,6 +386,11 @@ export const settings = sqliteTable(
 		analyseFillConfidence: integer("analyse_fill_confidence")
 			.notNull()
 			.default(70),
+		// The seconds of each track, from its middle, that analysis reads for BPM, key
+		// and energy; "whole" reads the entire track.
+		analyseWindow: text("analyse_window", { enum: ["60", "120", "whole"] })
+			.notNull()
+			.default("60"),
 		// -- R5 backups --
 		// Where database backups go (null: `backups/` beside the database file), the
 		// hour of the day (hub's local time) the daily one is taken, and how many to

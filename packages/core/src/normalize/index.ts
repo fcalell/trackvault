@@ -140,6 +140,15 @@ export function parseTitle(raw: string | null | undefined): ParsedTitle {
 	};
 }
 
+// The name a track goes by: its title with the mix in brackets, as DJs tag it.
+export function composeTitle(
+	title: string | null | undefined,
+	mixName: string | null | undefined,
+): string {
+	const base = title ?? "";
+	return mixName ? `${base} (${mixName})` : base;
+}
+
 // Two spellings of the plain version compare equal: no mix, "Original Mix".
 export function mixKey(mixName: string | null | undefined): string {
 	const key = fold(mixName);

@@ -17,7 +17,7 @@ import {
 	type StepOutcome,
 } from "@trackvault/core/inbox";
 import { ISSUE } from "@trackvault/core/issues";
-import { normalizeTrack } from "@trackvault/core/normalize";
+import { composeTitle, normalizeTrack } from "@trackvault/core/normalize";
 import { planMoves } from "@trackvault/core/organize";
 import { safeJoin } from "@trackvault/core/paths";
 import type { PlanField } from "@trackvault/core/providers";
@@ -178,10 +178,7 @@ export function identityOf(row: ItemRow): {
 	const named = parseCandidatePath(row.path);
 	return {
 		artist: String(tags.artist ?? named.artist ?? ""),
-		title: String(
-			tags.title ??
-				(named.mixName ? `${named.title} (${named.mixName})` : named.title),
-		),
+		title: String(tags.title ?? composeTitle(named.title, named.mixName)),
 	};
 }
 
@@ -452,9 +449,7 @@ const rules: Handler = async (row, env) => {
 		const named = parseCandidatePath(row.path);
 		const patch: RulePatch = {};
 		if (named.artist) patch.artist = named.artist;
-		patch.title = named.mixName
-			? `${named.title} (${named.mixName})`
-			: named.title;
+		patch.title = composeTitle(named.title, named.mixName);
 		addProposed(proposed, patch);
 		notes.push("tags read from the file name");
 	}

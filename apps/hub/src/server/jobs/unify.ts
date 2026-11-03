@@ -1,5 +1,5 @@
 import { resolveName } from "@trackvault/core/taxonomy";
-import { applyPatches, flushTagWrites } from "../lib/changes.ts";
+import { applyPatches, flushTagWrites, openBatch } from "../lib/changes.ts";
 import { defineJob } from "../lib/job.ts";
 import { PreviewWriter, text } from "../lib/previews.ts";
 import {
@@ -88,11 +88,9 @@ export default defineJob<UnifyPayload, UnifyResult>({
 			progress(total, total, `${result.tracks} tracks would change`);
 			return result;
 		}
-		const applied = applyPatches(
-			patches(),
-			{ batchId: id, origin: "rule", label: "Unify tags" },
-			{ signal },
-		);
+		const info = { batchId: id, origin: "rule" as const, label: "Unify tags" };
+		openBatch(info);
+		const applied = applyPatches(patches(), info, { signal });
 		result.tracks = applied.tracks;
 		result.fields = applied.fields;
 		const written = await flushTagWrites(id, {

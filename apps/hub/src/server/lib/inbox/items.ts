@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray } from "@fcalell/plugin-db/orm";
 import type { InboxStepId, StepResult } from "@trackvault/core/inbox";
-import { parseTitle } from "@trackvault/core/normalize";
+import {
+	composeTitle,
+	fold,
+	parseTitle,
+	splitArtists,
+} from "@trackvault/core/normalize";
+import { joinFeatures } from "@trackvault/core/rules";
 import type { TrackTags } from "@trackvault/core/tags";
 import { files, inboxItems, tracks } from "../../../schema/index.ts";
 import { db } from "../db.ts";
@@ -112,7 +118,6 @@ export function itemLabel(
 export function itemName(row: Pick<ItemRow, "tags" | "proposed" | "path">): {
 	artist: string | null;
 	title: string;
-	mixName: string | null;
 } {
 	const tags = effectiveTags(row);
 	const artist = typeof tags.artist === "string" ? tags.artist : null;
@@ -120,10 +125,21 @@ export function itemName(row: Pick<ItemRow, "tags" | "proposed" | "path">): {
 		return {
 			artist,
 			title: row.path.slice(row.path.lastIndexOf("/") + 1),
-			mixName: null,
 		};
 	const parsed = parseTitle(tags.title);
-	return { artist, title: parsed.base || tags.title, mixName: parsed.mixName };
+	// The title's "feat." credit is shown with the artist, as the cleanup rule files it.
+	const known = new Set(splitArtists(artist).map(fold));
+	const fresh = parsed.features.filter((name) => !known.has(fold(name)));
+	const credit = joinFeatures(fresh);
+	return {
+		artist:
+			fresh.length === 0
+				? artist
+				: artist
+					? `${artist} feat. ${credit}`
+					: credit,
+		title: composeTitle(parsed.base, parsed.mixName) || tags.title,
+	};
 }
 
 // The library tracks an item matched, with what the owner compares a copy by.
@@ -137,7 +153,6 @@ export function libraryCopies(matches: readonly MatchView[]) {
 				id: tracks.id,
 				artist: tracks.artist,
 				title: tracks.title,
-				mixName: tracks.mixName,
 				sampleRate: tracks.sampleRate,
 				durationMs: tracks.durationMs,
 				size: tracks.size,
@@ -172,7 +187,6 @@ export function libraryCopies(matches: readonly MatchView[]) {
 						bitrate: match.bitrate,
 						artist: track.artist,
 						title: track.title ?? "Untitled",
-						mixName: track.mixName,
 						sampleRate: track.sampleRate,
 						durationMs: track.durationMs,
 						size: track.size,

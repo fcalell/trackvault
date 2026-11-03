@@ -9,6 +9,7 @@ import {
 } from "@trackvault/core/organize";
 import { safeJoin } from "@trackvault/core/paths";
 import { files } from "../../schema/index.ts";
+import { openBatch } from "../lib/changes.ts";
 import { db } from "../lib/db.ts";
 import { type FileMove, moveTracked } from "../lib/file-ops.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
@@ -126,6 +127,8 @@ export default defineJob<OrganisePayload, OrganiseResult>({
 			return result;
 		}
 
+		const info = { batchId: id, origin: "ui" as const, label: "Organise" };
+		openBatch(info);
 		const release = await acquireFs(signal);
 		try {
 			const fileOf = new Map<string, number>();
@@ -159,15 +162,10 @@ export default defineJob<OrganisePayload, OrganiseResult>({
 					originalPath: null,
 				});
 			}
-			const moved = await moveTracked(
-				root,
-				queue,
-				{ batchId: id, origin: "ui", label: "Organise" },
-				{
-					signal,
-					progress: (done) => progress(done, queue.length, "Moving files"),
-				},
-			);
+			const moved = await moveTracked(root, queue, info, {
+				signal,
+				progress: (done) => progress(done, queue.length, "Moving files"),
+			});
 			result.moved = moved.moved;
 			result.failed = moved.failed;
 			result.errors = moved.errors;
