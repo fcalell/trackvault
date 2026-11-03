@@ -1,6 +1,6 @@
 # TrackVault design critique: the checklist
 
-Shots: `/home/user/trackvault/apps/hub/shots/<screen>/<state>-dark-1920.png`, each the whole
+Shots: `~/projects/trackvault/apps/hub/shots/<screen>/<state>-dark-1920.png`, each the whole
 screen at 1920 wide, dark, desktop density. Every screen has `data` and `empty`; loading, error
 and notFound are stack's frame forms (identical on every screen), so they were shot only for four
 representative screens (library, library/$trackId, settings, stats): answer C8a/C8c/D8/F9/F10 from
@@ -9,13 +9,13 @@ machine findings (axe, overflow, render walk, shift, per-read failures) per scre
 `.project_management/review/screens-run.log`.
 
 Sources:
-- Rules: `/home/user/stack/packages/ui-core/guide/voice.md` (V#),
-  `/home/user/stack/packages/ui-core/guide/structure.md` (S#),
-  `/home/user/stack/plugins/react-ui/guide/rules.md` (R),
-  `/home/user/stack/packages/ui-core/guide/critique.md` (C#, the stack checklist; sections A below are it).
-- Screens: `/home/user/trackvault/apps/hub/src/app/routes/**`, the shared parts in
+- Rules: `~/projects/stack/packages/ui-core/guide/voice.md` (V#),
+  `~/projects/stack/packages/ui-core/guide/structure.md` (S#),
+  `~/projects/stack/plugins/react-ui/guide/rules.md` (R),
+  `~/projects/stack/packages/ui-core/guide/critique.md` (C#, the stack checklist; sections A below are it).
+- Screens: `~/projects/trackvault/apps/hub/src/app/routes/**`, the shared parts in
   `src/app/lib/*.tsx` and `src/app/ui/*.ts`, fixtures in `src/app/fixtures.ts`.
-- Product: `/home/user/trackvault/.project_management/vision.md` (who uses it and for what).
+- Product: `~/projects/trackvault/.project_management/vision.md` (who uses it and for what).
 
 Every item is answered `yes`, `no` or `n/a (why)`. A `no` carries evidence: the shot file and the
 element (its visible text) or the source `file:line`, the observed value, the expected value from

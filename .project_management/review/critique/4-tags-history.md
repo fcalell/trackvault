@@ -5,8 +5,8 @@ Shots: dark, 1920 only. 320, touch and light mode are `n/a (not shot)` and not r
 Tags: **app** = TrackVault composition, **stack** = a roster component or a stack rule.
 
 ## Custom tags (/_app/tags)
-Shots read: /home/user/trackvault/apps/hub/shots/tags/data-1920.png, tags/empty-1920.png
-Source read: /home/user/trackvault/apps/hub/src/app/routes/_app/tags.tsx, routes/_app/route.tsx (places), worker/routes/tags.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/tags/data-1920.png, tags/empty-1920.png
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/_app/tags.tsx, routes/_app/route.tsx (places), worker/routes/tags.ts
 Machine findings (from the run log): none (axe, overflow, render walk, shift: all pass)
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -103,8 +103,8 @@ Top three:
 3. 956 px of blank canvas right of a 3-row 720 px sheet and nothing says what a custom tag is for or syncs to (stack for the reading cap, app for the missing purpose line).
 
 ## Genres (/_app/genres)
-Shots read: /home/user/trackvault/apps/hub/shots/genres/data-1920.png, genres/empty-1920.png
-Source read: /home/user/trackvault/apps/hub/src/app/routes/_app/genres.tsx, lib/preview.tsx, lib/changes.ts, worker/routes/taxonomy.ts, worker/routes/previews.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/genres/data-1920.png, genres/empty-1920.png
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/_app/genres.tsx, lib/preview.tsx, lib/changes.ts, worker/routes/taxonomy.ts, worker/routes/previews.ts
 Machine findings (from the run log): none (axe, overflow, render walk, shift: all pass)
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -201,8 +201,8 @@ Top three:
 3. Alias rows say only 'Alias': no count of tracks each spelling reaches, so the user cannot judge what a unify at 50k tracks touches before it runs (genres.tsx:141-150; app); mapping by picker applies at once with no toast.
 
 ## Aliases (/_app/aliases)
-Shots read: /home/user/trackvault/apps/hub/shots/aliases/data-1920.png, aliases/empty-1920.png
-Source read: /home/user/trackvault/apps/hub/src/app/routes/_app/aliases.tsx, lib/preview.tsx, worker/routes/taxonomy.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/aliases/data-1920.png, aliases/empty-1920.png
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/_app/aliases.tsx, lib/preview.tsx, worker/routes/taxonomy.ts
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -299,8 +299,8 @@ Top three:
 3. The merge act is a bare check glyph writing immediately, the canonical name is not among the shown spellings and cannot be chosen (aliases.tsx:38-49; app).
 
 ## History (/_app/history)
-Shots read: /home/user/trackvault/apps/hub/shots/history/data-1920.png, history/empty-1920.png (empty is Table's generic sentence)
-Source read: /home/user/trackvault/apps/hub/src/app/routes/_app/history.tsx, lib/changes.ts, worker/routes/history.ts, server/jobs/unify.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/history/data-1920.png, history/empty-1920.png (empty is Table's generic sentence)
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/_app/history.tsx, lib/changes.ts, worker/routes/history.ts, server/jobs/unify.ts
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -397,8 +397,8 @@ Top three:
 3. No way to find a batch at 50k scale: no search/filter by track, field, origin or date, no total, and a change row does not link to its track (app).
 
 ## One batch (/_app/history/$batchId)
-Shots read: /home/user/trackvault/apps/hub/shots/history/$batchId/data-1920.png, history/$batchId/empty-1920.png
-Source read: /home/user/trackvault/apps/hub/src/app/routes/_app/history.$batchId.tsx, lib/changes.ts, worker/routes/history.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/history/$batchId/data-1920.png, history/$batchId/empty-1920.png
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/_app/history.$batchId.tsx, lib/changes.ts, worker/routes/history.ts
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -495,8 +495,8 @@ Top three:
 3. Change rows cannot open their track and the table is a no-header 720 px list with the field as an afterthought ('Tech-House → Tech House · Genre') (app: `wide`, href; stack: change list form).
 
 ## Jobs (/_app/jobs)
-Shots read: /home/user/trackvault/apps/hub/shots/jobs/data-1920.png, jobs/empty-1920.png
-Source read: /home/user/trackvault/apps/hub/src/app/routes/_app/jobs.tsx, lib/live.ts, lib/jobs-effects.ts, routes/_app/route.tsx, fixtures.ts (JOBS), worker/routes/jobs.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/jobs/data-1920.png, jobs/empty-1920.png
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/_app/jobs.tsx, lib/live.ts, lib/jobs-effects.ts, routes/_app/route.tsx, fixtures.ts (JOBS), worker/routes/jobs.ts
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -593,8 +593,8 @@ Top three:
 3. Nothing outside this page shows that a job runs: the sidebar 'Jobs' place has no count, results do not link to History or the tracks (route.tsx; app).
 
 ## Sign in (/sign-in)
-Shots read: /home/user/trackvault/apps/hub/shots/sign-in/data-1920.png, sign-in/empty-1920.png (identical: a gate reads nothing)
-Source read: /home/user/trackvault/apps/hub/src/app/routes/sign-in.tsx, lib/oauth.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/sign-in/data-1920.png, sign-in/empty-1920.png (identical: a gate reads nothing)
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/sign-in.tsx, lib/oauth.ts
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -691,8 +691,8 @@ Top three:
 3. The disabled-form hint reads 'Type a value' (stack Form blocked reason) in place of 'Enter your email'.
 
 ## Connect a client (/connect/consent)
-Shots read: /home/user/trackvault/apps/hub/shots/connect/consent/data-1920.png, connect/consent/empty-1920.png (identical)
-Source read: /home/user/trackvault/apps/hub/src/app/routes/connect.consent.tsx, lib/oauth.ts, worker/mcp.ts:9
+Shots read: ~/projects/trackvault/apps/hub/shots/connect/consent/data-1920.png, connect/consent/empty-1920.png (identical)
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/connect.consent.tsx, lib/oauth.ts, worker/mcp.ts:9
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |
@@ -789,8 +789,8 @@ Top three:
 3. Copy is internal ('client', 'auto-tag', 'cover jobs') and the sister page says 'Deny' where this says 'Decline' (app).
 
 ## Choose an organization (/connect/organization)
-Shots read: /home/user/trackvault/apps/hub/shots/connect/organization/data-1920.png, connect/organization/empty-1920.png (identical)
-Source read: /home/user/trackvault/apps/hub/src/app/routes/connect.organization.tsx, lib/oauth.ts
+Shots read: ~/projects/trackvault/apps/hub/shots/connect/organization/data-1920.png, connect/organization/empty-1920.png (identical)
+Source read: ~/projects/trackvault/apps/hub/src/app/routes/connect.organization.tsx, lib/oauth.ts
 Machine findings (from the run log): none
 
 | Item | Answer | Evidence (shot + element or file:line, observed, expected, fix, app/stack) |

@@ -1,6 +1,6 @@
 # Audit 5: forms, frames, text, charts and the shared core (web side)
 
-Range `364a2c5^..HEAD` (21 commits). Paths are in /home/user/stack unless marked TV (= /home/user/trackvault/apps/hub/src/app). `pl-api` = plugins/api/src/read.ts.
+Range `364a2c5^..HEAD` (21 commits). Paths are in ~/projects/stack unless marked TV (= ~/projects/trackvault/apps/hub/src/app). `pl-api` = plugins/api/src/read.ts.
 Commits: a428f4b (lift/secret/BarChart labels/Stats frame, with the matching docs), 8406a86 (Form onChange, Section reads), 917d8fb (showcase screens), 3da976b (Text kind), 331b6ec + 6dc899b (Sheet after, Banner/empty sentence, secret Remove), 93de58e (player, Waveform, ink.ts), 98bd7f7 (docs).
 
 ## 1. Table

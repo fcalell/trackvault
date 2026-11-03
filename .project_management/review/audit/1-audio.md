@@ -1,6 +1,6 @@
 # Audit 1: audio, web and core (player, dock, Waveform, queues, Table key handoff)
 
-Stack at `/home/user/stack`, range `364a2c5^..HEAD`. All player/waveform code is new in range (no
+Stack at `~/projects/stack`, range `364a2c5^..HEAD`. All player/waveform code is new in range (no
 pre-range version). Commits: 93de58e (dock + Waveform + ui-core player/waveform, all of it),
 acf03bf (Table keys + the grid comment in player.tsx), 3da976b (QueueProvider, windowQueue),
 331b6ec (createPlayer store moved to ui-core for the phone: `Output`, `PlayerHost`), 6dc899b

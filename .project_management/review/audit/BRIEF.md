@@ -1,7 +1,7 @@
 # Audit brief: is stack's UI still a shared design system?
 
-Stack (`/home/user/stack`, the owner's framework) is a shared design system used by several apps.
-TrackVault (`/home/user/trackvault`, a DJ music library) was revamped onto it, and that revamp
+Stack (`~/projects/stack`, the owner's framework) is a shared design system used by several apps.
+TrackVault (`~/projects/trackvault`, a DJ music library) was revamped onto it, and that revamp
 changed stack's UI packages in the commit range `364a2c5^..HEAD` on master. The owner wants
 stack to hold no prop, branch or logic that exists only for one app's use case.
 
@@ -9,25 +9,25 @@ stack to hold no prop, branch or logic that exists only for one app's use case.
 repository.** Write only your report file (below).
 
 ## Read first
-- `/home/user/stack/docs/product.md` (the philosophy: a new public surface is the last resort;
+- `~/projects/stack/docs/product.md` (the philosophy: a new public surface is the last resort;
   plugins coordinate only through the typed slot graph; structural over local fixes).
-- `/home/user/stack/docs/architecture/overview.md`, `docs/architecture/plugin-authoring.md`,
+- `~/projects/stack/docs/architecture/overview.md`, `docs/architecture/plugin-authoring.md`,
   `docs/architecture/slot-catalog.md` (what a slot is, which exist).
-- `/home/user/stack/packages/ui-core/guide/structure.md` (component rules: no context that changes
+- `~/projects/stack/packages/ui-core/guide/structure.md` (component rules: no context that changes
   form, closed list of JS measures, etc.).
-- `/home/user/stack/plugins/react-ui/guide/rules.md` and the guide pages of your family.
+- `~/projects/stack/plugins/react-ui/guide/rules.md` and the guide pages of your family.
 
 ## Method
-1. Read the history of your files: `cd /home/user/stack && git log -p 364a2c5^..HEAD -- <your files>`
+1. Read the history of your files: `cd ~/projects/stack && git log -p 364a2c5^..HEAD -- <your files>`
    and `git diff 364a2c5^..HEAD -- <your files>`. The commits in range are listed by
    `git log --oneline 364a2c5^..HEAD`.
 2. Enumerate every prop, option, type field, slot, context, data mark (`data-*`), key handler,
    exported helper or code branch added or changed in that range in your files. Nothing in your
    files is skipped; small items can be grouped when they share a verdict.
 3. For each, find its callers:
-   - stack: the showcase (`/home/user/stack/apps/showcase`, `plugins/*/src/ui/showcase/`), other
-     plugins, the phone app (`/home/user/stack/apps/phone`);
-   - TrackVault: `grep -rn <name> /home/user/trackvault/apps --include=*.ts --include=*.tsx`
+   - stack: the showcase (`~/projects/stack/apps/showcase`, `plugins/*/src/ui/showcase/`), other
+     plugins, the phone app (`~/projects/stack/apps/phone`);
+   - TrackVault: `grep -rn <name> ~/projects/trackvault/apps --include=*.ts --include=*.tsx`
      (skip `node_modules`, `.stack`, `dist`).
    - and the docs that mention it (guide pages, `docs/`, JSDoc).
 4. Classify:

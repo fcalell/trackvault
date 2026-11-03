@@ -1,6 +1,6 @@
 # Audit 4: drag, drop, reorder and the sidebar
 
-Paths: S = /home/user/stack, RU = S/plugins/react-ui/src/ui, UC = S/packages/ui-core/src, TV = /home/user/trackvault/apps/hub/src/app.
+Paths: S = ~/projects/stack, RU = S/plugins/react-ui/src/ui, UC = S/packages/ui-core/src, TV = ~/projects/trackvault/apps/hub/src/app.
 Commits: 91685cb (drag/drop/reorder, row acts on a key), 1669c1b (nested places), a1ef4c7 (nested rails, fold chevron), 8406a86 (row trailing controls).
 Verdict summary: the model is general. Nothing in these files knows a track, a playlist or a DJ term in code. The findings are one functional gap (the menu floor under folded branches), type friction on `Picked`, TrackVault nouns in stack's docs and showcase, and a few nominal pieces.
 

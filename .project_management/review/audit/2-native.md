@@ -1,6 +1,6 @@
 # Audit 2: native-ui
 
-Range 364a2c5^..HEAD, `plugins/native-ui` (guide pages frames/controls/content/blocks skipped). Paths are under /home/user/stack/plugins/native-ui unless noted. TrackVault phone = /home/user/trackvault/apps/phone ("TV phone"); stack phone = /home/user/stack/apps/phone.
+Range 364a2c5^..HEAD, `plugins/native-ui` (guide pages frames/controls/content/blocks skipped). Paths are under ~/projects/stack/plugins/native-ui unless noted. TrackVault phone = ~/projects/trackvault/apps/phone ("TV phone"); stack phone = ~/projects/stack/apps/phone.
 
 Main commit for almost everything: 331b6ec (feat(plugin-native-ui): native player and dock, client-only apps of a remote server, web parity). Follow-ups: 6dc899b (headers on artwork, async queue tracks, Form secret Remove, Banner/Empty selections settle), 98bd7f7 (prop JSDoc, guide), 3da976b (Text role to kind, windowQueue; the web side).
 

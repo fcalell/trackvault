@@ -330,7 +330,7 @@ HEADER:  [LIBRARY]  [QUALITY]  [SETTINGS *active*]
 | ─────────────────────────────                                          |
 |                                                                        |
 | Library Path                                                           |
-| [/home/user/Music___________________________]  [BROWSE]                |
+| [~/projects/Music___________________________]  [BROWSE]                |
 |                                                                        |
 | Scans this folder and all subfolders for MP3 files.                    |
 |                                                                        |

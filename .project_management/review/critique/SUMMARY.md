@@ -3,7 +3,7 @@
 Run: one `stack screens test --all --state data,empty --mode dark --width 1920 --shots shots`
 (35 screens, 70 shots, all machine floors passed), one narrow run for loading/error/notFound on
 library, track record, settings and stats, and 1920x1080 viewport plus interaction shots (ticked
-rows, playing) from one `stack screens dev`. Shots: `/home/user/trackvault/apps/hub/shots/`
+rows, playing) from one `stack screens dev`. Shots: `~/projects/trackvault/apps/hub/shots/`
 (gitignored). Checklist: `CHECKLIST.md`. Group reports, item by item: `1-library.md`,
 `2-acquire.md`, `3-cleanup.md`, `4-tags-history.md`, `5-system.md`, `6-across.md`.
 
