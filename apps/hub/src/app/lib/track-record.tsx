@@ -1,6 +1,5 @@
 import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Card } from "@fcalell/plugin-react-ui/components/card";
-import { Columns } from "@fcalell/plugin-react-ui/components/columns";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Image } from "@fcalell/plugin-react-ui/components/image";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
@@ -213,107 +212,105 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					}}
 				/>
 			</Section>
-			<Columns fit="half">
-				<Section title="Cover" read={track}>
-					<Card>
-						{hasArt ? (
-							<Image
-								src={`/media/${encodeURIComponent(id)}/art?size=320`}
-								alt="Cover art"
-								fit="thumb"
-							/>
-						) : (
-							<Text kind="meta">
-								No cover is embedded. Fetch art looks one up.
-							</Text>
-						)}
-					</Card>
-				</Section>
-				<Section
-					title="Analysis"
-					items={track.at((each): Row[] => {
-						const found = each.analysis;
-						if (!found) return [];
-						const sure = (value: number | null): string[] =>
-							value === null ? [] : [`${value}% sure`];
-						const bpmDiffers =
-							found.bpm !== null &&
-							(each.bpm === null ||
-								Math.round(each.bpm) !== Math.round(found.bpm));
-						const keyDiffers =
-							found.key !== null &&
-							(each.key === null ||
-								each.key.toLowerCase() !== found.key.toLowerCase());
-						return [
-							{
-								key: "bpm",
-								label: "Tempo",
-								title: found.bpm ? `${bpm(found.bpm)} BPM` : "Not measured",
-								facts: [
-									...(bpmDiffers
-										? [each.bpm === null ? "No tag" : `Tag ${bpm(each.bpm)}`]
-										: []),
-									...sure(found.bpmConfidence),
-								],
-								...(bpmDiffers && found.bpm !== null
-									? {
-											act: {
-												icon: "Check" as const,
-												label: "Use analysis",
-												onAct: () =>
-													update.mutateAsync({ id, bpm: bpm(found.bpm) }),
-												done: "Tempo set. Undo the batch in History.",
-											},
-										}
-									: {}),
-							},
-							{
-								key: "key",
-								label: "Key",
-								title: found.key ?? "Not measured",
-								facts: [
-									...(keyDiffers
-										? [each.key ? `Tag ${each.key}` : "No tag"]
-										: []),
-									...sure(found.keyConfidence),
-								],
-								...(keyDiffers && found.key !== null
-									? {
-											act: {
-												icon: "Check" as const,
-												label: "Use analysis",
-												onAct: () => update.mutateAsync({ id, key: found.key }),
-												done: "Key set. Undo the batch in History.",
-											},
-										}
-									: {}),
-							},
-							{
-								key: "energy",
-								label: "Energy",
-								title: found.energy ? String(found.energy) : "Not measured",
-								facts: sure(found.energyConfidence),
-							},
-							{
-								key: "lufs",
-								label: "Loudness",
-								title:
-									found.lufs === null
-										? "Not measured"
-										: `${Math.round(found.lufs * 10) / 10} LUFS`,
-								facts:
-									found.loudnessRange === null
-										? []
-										: [`range ${Math.round(found.loudnessRange * 10) / 10} LU`],
-							},
-						];
-					})}
-					empty={{
-						sentence:
-							"Not analysed yet. Analyse measures tempo, key, energy and loudness.",
-					}}
-				/>
-			</Columns>
+			<Section title="Cover" read={track}>
+				<Card>
+					{hasArt ? (
+						<Image
+							src={`/media/${encodeURIComponent(id)}/art?size=320`}
+							alt="Cover art"
+							fit="thumb"
+						/>
+					) : (
+						<Text kind="meta">
+							No cover is embedded. Fetch art looks one up.
+						</Text>
+					)}
+				</Card>
+			</Section>
+			<Section
+				title="Analysis"
+				items={track.at((each): Row[] => {
+					const found = each.analysis;
+					if (!found) return [];
+					const sure = (value: number | null): string[] =>
+						value === null ? [] : [`${value}% sure`];
+					const bpmDiffers =
+						found.bpm !== null &&
+						(each.bpm === null ||
+							Math.round(each.bpm) !== Math.round(found.bpm));
+					const keyDiffers =
+						found.key !== null &&
+						(each.key === null ||
+							each.key.toLowerCase() !== found.key.toLowerCase());
+					return [
+						{
+							key: "bpm",
+							label: "Tempo",
+							title: found.bpm ? `${bpm(found.bpm)} BPM` : "Not measured",
+							facts: [
+								...(bpmDiffers
+									? [each.bpm === null ? "No tag" : `Tag ${bpm(each.bpm)}`]
+									: []),
+								...sure(found.bpmConfidence),
+							],
+							...(bpmDiffers && found.bpm !== null
+								? {
+										act: {
+											icon: "Check" as const,
+											label: "Use analysis",
+											onAct: () =>
+												update.mutateAsync({ id, bpm: bpm(found.bpm) }),
+											done: "Tempo set. Undo the batch in History.",
+										},
+									}
+								: {}),
+						},
+						{
+							key: "key",
+							label: "Key",
+							title: found.key ?? "Not measured",
+							facts: [
+								...(keyDiffers
+									? [each.key ? `Tag ${each.key}` : "No tag"]
+									: []),
+								...sure(found.keyConfidence),
+							],
+							...(keyDiffers && found.key !== null
+								? {
+										act: {
+											icon: "Check" as const,
+											label: "Use analysis",
+											onAct: () => update.mutateAsync({ id, key: found.key }),
+											done: "Key set. Undo the batch in History.",
+										},
+									}
+								: {}),
+						},
+						{
+							key: "energy",
+							label: "Energy",
+							title: found.energy ? String(found.energy) : "Not measured",
+							facts: sure(found.energyConfidence),
+						},
+						{
+							key: "lufs",
+							label: "Loudness",
+							title:
+								found.lufs === null
+									? "Not measured"
+									: `${Math.round(found.lufs * 10) / 10} LUFS`,
+							facts:
+								found.loudnessRange === null
+									? []
+									: [`range ${Math.round(found.loudnessRange * 10) / 10} LU`],
+						},
+					];
+				})}
+				empty={{
+					sentence:
+						"Not analysed yet. Analyse measures tempo, key, energy and loudness.",
+				}}
+			/>
 			<Section
 				title="Issues"
 				items={track.at((each) =>

@@ -1,5 +1,6 @@
 import { useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Banner } from "@fcalell/plugin-react-ui/components/banner";
+import { Card } from "@fcalell/plugin-react-ui/components/card";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { Act } from "@fcalell/plugin-react-ui/lib/act";
@@ -74,24 +75,26 @@ export function PreviewSection({
 	const latest = orpc.previews.latest.read({ kind });
 	return (
 		<Section title={title} read={latest} empty={{ sentence: none }}>
-			<Banner
-				tone={latest.at((each) => (each ? TONES[each.job.state] : "idle"))}
-				sentence={latest.at((each) =>
-					each
-						? said(
-								each.job,
-								each.result as Record<string, number> | null,
-								words,
-							)
-						: undefined,
-				)}
-				act={latest.at((each) =>
-					each?.job.state === "done" &&
-					changes((each.result ?? {}) as Record<string, number>) > 0
-						? apply
-						: undefined,
-				)}
-			/>
+			<Card>
+				<Banner
+					tone={latest.at((each) => (each ? TONES[each.job.state] : "idle"))}
+					sentence={latest.at((each) =>
+						each
+							? said(
+									each.job,
+									each.result as Record<string, number> | null,
+									words,
+								)
+							: undefined,
+					)}
+					act={latest.at((each) =>
+						each?.job.state === "done" &&
+						changes((each.result ?? {}) as Record<string, number>) > 0
+							? apply
+							: undefined,
+					)}
+				/>
+			</Card>
 			<PreviewRows kind={kind} />
 		</Section>
 	);
