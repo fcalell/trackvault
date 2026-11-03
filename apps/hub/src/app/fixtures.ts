@@ -998,6 +998,7 @@ export default defineFixtures<
 				most: [1, 2, 3].map((at) => ({
 					id: `track-${at}`,
 					title: TITLES[at % TITLES.length] ?? null,
+					mixName: "Original Mix",
 					artist: ARTISTS[at % ARTISTS.length] ?? null,
 					playCount: 60 - at * 9,
 					lastPlayedAt: Date.now() - at * 86_400_000,
@@ -1005,6 +1006,7 @@ export default defineFixtures<
 				least: [4, 5].map((at) => ({
 					id: `track-${at}`,
 					title: TITLES[at % TITLES.length] ?? null,
+					mixName: "Original Mix",
 					artist: ARTISTS[at % ARTISTS.length] ?? null,
 					playCount: 1,
 					lastPlayedAt: Date.now() - at * 40 * 86_400_000,
