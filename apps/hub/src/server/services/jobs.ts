@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, lt } from "@fcalell/plugin-db/orm";
 import type { ChannelHandle } from "@fcalell/plugin-node/server";
 import { defineService, loadModules } from "@fcalell/plugin-node/server";
-import { jobs } from "../../schema/index.ts";
+import { batches, jobs } from "../../schema/index.ts";
 import { type JobView, jobsChannel } from "../../shared/channels.ts";
 import { db } from "../lib/db.ts";
 import type { AnyJob, JobDefinition } from "../lib/job.ts";
@@ -37,6 +37,19 @@ let stopping = false;
 
 const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
 
+// A finished job names the batch it wrote under its own id.
+function wroteBatch(row: JobRow): boolean {
+	return (
+		row.state !== "queued" &&
+		row.state !== "running" &&
+		db()
+			.select({ id: batches.id })
+			.from(batches)
+			.where(eq(batches.id, row.id))
+			.get() !== undefined
+	);
+}
+
 function viewOf(row: JobRow): JobView {
 	const running = live.get(row.id);
 	return {
@@ -50,6 +63,7 @@ function viewOf(row: JobRow): JobView {
 		createdAt: row.createdAt.toISOString(),
 		startedAt: iso(row.startedAt),
 		finishedAt: iso(row.finishedAt),
+		batch: wroteBatch(row),
 	};
 }
 
@@ -116,6 +130,13 @@ export function recentJobs(limit = SNAPSHOT_SIZE): JobView[] {
 export function getJob(id: string): JobView | undefined {
 	const row = readRow(id);
 	return row ? viewOf(row) : undefined;
+}
+
+// Queues a finished job again with the payload it ran with.
+export function retryJob(id: string): JobView | undefined {
+	const row = readRow(id);
+	const definition = row && registry.get(row.kind);
+	return row && definition ? enqueue(definition, row.payload) : undefined;
 }
 
 // Cancels a queued job at once, and a running one through its signal.

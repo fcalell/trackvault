@@ -27,6 +27,7 @@ const job = (kind: string, state: "done" | "running", at: number) => ({
 	createdAt: minutes(at),
 	startedAt: minutes(at),
 	finishedAt: minutes(at - 1),
+	batch: false,
 });
 
 const CHANGE_ROWS = [
@@ -101,6 +102,7 @@ const JOBS = [
 		createdAt: minutes(2),
 		startedAt: minutes(2),
 		finishedAt: null,
+		batch: false,
 	},
 	{
 		id: "job-2",
@@ -113,6 +115,7 @@ const JOBS = [
 		createdAt: minutes(40),
 		startedAt: minutes(40),
 		finishedAt: minutes(39),
+		batch: true,
 	},
 	{
 		id: "job-1",
@@ -125,6 +128,7 @@ const JOBS = [
 		createdAt: minutes(300),
 		startedAt: minutes(300),
 		finishedAt: minutes(300),
+		batch: false,
 	},
 	{
 		id: "job-offsite",
@@ -137,6 +141,7 @@ const JOBS = [
 		createdAt: minutes(25),
 		startedAt: minutes(25),
 		finishedAt: null,
+		batch: false,
 	},
 	{
 		id: "job-backup",
@@ -149,6 +154,7 @@ const JOBS = [
 		createdAt: minutes(120),
 		startedAt: minutes(120),
 		finishedAt: minutes(119),
+		batch: false,
 	},
 ];
 
