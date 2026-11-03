@@ -60,7 +60,13 @@ export const TRACK_COLUMNS: TableColumn<ListRow>[] = [
 		sortable: true,
 		cell: (row) => bpm(row.bpm),
 	},
-	{ key: "key", label: "Key", sortable: true, cell: (row) => row.key },
+	{
+		key: "key",
+		label: "Key",
+		width: "measure-short",
+		sortable: true,
+		cell: (row) => row.key,
+	},
 	{ key: "genre", label: "Genre", sortable: true, cell: (row) => row.genre },
 	{
 		key: "rating",
@@ -80,6 +86,7 @@ export const TRACK_COLUMNS: TableColumn<ListRow>[] = [
 	{
 		key: "bitrate",
 		label: "Quality",
+		width: "measure-short",
 		sortable: true,
 		hidden: true,
 		cell: (row) => bitrate(row.format, row.bitrate),
