@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
+import { queuedBatch } from "../../ui/batch.ts";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/aliases")({
@@ -115,9 +116,11 @@ function Aliases() {
 							sentence:
 								"The artist and label of every track in the preview are rewritten to their canonical spelling, in the library and in each file's tags. Genres are not touched. Undo the batch in History.",
 						},
-						onAct: () => apply.mutateAsync({ fields: ["artist", "label"] }),
-						done: "Tidying the spellings",
-						to: "/jobs",
+						onAct: () =>
+							queuedBatch(
+								apply.mutateAsync({ fields: ["artist", "label"] }),
+								"Tidying the spellings",
+							),
 					}}
 				/>
 			}
@@ -150,6 +153,7 @@ function Aliases() {
 				title="Spelling preview"
 				none="Preview tidying the spellings to see which tracks would change."
 				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
+				changes={(result) => result.tracks ?? 0}
 			/>
 		</Pane>
 	);

@@ -1,7 +1,15 @@
 import { procedure } from "virtual:stack-procedure";
 import { selectionWhere } from "@fcalell/plugin-api/lib/selection";
 import { selector, z } from "@fcalell/plugin-api/schema";
-import { and, asc, count, eq, gte, sql } from "@fcalell/plugin-db/orm";
+import {
+	and,
+	asc,
+	eq,
+	gte,
+	inArray,
+	type SQL,
+	sql,
+} from "@fcalell/plugin-db/orm";
 import {
 	proposals,
 	settings as settingsTable,
@@ -15,8 +23,39 @@ import { enqueue } from "../../server/services/jobs.ts";
 import { jobViewSchema } from "../../shared/channels.ts";
 import { AUTOTAG_POLICIES, PROPOSAL_VIEWS } from "../../shared/intelligence.ts";
 
-const query = z.object({ state: z.enum(PROPOSAL_VIEWS).default("pending") });
+// A review view: a state, the proposals of one source, those at or above a confidence
+// (percent). A row of the review is a track, so a selection is of track ids.
+const query = z.object({
+	state: z.enum(PROPOSAL_VIEWS).default("pending"),
+	source: z.string().optional(),
+	confidence: z.number().int().min(0).max(100).optional(),
+});
+type Query = z.infer<typeof query>;
 const pick = selector(query);
+const choice = z.object({ proposals: pick, within: query });
+
+// The proposals a view holds; waiting ones include those accepted and not yet applied.
+const viewWhere = (view: Query): SQL | undefined =>
+	and(
+		view.state === "pending"
+			? sql`${proposals.state} IN ('pending', 'accepted')`
+			: eq(proposals.state, view.state),
+		view.source ? eq(proposals.source, view.source) : undefined,
+		view.confidence === undefined
+			? undefined
+			: gte(proposals.confidence, view.confidence / 100),
+	);
+
+// The waiting proposals of the tracks a choice names, within the view it was made in.
+const chosenWhere = (input: z.infer<typeof choice>): SQL | undefined =>
+	and(
+		eq(proposals.state, "pending"),
+		viewWhere(input.within),
+		selectionWhere(input.proposals, {
+			id: proposals.trackId,
+			where: viewWhere,
+		}),
+	);
 
 const mask = (secret: string | null): string | null =>
 	secret
@@ -134,7 +173,7 @@ export const autotag = {
 			return settingsOf();
 		}),
 
-	// How many proposals wait, per state.
+	// How many tracks each state holds.
 	summary: procedure({ auth: true, reads: ["proposals"] })
 		.output(
 			z.object({
@@ -145,104 +184,112 @@ export const autotag = {
 			}),
 		)
 		.query(() => {
-			const rows = db()
-				.select({ state: proposals.state, n: count() })
-				.from(proposals)
-				.groupBy(proposals.state)
-				.all();
-			const n = (state: string): number =>
-				rows
-					.filter((row) =>
-						state === "pending"
-							? row.state === "pending" || row.state === "accepted"
-							: row.state === state,
-					)
-					.reduce((sum, row) => sum + row.n, 0);
+			const tracksIn = (state: Query["state"]): number =>
+				db()
+					.select({ n: sql<number>`count(distinct ${proposals.trackId})` })
+					.from(proposals)
+					.where(viewWhere({ state }))
+					.get()?.n ?? 0;
 			return {
-				pending: n("pending"),
-				applied: n("applied"),
-				rejected: n("rejected"),
-				stale: n("stale"),
+				pending: tracksIn("pending"),
+				applied: tracksIn("applied"),
+				rejected: tracksIn("rejected"),
+				stale: tracksIn("stale"),
 			};
 		}),
 
-	// The proposals to review, a window, tracks in name order with their fields together.
+	// The tracks to review, a window in name order, each with its proposed fields together.
 	list: procedure({
 		auth: true,
 		paginated: "window",
 		maxLimit: 200,
-		reads: ["proposals"],
+		reads: ["proposals", "tracks"],
 	})
 		.input(query)
 		.query(({ input }) => {
 			const database = db();
-			const where =
-				input.state === "pending"
-					? sql`${proposals.state} IN ('pending', 'accepted')`
-					: eq(proposals.state, input.state);
-			const data = database
-				.select({
-					row: proposals,
-					title: tracks.title,
-					mixName: tracks.mixName,
-					artist: tracks.artist,
-				})
+			const where = viewWhere(input);
+			const page = database
+				.select({ trackId: proposals.trackId })
 				.from(proposals)
-				.leftJoin(tracks, eq(tracks.id, proposals.trackId))
 				.where(where)
-				.orderBy(sql`${proposals.label} collate nocase`, asc(proposals.id))
+				.groupBy(proposals.trackId)
+				.orderBy(
+					sql`min(${proposals.label}) collate nocase`,
+					asc(proposals.trackId),
+				)
 				.limit(input.limit)
 				.offset(input.offset)
 				.all()
-				.map(({ row, title, mixName, artist }) => ({
-					id: String(row.id),
-					trackId: row.trackId,
-					title,
-					mixName,
-					artist,
-					field: row.field,
-					before: row.before,
-					after: row.after,
-					source: row.source,
-					sourceUrl: row.sourceUrl,
-					confidence: Math.round(row.confidence * 100),
-					state: row.state,
-					alternatives: (
-						(row.alternatives ?? []) as Array<{
-							value: string;
-							source: string;
-						}>
-					)
-						.map((each) => `${each.value} (${each.source})`)
-						.join(", "),
-				}));
+				.map((row) => row.trackId);
+			const rows = page.length
+				? database
+						.select({
+							id: proposals.id,
+							trackId: proposals.trackId,
+							title: tracks.title,
+							artist: tracks.artist,
+							mixName: tracks.mixName,
+							field: proposals.field,
+							before: proposals.before,
+							after: proposals.after,
+							source: proposals.source,
+							confidence: proposals.confidence,
+							alternatives: proposals.alternatives,
+						})
+						.from(proposals)
+						.innerJoin(tracks, eq(tracks.id, proposals.trackId))
+						.where(and(where, inArray(proposals.trackId, page)))
+						.orderBy(asc(proposals.id))
+						.all()
+				: [];
+			const data = page.flatMap((trackId) => {
+				const own = rows.filter((row) => row.trackId === trackId);
+				const first = own[0];
+				return first
+					? [
+							{
+								id: trackId,
+								title: first.title,
+								artist: first.artist,
+								mixName: first.mixName,
+								proposals: own.map((row) => ({
+									field: row.field,
+									before: row.before,
+									after: row.after,
+									source: row.source,
+									confidence: Math.round(row.confidence * 100),
+									alternatives: (
+										(row.alternatives ?? []) as Array<{
+											value: string;
+											source: string;
+										}>
+									)
+										.map((each) => `${each.value} (${each.source})`)
+										.join(", "),
+								})),
+							},
+						]
+					: [];
+			});
 			const total =
-				database.select({ n: count() }).from(proposals).where(where).get()?.n ??
-				0;
+				database
+					.select({ n: sql<number>`count(distinct ${proposals.trackId})` })
+					.from(proposals)
+					.where(where)
+					.get()?.n ?? 0;
 			return { data, total, offset: input.offset };
 		}),
 
-	// Accepts the chosen proposals; they are applied as one batch.
+	// Accepts the proposals of the chosen tracks; they are applied as one batch.
 	accept: procedure({ auth: true, writes: ["proposals", "jobs"] })
-		.input(z.object({ proposals: pick }))
+		.input(choice)
 		.output(jobViewSchema)
 		.mutation(({ input }) => {
 			db()
 				.update(proposals)
 				.set({ state: "accepted" })
-				.where(
-					and(
-						eq(proposals.state, "pending"),
-						selectionWhere(input.proposals, {
-							id: proposals.id,
-							where: (q) =>
-								eq(
-									proposals.state,
-									q.state === "pending" ? "pending" : q.state,
-								),
-						}),
-					),
-				)
+				.where(chosenWhere(input))
 				.run();
 			return queued();
 		}),
@@ -266,25 +313,13 @@ export const autotag = {
 		}),
 
 	reject: procedure({ auth: true, writes: ["proposals"] })
-		.input(z.object({ proposals: pick }))
+		.input(choice)
 		.output(z.object({ rejected: z.number() }))
 		.mutation(({ input }) => {
 			const r = db()
 				.update(proposals)
 				.set({ state: "rejected" })
-				.where(
-					and(
-						eq(proposals.state, "pending"),
-						selectionWhere(input.proposals, {
-							id: proposals.id,
-							where: (q) =>
-								eq(
-									proposals.state,
-									q.state === "pending" ? "pending" : q.state,
-								),
-						}),
-					),
-				)
+				.where(chosenWhere(input))
 				.run();
 			return { rejected: r.changes };
 		}),

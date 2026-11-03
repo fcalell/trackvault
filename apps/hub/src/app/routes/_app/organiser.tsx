@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { ORGANISER_PRESETS } from "../../../shared/organiser.ts";
 import { orpc } from "../../lib/api.ts";
 import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
+import { queuedBatch } from "../../ui/batch.ts";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/organiser")({
@@ -16,7 +17,8 @@ export const Route = createFileRoute("/_app/organiser")({
 // go (moves, name collisions, files already in place), and the job that moves them.
 function Organiser() {
 	const organiser = orpc.organiser.get.read();
-	const save = useMutation(orpc.organiser.save.mutationOptions());
+	const plan = useMutation(orpc.organiser.preview.mutationOptions());
+	const apply = useMutation(orpc.organiser.apply.mutationOptions());
 	return (
 		<Pane
 			title="Organiser"
@@ -46,10 +48,11 @@ function Organiser() {
 						},
 						onAct: async () => {
 							const { template } = await orpc.organiser.get.call();
-							return orpc.organiser.apply.call({ template });
+							return queuedBatch(
+								apply.mutateAsync({ template }),
+								"Moving the files",
+							);
 						},
-						done: "Moving files",
-						to: "/jobs",
 					}}
 				/>
 			}
@@ -59,10 +62,10 @@ function Organiser() {
 				description="Where each file lives under the library folder."
 			>
 				<Form
-					act={orpc.organiser.save}
+					act={orpc.organiser.preview}
 					values={organiser.at((each) => ({ template: each.template }))}
 					commit="field"
-					submit={{ done: "Template saved" }}
+					submit={{ done: "Template saved, planning the moves" }}
 					fields={{
 						template: {
 							label: "Template",
@@ -82,8 +85,8 @@ function Organiser() {
 					act: {
 						icon: "Check" as const,
 						label: `Use ${preset.label}`,
-						onAct: () => save.mutateAsync({ template: preset.template }),
-						done: "Template set",
+						onAct: () => plan.mutateAsync({ template: preset.template }),
+						done: "Template set, planning the moves",
 					},
 				}))}
 			/>
@@ -94,6 +97,7 @@ function Organiser() {
 				words={(result) =>
 					`${count(result.moves ?? 0)} files would move, ${count(result.collisions ?? 0)} take a numbered name, ${count(result.unchanged ?? 0)} are already in place.`
 				}
+				changes={(result) => result.moves ?? 0}
 			/>
 		</Pane>
 	);

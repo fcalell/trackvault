@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { PreviewFoot, PreviewSection } from "../../lib/preview.tsx";
+import { queuedBatch } from "../../ui/batch.ts";
 import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/rules")({
@@ -132,9 +133,7 @@ function Rules() {
 							sentence:
 								"The tags in the preview are rewritten in the library and in each file. Undo the batch in History.",
 						},
-						onAct: () => apply.mutateAsync(),
-						done: "Applying the rules",
-						to: "/jobs",
+						onAct: () => queuedBatch(apply.mutateAsync(), "Applying the rules"),
 					}}
 				/>
 			}
@@ -162,10 +161,13 @@ function Rules() {
 				title="Preview"
 				none="Preview the rules to see what they would change in the library."
 				words={(result) =>
-					result.tracks === 0
-						? `The rules change nothing in ${count(result.scanned ?? 0)} tracks.`
-						: `${count(result.tracks ?? 0)} tracks would change, ${count(result.fields ?? 0)} tags in all.`
+					result.rules === 0
+						? "No rule is switched on."
+						: result.tracks === 0
+							? `The rules change nothing in ${count(result.scanned ?? 0)} tracks.`
+							: `${count(result.tracks ?? 0)} tracks would change, ${count(result.fields ?? 0)} tags in all.`
 				}
+				changes={(result) => result.tracks ?? 0}
 			/>
 		</Pane>
 	);

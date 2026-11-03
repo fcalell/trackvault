@@ -18,7 +18,12 @@ const COMPLETENESS_FIELDS = [
 	"isrc",
 ] as const;
 
-export function tagCompleteness(facts: TrackFacts): number {
+// The most tagCompleteness counts: the tags above and the cover.
+export const COMPLETENESS_SLOTS = COMPLETENESS_FIELDS.length + 1;
+
+export function tagCompleteness(
+	facts: Pick<TrackFacts, "tags" | "hasArt">,
+): number {
 	let n = facts.hasArt ? 1 : 0;
 	for (const f of COMPLETENESS_FIELDS) {
 		const v = facts.tags[f];
