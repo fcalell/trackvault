@@ -1,0 +1,23 @@
+{
+	"name": "@trackvault/core",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"description": "Pure domain code shared by the hub and the agent: tag IO, audio identity, text normalisation, path safety. Plain Node 24 TypeScript, run from source.",
+	"exports": {
+		"./analyze": "./src/analyze.ts",
+		"./hash": "./src/hash/index.ts",
+		"./issues": "./src/issues.ts",
+		"./normalize": "./src/normalize/index.ts",
+		"./paths": "./src/paths/index.ts",
+		"./tags": "./src/tags/index.ts"
+	},
+	"scripts": {
+		"check": "tsc --noEmit && biome check ."
+	},
+	"devDependencies": {
+		"@fcalell/typescript-config": "link:../../../stack/packages/typescript-config",
+		"@types/node": "^25.5.0",
+		"typescript": "^5.9.3"
+	}
+}

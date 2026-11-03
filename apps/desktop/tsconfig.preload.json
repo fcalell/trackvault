@@ -1,4 +1,0 @@
-{
-	"extends": "@repo/typescript-config/electron-main.json",
-	"include": ["src/preload/**/*"]
-}

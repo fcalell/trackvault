@@ -1,0 +1,9 @@
+{
+	"extends": "@fcalell/typescript-config/node-tsx.json",
+	"compilerOptions": {
+		"types": ["node"],
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true
+	},
+	"include": ["src"]
+}

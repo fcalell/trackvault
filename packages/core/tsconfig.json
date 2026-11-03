@@ -1,0 +1,10 @@
+{
+	"extends": "@fcalell/typescript-config/node-tsx.json",
+	"compilerOptions": {
+		"types": ["node"],
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true,
+		"lib": ["ESNext"]
+	},
+	"include": ["src"]
+}

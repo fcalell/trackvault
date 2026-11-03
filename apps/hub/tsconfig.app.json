@@ -1,0 +1,13 @@
+{
+	"extends": "@fcalell/typescript-config/web-vite.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"declaration": false,
+		"declarationMap": false,
+		"disableSourceOfProjectReferenceRedirect": true,
+		"tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
+	},
+	"include": ["src", ".stack/routes.d.ts"],
+	"exclude": ["src/worker", "src/server"],
+	"references": [{ "path": "./tsconfig.worker.json" }]
+}

@@ -1,1 +1,0 @@
-ALTER TABLE `settings` ADD `lowBitrateThreshold` integer DEFAULT 320;

@@ -1,0 +1,27 @@
+{
+	"extends": "@fcalell/typescript-config/node-tsx.json",
+	"compilerOptions": {
+		"types": ["node"],
+		"paths": {
+			"virtual:stack-procedure": ["./.stack/procedure.ts"]
+		},
+		"composite": true,
+		"incremental": true,
+		"noEmit": false,
+		"emitDeclarationOnly": true,
+		"declarationMap": true,
+		"outDir": "./.stack/types",
+		"tsBuildInfoFile": "./.stack/types/tsconfig.worker.tsbuildinfo",
+		"erasableSyntaxOnly": true,
+		"verbatimModuleSyntax": true
+	},
+	"include": [
+		"src/worker",
+		"src/schema",
+		"src/shared",
+		"src/server",
+		"scripts",
+		".stack/worker.ts",
+		".stack/procedure.ts"
+	]
+}

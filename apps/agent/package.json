@@ -1,0 +1,17 @@
+{
+	"name": "agent",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"check": "tsc --noEmit && biome check ."
+	},
+	"dependencies": {
+		"@trackvault/core": "workspace:*"
+	},
+	"devDependencies": {
+		"@fcalell/typescript-config": "link:../../../stack/packages/typescript-config",
+		"@types/node": "^25.5.0",
+		"typescript": "^5.9.3"
+	}
+}

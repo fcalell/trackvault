@@ -1,29 +1,21 @@
 {
 	"name": "trackvault",
 	"private": true,
+	"type": "module",
+	"packageManager": "pnpm@11.28.4",
+	"engines": {
+		"node": ">=24"
+	},
 	"scripts": {
-		"dev:init": "pnpm --filter @repo/db generate && pnpm --filter @repo/db-desktop generate",
-		"dev": "turbo run dev",
-		"build": "turbo run build",
-		"lint": "pnpm -r --if-present --reporter append-only run lint",
-		"check-types": "pnpm -r --if-present --reporter append-only run check-types",
+		"dev": "pnpm --filter hub dev",
+		"build": "pnpm --filter hub build",
+		"generate": "pnpm --filter hub generate",
+		"seed:bench": "pnpm --filter hub seed:bench",
 		"check": "pnpm -r --if-present --reporter append-only run check",
-		"generate": "pnpm --filter @repo/db generate",
-		"deps:check": "manypkg check && check-dependency-version-consistency .",
-		"deps:fix": "manypkg fix && check-dependency-version-consistency . --fix",
-		"deps:upgrade": "npm-check-updates -wi",
-		"clear": "pnpm -r --if-present run clear && rm -rf node_modules .turbo"
+		"lint": "pnpm -r --if-present run lint"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.9",
-		"@manypkg/cli": "^0.24.0",
-		"check-dependency-version-consistency": "^5.0.1",
-		"npm-check-updates": "^19.6.6",
-		"turbo": "^2.8.21",
-		"typescript-language-server": "^5.1.3"
-	},
-	"packageManager": "pnpm@10.33.0",
-	"engines": {
-		"node": ">=18"
+		"@biomejs/biome": "2.4.16",
+		"@fcalell/biome-config": "link:../stack/packages/biome-config"
 	}
 }

@@ -1,9 +1,43 @@
 packages:
   - apps/*
   - packages/*
-  - tooling/*
 
-onlyBuiltDependencies:
-  - better-sqlite3
-  - esbuild
-  - electron
+# Verdicts for the build scripts the install brings (pnpm 11 refuses an unanswered one).
+allowBuilds:
+  esbuild: true
+  msw: false
+  workerd: false
+  "@parcel/watcher": false
+  "@prisma/client": false
+  better-sqlite3: true
+  dtrace-provider: false
+
+# The stack checkout is linked, never installed from npm (`link:` in each app's
+# package.json). A `link:` package resolves its own dependencies inside the checkout, so
+# every singleton the app shares with it (React, the router, the query client, the
+# oRPC adapter) is linked to the checkout's physical copy: one module instance and one
+# type identity, which a second install would split in two.
+overrides:
+  react: link:../stack/plugins/react-ui/node_modules/react
+  react-dom: link:../stack/plugins/react-ui/node_modules/react-dom
+  "@types/react": link:../stack/plugins/react-ui/node_modules/@types/react
+  "@types/react-dom": link:../stack/plugins/react-ui/node_modules/@types/react-dom
+  "@tanstack/react-query": link:../stack/plugins/react-ui/node_modules/@tanstack/react-query
+  "@tanstack/react-router": link:../stack/plugins/screens/node_modules/@tanstack/react-router
+  "@orpc/tanstack-query": link:../stack/plugins/react-ui/node_modules/@orpc/tanstack-query
+  "@orpc/client": link:../stack/plugins/api/node_modules/@orpc/client
+  "@orpc/server": link:../stack/plugins/api/node_modules/@orpc/server
+  "@orpc/standard-server-fetch": link:../stack/plugins/screens/node_modules/@orpc/standard-server-fetch
+  "@base-ui/react": link:../stack/plugins/react-ui/node_modules/@base-ui/react
+  tailwindcss: link:../stack/plugins/react-ui/node_modules/tailwindcss
+  "@tailwindcss/vite": link:../stack/plugins/react-ui/node_modules/@tailwindcss/vite
+  vite: link:../stack/plugins/vite/node_modules/vite
+  storybook: link:../stack/plugins/screens/node_modules/storybook
+  "@storybook/addon-a11y": link:../stack/plugins/screens/node_modules/@storybook/addon-a11y
+  "@storybook/addon-vitest": link:../stack/plugins/screens/node_modules/@storybook/addon-vitest
+  "@storybook/react-vite": link:../stack/plugins/screens/node_modules/@storybook/react-vite
+  vitest: link:../stack/plugins/screens/node_modules/vitest
+  "@vitest/browser-playwright": link:../stack/plugins/screens/node_modules/@vitest/browser-playwright
+  msw: link:../stack/plugins/screens/node_modules/msw
+  msw-storybook-addon: link:../stack/plugins/screens/node_modules/msw-storybook-addon
+  playwright: link:../stack/plugins/screens/node_modules/playwright
