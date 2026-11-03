@@ -19,7 +19,8 @@ import {
 	type WishlistView,
 } from "../../../shared/acquire.ts";
 import { orpc } from "../../lib/api.ts";
-import { until, WANT_SOURCES, WANT_STATE, wantName } from "../../ui/acquire.ts";
+import { WANT_SOURCES, WANT_STATE, wantName } from "../../ui/acquire.ts";
+import { age, until } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/wishlist")({
 	component: Wishlist,
@@ -75,7 +76,7 @@ const COLUMNS: TableColumn<Want>[] = [
 		label: "Added",
 		kind: "age",
 		hidden: true,
-		cell: (want) => want.createdAt.toISOString(),
+		cell: (want) => age(want.createdAt),
 	},
 ];
 
@@ -183,7 +184,7 @@ function Wishlist() {
 										: ["Reading"],
 							line:
 								each.state === "failed" ? (each.error ?? "Failed") : undefined,
-							trailing: { age: each.createdAt.toISOString() },
+							trailing: { age: age(each.createdAt) },
 						})),
 					)}
 					empty={{ sentence: "Imported playlists show here." }}

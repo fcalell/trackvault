@@ -5,6 +5,7 @@ import { skipToken } from "@tanstack/react-query";
 import { useMemo } from "react";
 import type { AppRouter } from "../../../.stack/worker";
 import type { PlaylistSource } from "../../server/lib/playlist-selection.ts";
+import { count } from "../ui/figures.ts";
 import { orpc } from "./api.ts";
 import { useDebounced } from "./debounced.ts";
 
@@ -95,8 +96,6 @@ export type SmartRule = Partial<
 	Parameters<typeof orpc.playlists.preview.call>[0]
 >;
 
-const count = new Intl.NumberFormat("en");
-
 // What the rule would hold now, read from the form's own input once the typing pauses:
 // the number of tracks and the first few. Nothing is saved.
 export function SmartPreview({ rule }: { rule: SmartRule | undefined }) {
@@ -112,7 +111,7 @@ export function SmartPreview({ rule }: { rule: SmartRule | undefined }) {
 		<Section
 			title="Matches now"
 			description={preview.at(
-				(each) => `${count.format(each.count)} tracks match this rule.`,
+				(each) => `${count(each.count)} tracks match this rule.`,
 			)}
 			items={preview.at((each) =>
 				each.sample.map(

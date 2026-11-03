@@ -5,14 +5,13 @@ import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/tags")({
 	component: Tags,
 });
 
 type Tag = AppRouter["tags"]["list"]["__output"][number];
-
-const count = new Intl.NumberFormat("en");
 
 // Custom tags (vibe, set position, venue): made here, put on tracks from the record or
 // by the library's Edit tags act, and a filter of the library.
@@ -23,9 +22,7 @@ function Tags() {
 		key: String(tag.id),
 		leading: { icon: "Tag" },
 		title: tag.name,
-		facts: [
-			tag.tracks === 1 ? "1 track" : `${count.format(tag.tracks)} tracks`,
-		],
+		facts: [tag.tracks === 1 ? "1 track" : `${count(tag.tracks)} tracks`],
 		act: {
 			icon: "Library",
 			label: `Show ${tag.name} in the library`,

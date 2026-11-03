@@ -7,6 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { JobView } from "../../../shared/channels.ts";
 import { orpc } from "../../lib/api.ts";
 import { jobsLive } from "../../lib/live.ts";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/jobs")({
 	component: Jobs,
@@ -47,14 +48,12 @@ const TONES: Record<JobView["state"], Tone> = {
 	cancelled: "idle",
 };
 
-const count = new Intl.NumberFormat("en");
-
 // How far a running or queued job has come is a fact; its message (or, failed,
 // its error) is the row's line.
 function progress(job: JobView): string[] {
 	if (job.state === "failed" && job.error) return [];
 	if (job.total > 0 && (job.state === "running" || job.state === "queued")) {
-		return [`${count.format(job.done)} of ${count.format(job.total)}`];
+		return [`${count(job.done)} of ${count(job.total)}`];
 	}
 	return [];
 }

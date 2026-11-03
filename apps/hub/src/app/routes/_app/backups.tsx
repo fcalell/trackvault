@@ -8,13 +8,8 @@ import { BACKUP_KINDS } from "../../../shared/backups.ts";
 import type { JobView } from "../../../shared/channels.ts";
 import { orpc } from "../../lib/api.ts";
 import { jobsLive } from "../../lib/live.ts";
-import {
-	dateTime,
-	JOB_STATE,
-	jobKind,
-	jobLine,
-	size,
-} from "../../ui/backups.ts";
+import { JOB_STATE, jobKind, jobLine } from "../../ui/backups.ts";
+import { age, count, date, size } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/backups")({
 	component: Backups,
@@ -22,8 +17,6 @@ export const Route = createFileRoute("/_app/backups")({
 
 type Local = AppRouter["backups"]["list"]["__output"][number];
 type Remote = AppRouter["backups"]["remote"]["__output"]["items"][number];
-
-const count = new Intl.NumberFormat("en");
 
 function localRow(
 	backup: Local,
@@ -39,20 +32,18 @@ function localRow(
 	return {
 		key: backup.name,
 		leading: { icon: "DatabaseBackup" },
-		title: dateTime(backup.takenAt),
+		title: date(backup.takenAt),
 		facts: [
 			check,
 			...[
 				size(backup.size),
-				backup.tracks !== null
-					? `${count.format(backup.tracks)} tracks`
-					: undefined,
+				backup.tracks !== null ? `${count(backup.tracks)} tracks` : undefined,
 				backup.compression === "none" ? "uncompressed" : backup.compression,
 				backup.kind === "manual" ? "by hand" : undefined,
 				backup.offsite ? "Offsite" : undefined,
 			].filter((part): part is string => part !== undefined),
 		],
-		trailing: { age: backup.takenAt.toISOString() },
+		trailing: { age: age(backup.takenAt) },
 		more: [
 			{
 				label: "Check now",
@@ -64,7 +55,7 @@ function localRow(
 				onAct: () => remove(backup.name),
 				confirm: {
 					title: "Delete this backup?",
-					sentence: `${dateTime(backup.takenAt)} is removed from the hub's backup folder. A copy offsite stays.`,
+					sentence: `${date(backup.takenAt)} is removed from the hub's backup folder. A copy offsite stays.`,
 				},
 				destructive: true,
 			},
@@ -75,9 +66,9 @@ function localRow(
 const remoteRow = (item: Remote): Row => ({
 	key: item.key,
 	leading: { icon: "Cloud" },
-	title: dateTime(item.takenAt),
+	title: date(item.takenAt),
 	facts: [size(item.size), item.encrypted ? "Encrypted" : "Not encrypted"],
-	trailing: { age: item.takenAt.toISOString() },
+	trailing: { age: age(item.takenAt) },
 });
 
 // Database backups on the hub and in the bucket, what is running now, and the
@@ -144,7 +135,7 @@ function Backups() {
 						key: "next",
 						leading: { icon: "CalendarClock" },
 						title: each.enabled
-							? `Next backup ${each.nextAt ? dateTime(each.nextAt) : ""}`
+							? `Next backup ${each.nextAt ? date(each.nextAt) : ""}`
 							: "Daily backup is off",
 						facts: [{ code: each.dir }],
 						...(each.freeBytes !== null
@@ -158,7 +149,7 @@ function Backups() {
 							? "Offsite storage is on"
 							: "Offsite storage is off",
 						line: each.offsite.configured
-							? `${count.format(each.offsite.files)} audio files, ${size(each.offsite.bytes)} sent`
+							? `${count(each.offsite.files)} audio files, ${size(each.offsite.bytes)} sent`
 							: "Not set up: the bucket and keys are in Settings",
 						act: {
 							icon: "Settings" as const,

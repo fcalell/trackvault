@@ -10,6 +10,7 @@ import { useState } from "react";
 import { orpc } from "../../lib/api.ts";
 import { useDebounced } from "../../lib/debounced.ts";
 import { pathsOf } from "../../lib/playlists.tsx";
+import { bpm } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/sets")({
 	component: SetBuilder,
@@ -31,7 +32,7 @@ interface Facts {
 
 const facts = (t: Facts): string[] => [
 	t.artist ?? "Unknown artist",
-	t.bpm ? `${Math.round(t.bpm * 10) / 10} BPM` : "No BPM",
+	t.bpm ? `${bpm(t.bpm)} BPM` : "No BPM",
 	t.key ?? "No key",
 	t.energy ? `Energy ${t.energy}` : "No energy",
 ];

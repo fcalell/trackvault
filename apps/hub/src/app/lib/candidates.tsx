@@ -2,8 +2,9 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { TableColumn } from "@fcalell/ui-core/descriptors";
 import type { AppRouter } from "../../../.stack/worker";
-import { HAVE_LABELS, megabytes, nameOf } from "../ui/acquire.ts";
-import { clock } from "../ui/track.ts";
+import { HAVE_LABELS, nameOf } from "../ui/acquire.ts";
+import { duration, size } from "../ui/figures.ts";
+import {} from "../ui/track.ts";
 import { orpc } from "./api.ts";
 
 type Candidate = AppRouter["soulseek"]["results"]["__output"]["data"][number];
@@ -51,13 +52,13 @@ const COLUMNS: TableColumn<Candidate>[] = [
 		wrap: true,
 		cell: (c) => c.reasons.join(" · "),
 	},
-	{ key: "size", label: "Size", hidden: true, cell: (c) => megabytes(c.size) },
+	{ key: "size", label: "Size", hidden: true, cell: (c) => size(c.size) },
 	{
 		key: "time",
 		label: "Time",
 		kind: "number",
 		hidden: true,
-		cell: (c) => clock(c.lengthSec ? c.lengthSec * 1000 : null),
+		cell: (c) => duration(c.lengthSec ? c.lengthSec * 1000 : null),
 	},
 	{ key: "folder", label: "Folder", hidden: true, cell: (c) => c.folder },
 ];

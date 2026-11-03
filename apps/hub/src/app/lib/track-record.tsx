@@ -19,7 +19,8 @@ import {
 	ISSUE_LABELS,
 	type IssueFilter,
 } from "../../shared/library.ts";
-import { clock, fetchPeaks, quality, toTrack } from "../ui/track.ts";
+import { bitrate, bpm, duration } from "../ui/figures.ts";
+import { fetchPeaks, toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { queueFrom } from "./queue.ts";
 
@@ -113,11 +114,9 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 				within,
 				overline: [track.at((each) => each.artist ?? "Unknown artist")],
 				facts: [
-					track.at((each) => quality(each.format, each.bitrate)),
-					track.at((each) => clock(each.durationMs) ?? "No length"),
-					track.at((each) =>
-						each.bpm ? `${Math.round(each.bpm * 10) / 10} BPM` : "No BPM",
-					),
+					track.at((each) => bitrate(each.format, each.bitrate)),
+					track.at((each) => duration(each.durationMs) ?? "No length"),
+					track.at((each) => (each.bpm ? `${bpm(each.bpm)} BPM` : "No BPM")),
 					track.at((each) => each.key ?? "No key"),
 					track.at((each) => each.genre ?? "No genre"),
 				],

@@ -5,6 +5,7 @@ import type { TableColumn } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import { age } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/quarantine")({
 	component: Quarantine,
@@ -30,7 +31,7 @@ const COLUMNS: TableColumn<Held>[] = [
 		key: "at",
 		label: "Moved",
 		kind: "age",
-		cell: (row) => row.at.toISOString(),
+		cell: (row) => age(row.at),
 	},
 ];
 

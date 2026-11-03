@@ -4,6 +4,7 @@ import type { TableColumn } from "@fcalell/ui-core/descriptors";
 import { createFileRoute, Outlet, useParams } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import { age } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/history")({
 	component: History,
@@ -56,7 +57,7 @@ const COLUMNS: TableColumn<Batch>[] = [
 		key: "at",
 		label: "When",
 		kind: "age",
-		cell: (batch) => batch.at.toISOString(),
+		cell: (batch) => age(batch.at),
 	},
 ];
 

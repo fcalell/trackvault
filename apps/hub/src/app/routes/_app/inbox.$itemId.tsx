@@ -8,12 +8,12 @@ import { fieldLabel } from "../../lib/changes.ts";
 import {
 	DECISION,
 	INBOX_STATE,
-	megabytes,
 	SOURCE_LABELS,
 	STEP_ICON,
 	STEP_TONE,
 } from "../../ui/acquire.ts";
-import { clock, quality } from "../../ui/track.ts";
+import { bitrate, duration, size } from "../../ui/figures.ts";
+import {} from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/inbox/$itemId")({
 	loader: ({ context, params }) =>
@@ -63,10 +63,10 @@ function Item() {
 				facts: [
 					item.at((each) => INBOX_STATE[each.state]?.label ?? each.state),
 					item.at((each) =>
-						each.format ? quality(each.format, each.bitrate) : "Not read yet",
+						each.format ? bitrate(each.format, each.bitrate) : "Not read yet",
 					),
-					item.at((each) => clock(each.durationMs) ?? "No length"),
-					item.at((each) => megabytes(each.size)),
+					item.at((each) => duration(each.durationMs) ?? "No length"),
+					item.at((each) => size(each.size)),
 				],
 			}}
 			acts={[
@@ -218,7 +218,7 @@ function Item() {
 							match.version === "different"
 								? "Another version"
 								: "Same version",
-							quality(match.format, match.bitrate),
+							bitrate(match.format, match.bitrate),
 						],
 						trailing: { value: `${Math.round(match.confidence * 100)}%` },
 						more:

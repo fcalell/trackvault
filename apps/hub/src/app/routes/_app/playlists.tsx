@@ -7,12 +7,11 @@ import type { PlaylistSource } from "../../../server/lib/playlist-selection.ts";
 import { SMART_HELP, SMART_SORTS } from "../../../shared/playlists.ts";
 import { orpc } from "../../lib/api.ts";
 import { type PlaylistNode, SmartPreview } from "../../lib/playlists.tsx";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/playlists")({
 	component: Playlists,
 });
-
-const count = new Intl.NumberFormat("en");
 
 const SORT_LABELS: Record<(typeof SMART_SORTS)[number], string> = {
 	title: "Title",
@@ -78,9 +77,7 @@ function Playlists() {
 				? []
 				: [
 						node.kind === "smart" ? "Smart" : "Playlist",
-						node.tracks === 1
-							? "1 track"
-							: `${count.format(node.tracks)} tracks`,
+						node.tracks === 1 ? "1 track" : `${count(node.tracks)} tracks`,
 					],
 		...(node.kind === "folder" ? {} : { href: `/playlists/${node.id}` }),
 		selected: node.id === open,

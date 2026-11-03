@@ -14,13 +14,9 @@ import {
 } from "../../../shared/acquire.ts";
 import { orpc } from "../../lib/api.ts";
 import { useChosen } from "../../lib/chosen.ts";
-import {
-	DECISION,
-	INBOX_STATE,
-	megabytes,
-	SOURCE_LABELS,
-} from "../../ui/acquire.ts";
-import { clock, quality } from "../../ui/track.ts";
+import { DECISION, INBOX_STATE, SOURCE_LABELS } from "../../ui/acquire.ts";
+import { age, bitrate, duration, size } from "../../ui/figures.ts";
+import {} from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/inbox")({
 	component: Inbox,
@@ -53,13 +49,13 @@ const COLUMNS: TableColumn<Item>[] = [
 	{
 		key: "quality",
 		label: "Quality",
-		cell: (row) => (row.format ? quality(row.format, row.bitrate) : null),
+		cell: (row) => (row.format ? bitrate(row.format, row.bitrate) : null),
 	},
 	{
 		key: "time",
 		label: "Time",
 		kind: "number",
-		cell: (row) => clock(row.durationMs),
+		cell: (row) => duration(row.durationMs),
 	},
 	{
 		key: "source",
@@ -78,7 +74,7 @@ const COLUMNS: TableColumn<Item>[] = [
 		key: "size",
 		label: "Size",
 		hidden: true,
-		cell: (row) => megabytes(row.size),
+		cell: (row) => size(row.size),
 	},
 	{
 		key: "steps",
@@ -91,7 +87,7 @@ const COLUMNS: TableColumn<Item>[] = [
 		key: "arrived",
 		label: "Arrived",
 		kind: "age",
-		cell: (row) => row.createdAt.toISOString(),
+		cell: (row) => age(row.createdAt),
 	},
 ];
 

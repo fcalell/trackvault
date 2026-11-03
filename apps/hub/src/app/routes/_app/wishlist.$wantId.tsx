@@ -4,7 +4,8 @@ import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { createFileRoute } from "@tanstack/react-router";
 import { orpc } from "../../lib/api.ts";
 import { Candidates } from "../../lib/candidates.tsx";
-import { until, WANT_SOURCES, WANT_STATE, wantName } from "../../ui/acquire.ts";
+import { WANT_SOURCES, WANT_STATE, wantName } from "../../ui/acquire.ts";
+import { until } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/wishlist/$wantId")({
 	loader: ({ context, params }) =>

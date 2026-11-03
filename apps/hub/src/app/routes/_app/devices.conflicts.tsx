@@ -9,6 +9,7 @@ import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { fieldLabel } from "../../lib/changes.ts";
 import { useChosen } from "../../lib/chosen.ts";
+import { age } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/devices/conflicts")({
 	component: Conflicts,
@@ -51,7 +52,7 @@ const COLUMNS: TableColumn<Conflict>[] = [
 		key: "at",
 		label: "When",
 		kind: "age",
-		cell: (row) => row.at.toISOString(),
+		cell: (row) => age(row.at),
 	},
 ];
 

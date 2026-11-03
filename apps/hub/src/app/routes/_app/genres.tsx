@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { PreviewSection } from "../../lib/preview.tsx";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/genres")({
 	component: Genres,
@@ -13,8 +14,6 @@ export const Route = createFileRoute("/_app/genres")({
 
 type Genre = AppRouter["genres"]["list"]["__output"][number];
 type Unknown = AppRouter["genres"]["unknown"]["__output"][number];
-
-const count = new Intl.NumberFormat("en");
 
 // The genre taxonomy: the names and their aliases, the values in the library it does
 // not know yet (map them to a genre, in a click each), and the unify that rewrites
@@ -31,7 +30,7 @@ function Genres() {
 		key: `genre-${genre.id}`,
 		leading: { icon: "Music" },
 		title: genre.name,
-		facts: [`${count.format(genre.tracks)} tracks`],
+		facts: [`${count(genre.tracks)} tracks`],
 		more: [
 			{
 				label: "Add an alias",
@@ -72,7 +71,7 @@ function Genres() {
 		leading: { icon: "CircleHelp" },
 		title: row.value,
 		facts: [
-			`${count.format(row.count)} tracks`,
+			`${count(row.count)} tracks`,
 			row.suggestions.length > 0
 				? `Closest: ${row.suggestions.join(", ")}`
 				: "No close genre",
@@ -154,9 +153,7 @@ function Genres() {
 				kind="unify"
 				title="Unify preview"
 				none="Preview the unify to see which genres would be rewritten."
-				words={(result) =>
-					`${count.format(result.tracks ?? 0)} tracks would change.`
-				}
+				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
 				changes={(result) => result.tracks ?? 0}
 				apply={{
 					label: "Unify the library",

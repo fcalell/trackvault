@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { PreviewSection } from "../../lib/preview.tsx";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/aliases")({
 	component: Aliases,
@@ -14,8 +15,6 @@ export const Route = createFileRoute("/_app/aliases")({
 type Kind = "artist" | "label";
 type Alias = AppRouter["aliases"]["list"]["__output"][number];
 type Suggestion = AppRouter["aliases"]["suggest"]["__output"][number];
-
-const count = new Intl.NumberFormat("en");
 
 const NOUN: Record<Kind, string> = { artist: "artist", label: "label" };
 
@@ -33,7 +32,7 @@ function Aliases() {
 			leading: { icon: "Merge" },
 			title: row.canonical,
 			facts: row.variants.map(
-				(variant) => `${variant.value} (${count.format(variant.count)})`,
+				(variant) => `${variant.value} (${count(variant.count)})`,
 			),
 			act: {
 				icon: "Check",
@@ -127,9 +126,7 @@ function Aliases() {
 				kind="unify"
 				title="Unify preview"
 				none="Preview the unify to see which names would be rewritten."
-				words={(result) =>
-					`${count.format(result.tracks ?? 0)} tracks would change.`
-				}
+				words={(result) => `${count(result.tracks ?? 0)} tracks would change.`}
 				changes={(result) => result.tracks ?? 0}
 				apply={{
 					label: "Unify the library",

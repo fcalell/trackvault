@@ -6,14 +6,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
 import { PreviewSection } from "../../lib/preview.tsx";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/rules")({
 	component: Rules,
 });
 
 type Rule = AppRouter["cleanup"]["list"]["__output"][number];
-
-const count = new Intl.NumberFormat("en");
 
 // The form of a rule: which fields matter depends on the action, as each label says.
 const RULE_FIELDS = {
@@ -147,8 +146,8 @@ function Rules() {
 				none="Preview the rules to see what they would change in the library."
 				words={(result) =>
 					result.tracks === 0
-						? `The rules change nothing in ${count.format(result.scanned ?? 0)} tracks.`
-						: `${count.format(result.tracks ?? 0)} tracks would change, ${count.format(result.fields ?? 0)} tags in all.`
+						? `The rules change nothing in ${count(result.scanned ?? 0)} tracks.`
+						: `${count(result.tracks ?? 0)} tracks would change, ${count(result.fields ?? 0)} tags in all.`
 				}
 				changes={(result) => result.tracks ?? 0}
 				apply={{

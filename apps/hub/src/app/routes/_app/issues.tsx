@@ -6,14 +6,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { ISSUE_LABELS, type IssueFilter } from "../../../shared/library.ts";
 import { orpc } from "../../lib/api.ts";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/issues")({
 	component: Issues,
 });
 
 type Issue = AppRouter["health"]["summary"]["__output"]["issues"][number];
-
-const count = new Intl.NumberFormat("en");
 
 // What each issue means, in a line.
 const WHY: Record<IssueFilter, string> = {
@@ -67,7 +66,7 @@ function Issues() {
 						leading: { icon: "ShieldCheck" as const },
 						title: "Decode every file",
 						facts: [
-							`${count.format(each.checked.integrity)} of ${count.format(each.total)} checked`,
+							`${count(each.checked.integrity)} of ${count(each.total)} checked`,
 						],
 						act: {
 							icon: "Play" as const,
@@ -82,7 +81,7 @@ function Issues() {
 						leading: { icon: "Gauge" as const },
 						title: "Measure the spectrum",
 						facts: [
-							`${count.format(each.checked.bitrate)} of ${count.format(each.total)} checked`,
+							`${count(each.checked.bitrate)} of ${count(each.total)} checked`,
 						],
 						act: {
 							icon: "Play" as const,

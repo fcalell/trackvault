@@ -5,7 +5,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import type { TransferView } from "../../../shared/channels.ts";
 import { orpc } from "../../lib/api.ts";
 import { transfersLive } from "../../lib/live.ts";
-import { megabytes, speed, TRANSFER_STATE } from "../../ui/acquire.ts";
+import { TRANSFER_STATE } from "../../ui/acquire.ts";
+import { size, speed } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/downloads")({
 	component: Downloads,
@@ -17,10 +18,10 @@ function facts(t: TransferView): string[] {
 	const parts = [t.username];
 	if (t.state === "downloading" && t.size > 0)
 		parts.push(
-			`${Math.round((t.bytes / t.size) * 100)}% of ${megabytes(t.size)}`,
+			`${Math.round((t.bytes / t.size) * 100)}% of ${size(t.size)}`,
 			speed(t.speed),
 		);
-	else if (t.size > 0) parts.push(megabytes(t.size));
+	else if (t.size > 0) parts.push(size(t.size));
 	if (t.rawState && t.state === "queued") parts.push(t.rawState);
 	return parts;
 }

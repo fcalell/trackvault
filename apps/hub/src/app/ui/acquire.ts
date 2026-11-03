@@ -96,38 +96,11 @@ export const STEP_ICON: Record<string, IconName> = {
 	approve: "Check",
 };
 
-const MB = 1024 * 1024;
-
-// 12.4 MB.
-export function megabytes(bytes: number): string {
-	return bytes >= 1024 * MB
-		? `${(bytes / (1024 * MB)).toFixed(1)} GB`
-		: `${(bytes / MB).toFixed(1)} MB`;
-}
-
-// 480 KB/s.
-export function speed(bytesPerSecond: number): string {
-	return bytesPerSecond >= MB
-		? `${(bytesPerSecond / MB).toFixed(1)} MB/s`
-		: `${Math.round(bytesPerSecond / 1024)} KB/s`;
-}
-
 export const nameOf = (parts: {
 	artist: string | null;
 	title: string | null;
 }): string | null =>
 	parts.title ? [parts.artist, parts.title].filter(Boolean).join(" - ") : null;
-
-// "in 5 min", "in 3 h", "in 2 days": when something is due; "now" when it is.
-export function until(date: Date | null, now = Date.now()): string | null {
-	if (!date) return null;
-	const minutes = Math.round((date.getTime() - now) / 60_000);
-	if (minutes <= 0) return "now";
-	if (minutes < 60) return `in ${minutes} min`;
-	const hours = Math.round(minutes / 60);
-	if (hours < 48) return `in ${hours} h`;
-	return `in ${Math.round(hours / 24)} days`;
-}
 
 // "Artist - Title (Mix)" of a want.
 export const wantName = (want: {

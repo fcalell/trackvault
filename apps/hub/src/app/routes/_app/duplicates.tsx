@@ -6,7 +6,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
-import { clock, quality } from "../../ui/track.ts";
+import { bitrate, duration } from "../../ui/figures.ts";
+import {} from "../../ui/track.ts";
 
 export const Route = createFileRoute("/_app/duplicates")({
 	component: Duplicates,
@@ -51,8 +52,8 @@ function Duplicates() {
 					.filter(Boolean)
 					.join(" - "),
 				facts: [
-					quality(member.format, member.bitrate),
-					clock(member.durationMs) ?? "No length",
+					bitrate(member.format, member.bitrate),
+					duration(member.durationMs) ?? "No length",
 					member.id === group.keeperId
 						? `Keeper: ${group.keeperReason}`
 						: "Duplicate",

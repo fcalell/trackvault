@@ -14,7 +14,8 @@ import {
 	ISSUE_LABELS,
 	type ListRow,
 } from "../../shared/library.ts";
-import { clock, quality, toTrack } from "../ui/track.ts";
+import { age, bitrate, bpm, count, duration } from "../ui/figures.ts";
+import { toTrack } from "../ui/track.ts";
 import { orpc } from "./api.ts";
 import { EditPreview, useEditFields } from "./bulk-edit.tsx";
 import { useChosen } from "./chosen.ts";
@@ -42,7 +43,7 @@ export const LIBRARY_COLUMNS: TableColumn<ListRow>[] = [
 		label: "BPM",
 		kind: "number",
 		sortable: true,
-		cell: (row) => (row.bpm === null ? null : Math.round(row.bpm * 10) / 10),
+		cell: (row) => bpm(row.bpm),
 	},
 	{ key: "key", label: "Key", sortable: true, cell: (row) => row.key },
 	{ key: "genre", label: "Genre", sortable: true, cell: (row) => row.genre },
@@ -59,14 +60,14 @@ export const LIBRARY_COLUMNS: TableColumn<ListRow>[] = [
 		label: "Time",
 		kind: "number",
 		sortable: true,
-		cell: (row) => clock(row.durationMs),
+		cell: (row) => duration(row.durationMs),
 	},
 	{
 		key: "bitrate",
 		label: "Quality",
 		sortable: true,
 		hidden: true,
-		cell: (row) => quality(row.format, row.bitrate),
+		cell: (row) => bitrate(row.format, row.bitrate),
 	},
 	{
 		key: "energy",
@@ -89,7 +90,7 @@ export const LIBRARY_COLUMNS: TableColumn<ListRow>[] = [
 		label: "Added",
 		kind: "age",
 		sortable: true,
-		cell: (row) => row.addedAt.toISOString(),
+		cell: (row) => age(row.addedAt),
 	},
 ];
 
@@ -102,8 +103,6 @@ const BPM_RANGES = [
 	{ value: "140-159", label: "140 to 159", min: 140, max: 159.99 },
 	{ value: "160-999", label: "160 and over", min: 160, max: 999 },
 ] as const;
-
-const count = new Intl.NumberFormat("en");
 
 // The library's list: a search box and filters over a table of every track, read a
 // window at a time (the hub searches, filters and sorts). `base` is the route a
@@ -333,7 +332,7 @@ export function LibraryPane({
 							each.genres.map((genre) => ({
 								value: genre.value,
 								label: genre.value,
-								line: count.format(genre.count),
+								line: count(genre.count),
 							})),
 						),
 						value: genre,
@@ -348,7 +347,7 @@ export function LibraryPane({
 								.map((key) => ({
 									value: key.value,
 									label: key.value,
-									line: count.format(key.count),
+									line: count(key.count),
 								})),
 						),
 						value: key,
@@ -368,7 +367,7 @@ export function LibraryPane({
 							each.energies.map((row) => ({
 								value: String(row.value),
 								label: String(row.value),
-								line: count.format(row.count),
+								line: count(row.count),
 							})),
 						),
 						value: energy === undefined ? undefined : String(energy),
@@ -388,7 +387,7 @@ export function LibraryPane({
 							each.tags.map((row) => ({
 								value: String(row.id),
 								label: row.name,
-								line: count.format(row.count),
+								line: count(row.count),
 							})),
 						),
 						value: tag === undefined ? undefined : String(tag),
@@ -401,7 +400,7 @@ export function LibraryPane({
 							each.issues.map((issue) => ({
 								value: issue.value,
 								label: ISSUE_LABELS[issue.value],
-								line: count.format(issue.count),
+								line: count(issue.count),
 							})),
 						),
 						value: issue,

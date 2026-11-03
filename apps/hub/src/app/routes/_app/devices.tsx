@@ -7,14 +7,13 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { useState } from "react";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
+import { age, count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/devices")({
 	component: Devices,
 });
 
 type Device = AppRouter["devices"]["list"]["__output"][number];
-
-const count = new Intl.NumberFormat("en");
 
 const STATE: Record<Device["state"], { tone: Tone; label: string }> = {
 	online: { tone: "done", label: "Online" },
@@ -34,7 +33,7 @@ const WRITE: Record<string, string> = {
 };
 
 const noun = (n: number, word: string): string =>
-	`${count.format(n)} ${word}${n === 1 ? "" : "s"}`;
+	`${count(n)} ${word}${n === 1 ? "" : "s"}`;
 
 // The agent's pairing command, with the key the hub has just made.
 const pairCommand = (key: string, name: string): string =>
@@ -58,7 +57,7 @@ function Devices() {
 			device.hostname,
 			device.state === "waiting"
 				? `Key ${device.keyStart ?? ""}…`
-				: `${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count.format(device.files.pending)} waiting` : ""}`,
+				: `${noun(device.files.ok, "file")} in the replica${device.files.pending > 0 ? `, ${count(device.files.pending)} waiting` : ""}`,
 			rb?.installed ? `Rekordbox ${rb.appVersion ?? ""}`.trim() : undefined,
 			rb?.installed && rb.pendingExport > 0
 				? `${noun(rb.pendingExport, "change")} waiting for Rekordbox to close`
@@ -87,7 +86,7 @@ function Devices() {
 				? { line: WRITE[rb.writeSupport] ?? rb.writeSupport }
 				: {}),
 			...(device.lastSeenAt
-				? { trailing: { age: device.lastSeenAt.toISOString() } }
+				? { trailing: { age: age(device.lastSeenAt) } }
 				: {}),
 			...(device.openConflicts > 0
 				? {

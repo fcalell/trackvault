@@ -5,12 +5,11 @@ import { Table } from "@fcalell/plugin-react-ui/components/table";
 import type { Act } from "@fcalell/plugin-react-ui/lib/act";
 import type { Tone } from "@fcalell/ui-core/tokens";
 import type { JobView } from "../../shared/channels.ts";
+import { count } from "../ui/figures.ts";
 import { orpc } from "./api.ts";
 import { CHANGE_COLUMNS, CHANGE_ROW } from "./changes.ts";
 
 type Kind = "rules" | "unify" | "organise";
-
-const count = new Intl.NumberFormat("en");
 
 const TONES: Record<JobView["state"], Tone> = {
 	queued: "waiting",
@@ -30,7 +29,7 @@ function said(
 	if (job.state === "cancelled") return "The preview was cancelled.";
 	if (job.state !== "done" || !result) {
 		return job.total > 0
-			? `${job.message ?? "Working"}: ${count.format(job.done)} of ${count.format(job.total)}`
+			? `${job.message ?? "Working"}: ${count(job.done)} of ${count(job.total)}`
 			: (job.message ?? "Waiting for the preview to start.");
 	}
 	return words(result);

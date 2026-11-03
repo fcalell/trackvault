@@ -1,27 +1,6 @@
 import type { IconName, StatusMark } from "@fcalell/ui-core/descriptors";
 import type { JobView } from "../../shared/channels.ts";
 
-const MB = 1024 * 1024;
-
-// 12.4 MB, 3.2 GB.
-export function size(bytes: number): string {
-	return bytes >= 1024 * MB
-		? `${(bytes / (1024 * MB)).toFixed(1)} GB`
-		: `${(bytes / MB).toFixed(1)} MB`;
-}
-
-const when = new Intl.DateTimeFormat("en", {
-	weekday: "short",
-	day: "numeric",
-	month: "short",
-	hour: "2-digit",
-	minute: "2-digit",
-	hour12: false,
-});
-
-// Tue 3 Nov, 03:00.
-export const dateTime = (date: Date): string => when.format(date);
-
 const BACKUP_JOB: Record<string, { title: string; icon: IconName }> = {
 	backup: { title: "Database backup", icon: "DatabaseBackup" },
 	"backup-verify": { title: "Check a backup", icon: "ShieldCheck" },

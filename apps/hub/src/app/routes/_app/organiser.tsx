@@ -2,17 +2,15 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
-
 import { createFileRoute } from "@tanstack/react-router";
 import { ORGANISER_PRESETS } from "../../../shared/organiser.ts";
 import { orpc } from "../../lib/api.ts";
 import { PreviewSection } from "../../lib/preview.tsx";
+import { count } from "../../ui/figures.ts";
 
 export const Route = createFileRoute("/_app/organiser")({
 	component: Organiser,
 });
-
-const count = new Intl.NumberFormat("en");
 
 // The organiser: a folder and file template, a preview of where every file would
 // go (moves, name collisions, files already in place), and the job that moves them.
@@ -58,7 +56,7 @@ function Organiser() {
 				title="Preview"
 				none="Preview the template to see where the files would go."
 				words={(result) =>
-					`${count.format(result.moves ?? 0)} files would move, ${count.format(result.collisions ?? 0)} take a numbered name, ${count.format(result.unchanged ?? 0)} are already in place.`
+					`${count(result.moves ?? 0)} files would move, ${count(result.collisions ?? 0)} take a numbered name, ${count(result.unchanged ?? 0)} are already in place.`
 				}
 				changes={(result) => result.moves ?? 0}
 				apply={{

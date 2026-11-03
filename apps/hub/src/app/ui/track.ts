@@ -10,19 +10,6 @@ export interface TrackFacts {
 	hasArt?: boolean;
 }
 
-// A length as the player writes it: 5:32.
-export function clock(ms: number | null): string | null {
-	if (!ms || ms <= 0) return null;
-	const total = Math.round(ms / 1000);
-	const seconds = total % 60;
-	return `${Math.floor(total / 60)}:${String(seconds).padStart(2, "0")}`;
-}
-
-// MP3 320.
-export function quality(format: string, bitrate: number | null): string {
-	return bitrate ? `${format.toUpperCase()} ${bitrate}` : format.toUpperCase();
-}
-
 // The player's track for a row: the file the hub serves, with what is known of it.
 export function toTrack(row: TrackFacts, peaks?: ArrayLike<number>): Track {
 	return {
