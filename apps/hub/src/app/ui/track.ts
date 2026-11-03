@@ -7,6 +7,7 @@ export interface TrackFacts {
 	title: string | null;
 	artist: string | null;
 	durationMs: number | null;
+	hasArt?: boolean;
 }
 
 // A length as the player writes it: 5:32.
@@ -29,6 +30,9 @@ export function toTrack(row: TrackFacts, peaks?: ArrayLike<number>): Track {
 		key: row.id,
 		title: row.title ?? "Untitled",
 		meta: row.artist ?? undefined,
+		artwork: row.hasArt
+			? `/media/${encodeURIComponent(row.id)}/art?size=320`
+			: undefined,
 		duration: row.durationMs ? row.durationMs / 1000 : undefined,
 		peaks: peaks ? { values: peaks } : undefined,
 	};

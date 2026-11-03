@@ -1,5 +1,6 @@
 import { defineService } from "@fcalell/plugin-node/server";
 import purge from "../jobs/purge.ts";
+import { purgeProviderCache } from "../lib/autotag.ts";
 import { purgeOldPreviews } from "../lib/previews.ts";
 import { ensureRules } from "../lib/rules.ts";
 import { readSettings } from "../lib/settings.ts";
@@ -18,6 +19,7 @@ export default defineService({
 		ensureRules();
 		const tidy = (): void => {
 			purgeOldPreviews();
+			purgeProviderCache();
 			const days = readSettings().quarantineDays;
 			if (days > 0)
 				enqueue(purge, { olderThanDays: days }, { reuse: () => true });

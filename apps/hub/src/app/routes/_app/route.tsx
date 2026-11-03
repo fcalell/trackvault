@@ -41,6 +41,13 @@ const PLACES: PlaceSpec[] = [
 		group: "Library",
 	},
 	{ label: "Inbox", icon: "Inbox", route: "/inbox", group: "Library" },
+	{
+		label: "Set builder",
+		icon: "ListOrdered",
+		route: "/sets",
+		group: "Library",
+	},
+	{ label: "Stats", icon: "ChartColumn", route: "/stats", group: "Library" },
 	// The Playlists group stands here: `usePlaylistPlaces`.
 	{ label: "Issues", icon: "TriangleAlert", route: "/issues", group: "Curate" },
 	{ label: "Duplicates", icon: "Copy", route: "/duplicates", group: "Curate" },
@@ -48,6 +55,12 @@ const PLACES: PlaceSpec[] = [
 		label: "Organiser",
 		icon: "FolderTree",
 		route: "/organiser",
+		group: "Curate",
+	},
+	{
+		label: "Review",
+		icon: "ClipboardCheck",
+		route: "/review",
 		group: "Curate",
 	},
 	{

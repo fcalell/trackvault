@@ -20,24 +20,30 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
   src/schema/        Drizzle tables: tracks, files, jobs, changes, batches, settings, genres + aliases, tags,
                      rules, previews, dupeGroups, fingerprints, healthChecks, playlists + playlistTracks,
                      devices, deviceFiles, rekordboxLinks, conflicts, analysisBlobs, cues, plays, uploads, inboxItems,
-                     downloads, wishlist, searchResults, imports + importItems (+ auth's, devices keys included)
+                     downloads, wishlist, searchResults, imports + importItems, providerCache, proposals, analysisResults, artChecks,
+                     setDrafts (+ auth's, devices keys and oauth grants included)
   src/worker/routes/ procedures: settings, jobs, scan, tracks (list = window read, facets, get, update), fs,
                      bulk (acts on a selection), history, genres/aliases/unifyTags, tags, cleanup, previews,
                      organiser, quarantine, health, dupes, playlists (tree, window over a playlist, add/remove/
                      reorder, smart rules), devices (list, conflicts, resolve), inbox (items, acts, thresholds),
-                     soulseek (settings, search, candidates, downloads), wishlist, imports (playlist import)
+                     soulseek (settings, search, candidates, downloads), wishlist, imports (playlist import),
+                     autotag (provider settings, Review proposals), sets (set builder), stats, agent (the MCP tools; listed in
+                     src/worker/mcp.ts)
   src/server/jobs/   one file per job kind (defineJob): scan, tag-write, peaks, edit, rules, unify, organise,
                      quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate,
-                     playlist-add, playlist-remove, tag-flush, inbox, inbox-approve, search, wishlist, playlist-import
+                     playlist-add, playlist-remove, tag-flush, inbox, inbox-approve, search, wishlist, playlist-import,
+                     autotag, autotag-apply, art, analyse
   src/server/services/  jobs (durable runner + `jobs` channel), library (version + `library` channel),
                      scanner (watcher + reconcile), media (/media/<trackId>, /peaks, Range),
                      housekeeping (seeds genres and built-in rules, purges the quarantine),
                      inbox (reconcile + `requestInbox`), slskd (polls transfers, moves finished files into the inbox,
                      `transfers` channel), wishlist (queues due searches),
-                     sync (the `/sync` mount for the agent: protocol v1 of core/sync, and the `devices` channel)
+                     sync (the `/sync` mount for the agent: protocol v1 of core/sync, and the `devices` channel);
+                     media also serves `/media/<id>/art?size=` (cover thumbnails cached under data/art)
   src/server/lib/inbox/  the inbox pipeline: discover (Inbox/ folder to items), steps (core INBOX_PIPELINE handlers),
                      run (advance, auto-approve), approve (file into the library, replace, reject)
-  src/server/lib/    db handle and pragmas, slskd client/search/downloads/wishlist/playlist-import, scan pipeline (walk, worker pool, batched apply), track fields,
+  src/server/lib/    autotag (providers from settings, cache, plan), proposals, art (thumbnails), analysis (niced ffmpeg), sets
+                     (suggestions), stats (panel aggregates), db handle and pragmas, slskd client/search/downloads/wishlist/playlist-import, scan pipeline (walk, worker pool, batched apply), track fields,
                      library-query (the one `where`, list, facets), peaks (ffmpeg), changes (every library
                      write: chunked, logged, undoable), file-ops (recorded file moves), fs-lock (scan and
                      file-moving jobs do not overlap), previews, taxonomy, rules, health, playlists (tree, members,
@@ -46,7 +52,7 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
   src/shared/        channels (jobs, library, devices, transfers), acquire (quality and view labels), playlists + smart-lines (the smart-rule editor's language)
   src/app/           the web UI, from stack's roster only
   scripts/fake-slskd.ts   a tiny slskd stand-in (search, transfers, downloads) to run the Soulseek flow without slskd
-  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export
+  scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export; scripts/bench-r4.ts times the stats panels and set suggestions; scripts/verify-r4.ts runs auto-tag, art, analysis and the set builder end to end with mocked providers (DB_FILE=<migrated scratch copy>)
 apps/agent/          the device agent (plain Node, run from source): replica, folder upload, Rekordbox bridge; speaks /sync;
                      its `HubRouter` type is the hub's emitted declaration (`.stack/types`), so hub checks first
 packages/core/       pure Node 24 TypeScript, no stack imports: tag IO (MP3, FLAC, M4A, AIFF, WAV), audio hash, normalize, paths,

@@ -20,6 +20,7 @@ import { ISSUE } from "@trackvault/core/issues";
 import { normalizeTrack } from "@trackvault/core/normalize";
 import { planMoves } from "@trackvault/core/organize";
 import { safeJoin } from "@trackvault/core/paths";
+import type { PlanField } from "@trackvault/core/providers";
 import { checkBitrate } from "@trackvault/core/quality";
 import { alreadyInLibrary, parseCandidatePath } from "@trackvault/core/ranking";
 import {
@@ -31,6 +32,7 @@ import {
 } from "@trackvault/core/rules";
 import { formatOf } from "@trackvault/core/tags";
 import { resolveName } from "@trackvault/core/taxonomy";
+import { buildProviders, factsOf, planTrack, policyOf } from "../autotag.ts";
 import { hubLibraryIndex } from "../library-index.ts";
 import { losslessOf, qualityFormat } from "../lossless.ts";
 import { freeName } from "../quarantine.ts";
@@ -508,9 +510,90 @@ const taxonomy: Handler = async (row, env) => {
 
 // -- autotag ---------------------------------------------------------------
 
-const autotag: Handler = async () => ({
-	outcome: { kind: "skip", reason: "auto-tag arrives with the providers (R4)" },
-});
+const AUTOTAG_FIELDS: readonly PlanField[] = [
+	"title",
+	"artist",
+	"albumArtist",
+	"album",
+	"genre",
+	"year",
+	"label",
+	"isrc",
+	"bpm",
+	"key",
+	"remixer",
+];
+
+// The providers fill what the settings allow into the item's proposed tags (the inbox
+// is the review: the owner sees tags before and after when approving).
+const autotag: Handler = async (row, env) => {
+	if (!env.settings.autotagInbox)
+		return { outcome: { kind: "skip", reason: "auto-tag is off in Settings" } };
+	const set = buildProviders(env.settings);
+	if (set.providers.length === 0)
+		return {
+			outcome: { kind: "skip", reason: "no auto-tag provider is ready" },
+		};
+	const tags = effectiveTags(row);
+	const named = identityOf(row);
+	const num = (key: string): number | null =>
+		typeof tags[key] === "number" ? (tags[key] as number) : null;
+	const text = (key: string): string | null =>
+		typeof tags[key] === "string" ? (tags[key] as string) : null;
+	const facts = await factsOf(
+		{
+			title: named.title || null,
+			artist: named.artist || null,
+			album: text("album"),
+			durationMs: row.durationMs,
+			isrc: text("isrc"),
+			label: text("label"),
+			year: num("year"),
+			bpm: num("bpm"),
+		},
+		set,
+		abs(row, env),
+	);
+	const plan = await planTrack(
+		set,
+		facts,
+		Object.fromEntries(AUTOTAG_FIELDS.map((f) => [f, tags[f] ?? null])),
+		policyOf(env.settings),
+		env.taxonomies,
+		env.signal,
+	);
+	const proposed: TagValues = { ...proposedOf(row) };
+	for (const change of plan.changes) {
+		const numeric = change.field === "year" || change.field === "bpm";
+		(proposed as Record<string, unknown>)[change.field] = numeric
+			? Number(change.after)
+			: change.after;
+	}
+	if (
+		plan.candidates.length === 0 &&
+		plan.errors.length === set.providers.length
+	)
+		return {
+			outcome: {
+				kind: "fail",
+				error: `Providers failed: ${plan.errors.map((e) => `${e.provider} ${e.error}`).join("; ")}`,
+				retryable: true,
+			},
+		};
+	return {
+		outcome: {
+			kind: "done",
+			output: {
+				fields: plan.changes.map((c) => ({
+					field: c.field,
+					source: c.source,
+					confidence: Math.round(c.confidence * 100) / 100,
+				})),
+			},
+		},
+		patch: { proposed },
+	};
+};
 
 // -- organise --------------------------------------------------------------
 

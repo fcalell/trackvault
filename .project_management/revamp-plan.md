@@ -365,6 +365,13 @@ Gaps found building R3:
 
 - The nested sidebar (`PlaceSpec.children`) fails the screens floor `inset` when a folder is open: `stack screens test --screen /_app/playlists/\$playlistId --mode light` reports `at 1280px, inset: div[treeitem].gap-gap.min-h-control < div[tree] < div < div "Peak time" x2 measured padding-left 28px, expected ... (nearest: section, 24px)` (also at 1920). The indent is the Shell's own, so the hub cannot fix it.
 
+Gaps found building R4:
+- plugin-auth supplies screens fixtures for `auth.session` and `auth.devices.*` only (`plugins/auth/src/screens-fixtures.ts`); with `mcp: true` the pages the guide asks for call `auth.oauth.client`, `auth.oauth.consent` and `auth.organization.setActive`, which have none, so the app wrote its own (`src/app/fixtures.ts`).
+- A `Stats` cell with a selection value is documented as its own frame ("a row is the frame of the selections it draws"), but the screens run's error story reports `console.error: The read [["stats","totals"],...] failed and no frame holds it` until the `Pane` is given `read={totals}`. The cells are painted from a read the Pane then holds alone.
+- `BarChart` draws a time label only under its first and last bar (`bar.at`), so a categorical chart (24 Camelot keys, "last played" buckets) shows two labels; the key wheel and the buckets are drawn as bars with the compromise.
+- `Gate`'s `description` takes runs (`readonly Run[]`), not a string, unlike a `Pane`'s sentence props; a plain string fails type-check.
+- `scripts/seed-bench.ts` had gone stale against R3's `tracks.codec` (a hub script, not stack): fixed in R4, which also gives the seed plays and loudness.
+
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
 ## 11. Decisions

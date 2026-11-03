@@ -4,6 +4,9 @@ import { selector, z } from "@fcalell/plugin-api/schema";
 import { count, inArray } from "@fcalell/plugin-db/orm";
 import { binaryAvailable } from "@trackvault/core/exec";
 import { tags, tracks, trackTags } from "../../schema/index.ts";
+import analyse from "../../server/jobs/analyse.ts";
+import art from "../../server/jobs/art.ts";
+import autotag from "../../server/jobs/autotag.ts";
 import dedupe from "../../server/jobs/dedupe.ts";
 import edit from "../../server/jobs/edit.ts";
 import fingerprint from "../../server/jobs/fingerprint.ts";
@@ -199,5 +202,27 @@ export const bulk = {
 			(await binaryAvailable("fpcalc", "-version"))
 				? enqueue(fingerprint, { afterwards: { tracks: input.tracks } })
 				: enqueue(dedupe, { tracks: input.tracks }),
+		),
+
+	// Asks the auto-tag providers about the selection; the results wait in Review.
+	autotag: procedure({ auth: true, writes: ["proposals", "jobs"] })
+		.input(z.object({ tracks: tracksInput }))
+		.output(jobViewSchema)
+		.mutation(({ input }) => enqueue(autotag, { tracks: input.tracks })),
+
+	// Cover art for the selection: found, embedded, the "No artwork" flag cleared.
+	art: procedure({ auth: true, writes: ["tracks", "jobs"] })
+		.input(z.object({ tracks: tracksInput, force: z.boolean().default(false) }))
+		.output(jobViewSchema)
+		.mutation(({ input }) =>
+			enqueue(art, { tracks: input.tracks, force: input.force }),
+		),
+
+	// BPM, key, energy and loudness measured from the audio.
+	analyse: procedure({ auth: true, writes: ["tracks", "jobs"] })
+		.input(z.object({ tracks: tracksInput, force: z.boolean().default(false) }))
+		.output(jobViewSchema)
+		.mutation(({ input }) =>
+			enqueue(analyse, { tracks: input.tracks, force: input.force }),
 		),
 };

@@ -8,6 +8,10 @@ import {
 	WANTED_QUALITY,
 	WANTED_QUALITY_LABELS,
 } from "../../../shared/acquire.ts";
+import {
+	AUTOTAG_POLICIES,
+	AUTOTAG_POLICY_LABELS,
+} from "../../../shared/intelligence.ts";
 import { orpc } from "../../lib/api.ts";
 import { authClient } from "../../lib/auth.ts";
 import { FolderBrowser } from "../../lib/folder-browser.tsx";
@@ -19,6 +23,7 @@ export const Route = createFileRoute("/_app/settings")({
 			preload(context.queryClient, orpc.soulseek.settings.read()),
 			preload(context.queryClient, orpc.inbox.settings.read()),
 			preload(context.queryClient, orpc.imports.spotify.read()),
+			preload(context.queryClient, orpc.autotag.settings.read()),
 		]),
 	component: Settings,
 });
@@ -29,6 +34,7 @@ function Settings() {
 	const soulseek = orpc.soulseek.settings.read();
 	const inbox = orpc.inbox.settings.read();
 	const spotify = orpc.imports.spotify.read();
+	const autotag = orpc.autotag.settings.read();
 	const test = useMutation(orpc.soulseek.test.mutationOptions());
 	// The folder the browser has requested, and the one it shows (the choice).
 	const [browsing, setBrowsing] = useState<string>();
@@ -212,6 +218,114 @@ function Settings() {
 						inboxAcousticPercent: {
 							label: "Same recording threshold",
 							description: "Matches by sound under this percent need you.",
+						},
+					}}
+				/>
+			</Section>
+			<Section
+				title="Auto-tag"
+				description="Providers are asked about a track and what they agree on waits in Review. A provider with no key or user agent is not asked."
+			>
+				<Form
+					act={orpc.autotag.updateSettings}
+					commit="field"
+					values={autotag.at((each) => ({
+						autotagMusicbrainz: each.autotagMusicbrainz,
+						autotagMusicbrainzAgent: each.autotagMusicbrainzAgent ?? "",
+						autotagAcoustid: each.autotagAcoustid,
+						autotagAcoustidKey: each.autotagAcoustidKey ?? "",
+						autotagDiscogs: each.autotagDiscogs,
+						autotagDiscogsToken: each.autotagDiscogsToken ?? "",
+						autotagBeatport: each.autotagBeatport,
+						autotagBeatportToken: each.autotagBeatportToken ?? "",
+						autotagDeezer: each.autotagDeezer,
+						autotagPolicy: each.autotagPolicy,
+						autotagMinConfidence: each.autotagMinConfidence,
+						autotagCacheDays: each.autotagCacheDays,
+						autotagInbox: each.autotagInbox,
+					}))}
+					submit={{ done: "Saved" }}
+					fields={{
+						autotagMusicbrainz: { label: "MusicBrainz" },
+						autotagMusicbrainzAgent: {
+							label: "MusicBrainz user agent",
+							description:
+								"Who you are to MusicBrainz and Discogs, for example TrackVault/1.0 (you@example.com). They block anonymous agents.",
+						},
+						autotagAcoustid: { label: "AcoustID" },
+						autotagAcoustidKey: {
+							label: "AcoustID key",
+							description:
+								"A free application key (acoustid.org/new-application). Needs fpcalc on the hub to fingerprint files.",
+						},
+						autotagDiscogs: { label: "Discogs" },
+						autotagDiscogsToken: {
+							label: "Discogs token",
+							description:
+								"A personal access token (discogs.com/settings/developers).",
+						},
+						autotagBeatport: { label: "Beatport" },
+						autotagBeatportToken: {
+							label: "Beatport access token",
+							description: "Genre, key and tempo for dance music.",
+						},
+						autotagDeezer: {
+							label: "Deezer",
+							description: "Needs no key: covers, ISRC and release dates.",
+						},
+						autotagPolicy: {
+							label: "Policy",
+							description:
+								"Overwrite also replaces differing tags, except the title and artist the search used.",
+							options: AUTOTAG_POLICIES.map((value) => ({
+								value,
+								label: AUTOTAG_POLICY_LABELS[value],
+							})),
+						},
+						autotagMinConfidence: {
+							label: "Least confidence",
+							description: "Percent. A field below it is not proposed.",
+						},
+						autotagCacheDays: {
+							label: "Remember answers for",
+							description: "Days. 0 asks the providers every time.",
+						},
+						autotagInbox: {
+							label: "Tag new files in the inbox",
+							description:
+								"The inbox pipeline fills tags with this policy before you approve a file.",
+						},
+					}}
+				/>
+			</Section>
+			<Section
+				title="Cover art and analysis"
+				description="Covers are embedded in the files. Analysis measures BPM, key, energy and loudness in the background."
+			>
+				<Form
+					act={orpc.autotag.updateSettings}
+					commit="field"
+					values={autotag.at((each) => ({
+						artMinSide: each.artMinSide,
+						analyseAuto: each.analyseAuto,
+						analyseFillConfidence: each.analyseFillConfidence,
+					}))}
+					submit={{ done: "Saved" }}
+					fields={{
+						artMinSide: {
+							label: "Smallest cover",
+							description:
+								"Pixels on the short side. A square cover under it is not embedded.",
+						},
+						analyseAuto: {
+							label: "Analyse new tracks",
+							description:
+								"After a scan, tracks without BPM, key, energy or loudness are measured one at a time at low priority.",
+						},
+						analyseFillConfidence: {
+							label: "Fill tags above",
+							description:
+								"Percent. An empty BPM, key or energy tag is filled when the measure is this sure. Tracks Rekordbox analysed are left alone.",
 						},
 					}}
 				/>

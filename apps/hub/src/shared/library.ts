@@ -28,6 +28,8 @@ export const SORT_COLUMNS = [
 	"durationMs",
 	"bitrate",
 	"addedAt",
+	"energy",
+	"loudness",
 ] as const;
 export type SortColumn = (typeof SORT_COLUMNS)[number];
 
@@ -46,6 +48,9 @@ export type ListRow = {
 	bitrate: number | null;
 	addedAt: Date;
 	issues: number;
+	energy: number | null;
+	loudness: number | null;
+	hasArt: boolean;
 };
 
 // What each issue is called on screen.

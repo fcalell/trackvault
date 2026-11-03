@@ -14,6 +14,7 @@ import {
 
 export * from "@fcalell/plugin-auth/schema";
 export * from "@fcalell/plugin-auth/schema/devices";
+export * from "@fcalell/plugin-auth/schema/oauth";
 export * from "@fcalell/plugin-auth/schema/organization";
 export * from "@fcalell/plugin-auth/schema/passkey";
 
@@ -113,6 +114,11 @@ export const tracks = sqliteTable(
 		index("tracks_format_idx").on(t.format, t.id),
 		index("tracks_issues_idx").on(t.issues, t.id),
 		index("tracks_added_idx").on(t.addedAt, t.id),
+		// R4: the analysis columns sort, filter and feed the stats and the set builder.
+		index("tracks_energy_idx").on(t.energy, t.id),
+		index("tracks_loudness_idx").on(t.loudness, t.id),
+		index("tracks_play_count_idx").on(t.playCount, t.id),
+		index("tracks_last_played_idx").on(t.lastPlayedAt, t.id),
 		// "Changed since version N" in (version, id) order: a sync page is a range scan.
 		index("tracks_version_idx").on(t.version, t.id),
 		index("tracks_block_key_idx").on(t.blockKey),
@@ -236,6 +242,8 @@ export const CHANGE_ORIGINS = [
 	"rekordbox",
 	"agent",
 	"scan",
+	"analysis",
+	"mcp",
 ] as const;
 // `rekordbox:<deviceId>` is a change merged from one install's import.
 export type ChangeOrigin =
@@ -330,6 +338,56 @@ export const settings = sqliteTable(
 			.default("good"),
 		// Peers with a longer queue are passed over (0 keeps all).
 		slskdMaxQueue: integer("slskd_max_queue").notNull().default(200),
+		// -- R4 intelligence --
+		// Auto-tag providers: each can be switched off; one with a key or a user agent
+		// asks for it before it is used. Responses are remembered for `autotagCacheDays`.
+		autotagMusicbrainz: integer("autotag_musicbrainz", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		// "TrackVault/1.0 (you@example.com)": MusicBrainz blocks anonymous agents.
+		autotagMusicbrainzAgent: text("autotag_musicbrainz_agent"),
+		autotagAcoustid: integer("autotag_acoustid", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		autotagAcoustidKey: text("autotag_acoustid_key"),
+		autotagDiscogs: integer("autotag_discogs", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		autotagDiscogsToken: text("autotag_discogs_token"),
+		autotagBeatport: integer("autotag_beatport", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		autotagBeatportToken: text("autotag_beatport_token"),
+		autotagDeezer: integer("autotag_deezer", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		// fill-empty only fills tags the file leaves empty; overwrite also replaces
+		// differing values (never the title or artist it searched by).
+		autotagPolicy: text("autotag_policy", {
+			enum: ["fill-empty", "overwrite"],
+		})
+			.notNull()
+			.default("fill-empty"),
+		// The least merged confidence (percent) a proposal needs to be made.
+		autotagMinConfidence: integer("autotag_min_confidence")
+			.notNull()
+			.default(70),
+		autotagCacheDays: integer("autotag_cache_days").notNull().default(30),
+		// The inbox pipeline's auto-tag step fills tags above the confidence by itself.
+		autotagInbox: integer("autotag_inbox", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		// A cover under this many pixels on its short side is not acceptable art.
+		artMinSide: integer("art_min_side").notNull().default(500),
+		// New tracks lacking BPM, key, energy or loudness are analysed in the background.
+		analyseAuto: integer("analyse_auto", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		// An empty BPM, key or energy tag is filled from the analysis above this
+		// confidence (percent); Rekordbox-analysed tracks are never touched.
+		analyseFillConfidence: integer("analyse_fill_confidence")
+			.notNull()
+			.default(70),
 		updatedAt: at("updated_at").notNull(),
 	},
 	(t) => [check("settings_single_row", sql`${t.id} = 1`)],
@@ -1067,3 +1125,107 @@ export const importItems = sqliteTable(
 	},
 	(t) => [index("import_items_import_idx").on(t.importId, t.status, t.pos)],
 );
+
+// -- R4 intelligence -------------------------------------------------------
+
+// Provider responses (core/providers `ProviderCache`), keyed by request URL, until `expiresAt`.
+export const providerCache = sqliteTable(
+	"provider_cache",
+	{
+		key: text("key").primaryKey(),
+		value: text("value").notNull(),
+		expiresAt: at("expires_at").notNull(),
+	},
+	(t) => [index("provider_cache_expires_idx").on(t.expiresAt)],
+);
+
+export const PROPOSAL_STATES = [
+	"pending",
+	"accepted",
+	"rejected",
+	"applied",
+	"stale",
+] as const;
+
+// An auto-tag result waiting for a decision: one row per field of a track. `before` is
+// what the track had when the provider was asked, so an accepted proposal is applied
+// only while the field still holds it (else it goes `stale`).
+export const proposals = sqliteTable(
+	"proposals",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		// The auto-tag job that made it.
+		runId: text("run_id").notNull(),
+		trackId: text("track_id")
+			.notNull()
+			.references(() => tracks.id, { onDelete: "cascade" }),
+		// "Artist - Title" as the review lists it.
+		label: text("label").notNull(),
+		field: text("field").notNull(),
+		before: text("before"),
+		after: text("after").notNull(),
+		source: text("source").notNull(),
+		sourceUrl: text("source_url"),
+		confidence: real("confidence").notNull(),
+		// Other values the providers offered: { value, source, confidence }[].
+		alternatives: text("alternatives", { mode: "json" }),
+		state: text("state", { enum: PROPOSAL_STATES })
+			.notNull()
+			.default("pending"),
+		createdAt: at("created_at").notNull(),
+	},
+	(t) => [
+		index("proposals_review_idx").on(t.state, nocase(t.label), t.id),
+		index("proposals_track_idx").on(t.trackId, t.field),
+		index("proposals_run_idx").on(t.runId),
+	],
+);
+
+// What the analysis measured, per track, with how sure it is. The tags are filled
+// from it only above the settings' confidence; the numbers stay here either way.
+export const analysisResults = sqliteTable(
+	"analysis_results",
+	{
+		trackId: text("track_id")
+			.primaryKey()
+			.references(() => tracks.id, { onDelete: "cascade" }),
+		bpm: real("bpm"),
+		bpmConfidence: real("bpm_confidence"),
+		// Camelot ("8A").
+		key: text("key"),
+		keyConfidence: real("key_confidence"),
+		// 1 to 10.
+		energy: integer("energy"),
+		energyConfidence: real("energy_confidence"),
+		lufs: real("lufs"),
+		loudnessRange: real("loudness_range"),
+		truePeakDb: real("true_peak_db"),
+		// Why a part could not be measured (ffmpeg missing, undecodable, silent).
+		note: text("note"),
+		fileHash: text("file_hash"),
+		analysedAt: at("analysed_at").notNull(),
+	},
+	(t) => [index("analysis_results_at_idx").on(t.analysedAt)],
+);
+
+// A cover search that found nothing (or only art too small): not repeated until
+// forced or the days pass.
+export const artChecks = sqliteTable("art_checks", {
+	trackId: text("track_id")
+		.primaryKey()
+		.references(() => tracks.id, { onDelete: "cascade" }),
+	// embedded | none | small | kept
+	result: text("result").notNull(),
+	source: text("source"),
+	width: integer("width"),
+	height: integer("height"),
+	checkedAt: at("checked_at").notNull(),
+});
+
+// The set being built (one at a time): the tracks in their order.
+export const setDrafts = sqliteTable("set_drafts", {
+	id: text("id").primaryKey(),
+	name: text("name").notNull(),
+	trackIds: text("track_ids", { mode: "json" }).notNull(),
+	updatedAt: at("updated_at").notNull(),
+});

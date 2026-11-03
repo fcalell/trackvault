@@ -21,6 +21,7 @@ import { type FoundFile, walk } from "../lib/scan/walk.ts";
 import { readSettings } from "../lib/settings.ts";
 import { enqueue } from "../services/jobs.ts";
 import { notifyChanged } from "../services/library.ts";
+import analyse from "./analyse.ts";
 import peaks from "./peaks.ts";
 
 export interface ScanPayload {
@@ -166,7 +167,11 @@ export default defineJob<ScanPayload, ScanResult>({
 			}
 			result.missing = gone.length;
 			// New tracks get their waveforms, at low priority and in one job.
-			if (result.added > 0) enqueue(peaks, {}, { reuse: () => true });
+			if (result.added > 0) {
+				enqueue(peaks, {}, { reuse: () => true });
+				if (readSettings().analyseAuto)
+					enqueue(analyse, {}, { reuse: (existing) => !existing.tracks });
+			}
 			result.tookMs = Date.now() - started;
 			const summary = [
 				result.added > 0 && `${result.added} added`,

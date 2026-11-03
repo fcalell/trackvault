@@ -8,6 +8,7 @@ interface Filters {
 	issue?: IssueFilter | undefined;
 	tag?: number | undefined;
 	genre?: string | undefined;
+	neverPlayed?: boolean | undefined;
 }
 
 export const Route = createFileRoute("/_app/library")({
@@ -20,6 +21,10 @@ export const Route = createFileRoute("/_app/library")({
 				? Number(search.tag)
 				: undefined,
 		genre: typeof search.genre === "string" ? search.genre : undefined,
+		neverPlayed:
+			search.neverPlayed === true || search.neverPlayed === "true"
+				? true
+				: undefined,
 	}),
 	component: Library,
 });
@@ -30,7 +35,7 @@ function Library() {
 	return (
 		<>
 			<LibraryPane
-				key={`${search.issue}|${search.tag}|${search.genre}`}
+				key={`${search.issue}|${search.tag}|${search.genre}|${search.neverPlayed}`}
 				title="All tracks"
 				base="/library"
 				initial={search}

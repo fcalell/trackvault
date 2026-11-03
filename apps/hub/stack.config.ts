@@ -29,6 +29,9 @@ export default defineConfig({
 			organization: true,
 			// Agents on the Rekordbox machines call /sync and /ws with a device key.
 			devices: true,
+			// Claude and other MCP clients connect as the owner (src/worker/mcp.ts lists
+			// the procedures they may call).
+			mcp: true,
 		}),
 		api(),
 		vite(),

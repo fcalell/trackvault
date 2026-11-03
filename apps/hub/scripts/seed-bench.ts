@@ -274,6 +274,8 @@ const run = sqlite.transaction(() => {
 			hash = createHash("sha256").update(hash).digest("hex");
 		seen.add(hash);
 		const id = `bench-${i.toString(36).padStart(6, "0")}`;
+		// A third of the library has been played, some of it many times.
+		const played = random() < 0.3 ? 1 + Math.floor(random() ** 3 * 60) : 0;
 		const added = now - Math.floor(random() ** 1.5 * 3 * 365 * 86400 * 1000);
 		insertTrack.run({
 			id,
@@ -296,7 +298,7 @@ const run = sqlite.transaction(() => {
 			bpm: noBpm ? null : bpm,
 			key: noKey ? null : pick(KEYS),
 			energy: random() < 0.6 ? 1 + Math.floor(random() * 10) : null,
-			loudness: null,
+			loudness: random() < 0.5 ? -14 + Math.round(random() * 800) / 100 : null,
 			rating: weighted([
 				[0, 55],
 				[1, 3],
@@ -310,9 +312,13 @@ const run = sqlite.transaction(() => {
 					? pick(["red", "orange", "green", "blue", "purple"])
 					: null,
 			comment: random() < 0.1 ? pick(WORDS) : null,
-			play_count: 0,
-			last_played_at: null,
+			play_count: played,
+			last_played_at: played
+				? now - Math.floor(random() ** 2 * 700 * 86400 * 1000)
+				: null,
 			format: "mp3",
+			codec: "mp3",
+			bit_depth: null,
 			bitrate,
 			sample_rate: 44100,
 			duration_ms: durationMs,

@@ -5,6 +5,7 @@ import { and, eq } from "@fcalell/plugin-db/orm";
 import { defineService } from "@fcalell/plugin-node/server";
 import { isUnderRoot, safeJoin } from "@trackvault/core/paths";
 import { files } from "../../schema/index.ts";
+import { artSize, thumbnail } from "../lib/art.ts";
 import { db } from "../lib/db.ts";
 import { peaksPath } from "../lib/peaks.ts";
 import { parseRange } from "../lib/range.ts";
@@ -45,6 +46,30 @@ async function servePeaks(request: Request, id: string): Promise<Response> {
 	}
 }
 
+// GET /media/<id>/art?size=320: the track's cover, resized once and kept on disk.
+// The thumbnail's name carries the file's hash, so the URL's ETag changes with the art.
+async function serveArt(request: Request, id: string): Promise<Response> {
+	if (id === "" || id.includes("/")) return plain(404, "Not found");
+	const wanted = Number(new URL(request.url).searchParams.get("size")) || 320;
+	const file = await thumbnail(id, artSize(wanted)).catch(() => null);
+	if (!file) return plain(404, "No cover");
+	const info = await stat(file).catch(() => null);
+	if (!info) return plain(404, "No cover");
+	const etag = `"${info.size.toString(16)}-${Math.floor(info.mtimeMs).toString(16)}"`;
+	const headers = new Headers({
+		"content-type": "image/jpeg",
+		"content-length": String(info.size),
+		etag,
+		// Revalidated cheaply: a new cover changes the ETag, not the address.
+		"cache-control": "private, max-age=3600, stale-while-revalidate=86400",
+	});
+	if (request.headers.get("if-none-match") === etag)
+		return new Response(null, { status: 304, headers });
+	return new Response(request.method === "HEAD" ? null : await readFile(file), {
+		headers,
+	});
+}
+
 async function serve(
 	request: Request,
 	signedIn: (request: Request) => Promise<unknown>,
@@ -57,6 +82,7 @@ async function serve(
 		new URL(request.url).pathname.slice("/media/".length),
 	);
 	if (path.endsWith("/peaks")) return servePeaks(request, path.slice(0, -6));
+	if (path.endsWith("/art")) return serveArt(request, path.slice(0, -4));
 	const id = path;
 	if (id === "" || id.includes("/")) return plain(404, "Not found");
 	const root = readSettings().libraryRoot;

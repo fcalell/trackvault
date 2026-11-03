@@ -43,6 +43,10 @@ export const libraryQuery = z.object({
 	issue: z.enum(ISSUE_FILTERS).optional(),
 	// A custom tag's id: the tracks that carry it.
 	tag: z.number().int().optional(),
+	// Energy 1 to 10 (tag or analysis).
+	energy: z.number().int().optional(),
+	// Tracks no play was ever recorded for.
+	neverPlayed: z.boolean().optional(),
 	// The view's own order when the caller sorts nothing: newest first.
 	recent: z.boolean().optional(),
 });
@@ -61,6 +65,8 @@ export const ORDER: Record<SortColumn, SQL> = {
 	durationMs: sql`${tracks.durationMs}`,
 	bitrate: sql`${tracks.bitrate}`,
 	addedAt: sql`${tracks.addedAt}`,
+	energy: sql`${tracks.energy}`,
+	loudness: sql`${tracks.loudness}`,
 };
 
 // What a window draws; the full record loads on open.
@@ -103,6 +109,9 @@ export function filtersOf(query: LibraryQuery): SQL | undefined {
 		conditions.push(gte(tracks.bpm, query.bpmMin));
 	else if (query.bpmMax !== undefined)
 		conditions.push(lte(tracks.bpm, query.bpmMax));
+	if (query.energy !== undefined)
+		conditions.push(eq(tracks.energy, query.energy));
+	if (query.neverPlayed) conditions.push(sql`${tracks.playCount} = 0`);
 	if (query.issue !== undefined) {
 		// Written as the partial indexes write it, so they answer it.
 		conditions.push(sql.raw(issueSql(query.issue)));
@@ -219,15 +228,12 @@ export const OTHER_COLUMNS = {
 	year: false,
 	releaseDate: false,
 	isrc: false,
-	energy: false,
-	loudness: false,
 	colour: false,
 	comment: false,
 	playCount: false,
 	lastPlayedAt: false,
 	sampleRate: false,
 	size: false,
-	hasArt: false,
 	blockKey: false,
 	updatedAt: false,
 	version: false,
@@ -289,6 +295,7 @@ export interface Facets {
 	genres: Array<{ value: string; count: number }>;
 	keys: Array<{ value: string; count: number }>;
 	formats: Array<{ value: string; count: number }>;
+	energies: Array<{ value: number; count: number }>;
 	issues: Array<{ value: IssueFilter; count: number }>;
 	tags: Array<{ id: number; name: string; count: number }>;
 	total: number;
@@ -334,6 +341,15 @@ export function facetsOf(database: Db, version: number): Facets {
 		genres: group("genre"),
 		keys: group("key"),
 		formats: group("format"),
+		energies: database
+			.select({ value: sql<number>`${tracks.energy}`, count: count() })
+			.from(tracks)
+			.where(
+				sql`${tracks.energy} IS NOT NULL AND (${tracks.issues} & ${QUARANTINED}) = 0`,
+			)
+			.groupBy(tracks.energy)
+			.orderBy(tracks.energy)
+			.all(),
 		issues: ISSUE_FILTERS.map((value) => ({
 			value,
 			count: sums?.[value] ?? 0,

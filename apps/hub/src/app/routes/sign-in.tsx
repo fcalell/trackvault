@@ -8,6 +8,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { orpc } from "../lib/api.ts";
 import { authClient } from "../lib/auth.ts";
+import { followRedirect, oauthQuery } from "../lib/oauth.ts";
 
 export const Route = createFileRoute("/sign-in")({
 	component: SignIn,
@@ -42,9 +43,11 @@ function SignIn() {
 				]}
 				form={{
 					act: orpc.auth.signIn.verifyOtp,
-					given: { email: sentTo },
+					given: { email: sentTo, oauthQuery: oauthQuery() },
 					fields: { otp: { label: "Code", control: "code" } },
-					submit: { label: "Verify", to: "/" },
+					// An MCP client's authorization resumes where the hub says; otherwise home.
+					submit: { label: "Verify", ...(oauthQuery() ? {} : { to: "/" }) },
+					onDone: (answer) => followRedirect(answer),
 				}}
 			>
 				<Button act="quiet" label="Back" onAct={() => setSentTo(undefined)} />

@@ -18,6 +18,8 @@ const ORIGINS: Record<string, string> = {
 	rekordbox: "Rekordbox",
 	agent: "Agent",
 	scan: "Scan",
+	analysis: "Analysis",
+	mcp: "Claude",
 };
 
 const COLUMNS: TableColumn<Batch>[] = [

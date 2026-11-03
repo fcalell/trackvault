@@ -4,7 +4,12 @@ import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
 import { eq } from "@fcalell/plugin-db/orm";
 import type { TagPatch } from "@trackvault/core/tags";
-import { batches, changes, tracks as tracksTable } from "../../schema/index.ts";
+import {
+	analysisResults,
+	batches,
+	changes,
+	tracks as tracksTable,
+} from "../../schema/index.ts";
 import tagWrite from "../../server/jobs/tag-write.ts";
 import { db } from "../../server/lib/db.ts";
 import {
@@ -25,6 +30,9 @@ import {
 import { enqueue } from "../../server/services/jobs.ts";
 import { bumpVersion, notifyChanged } from "../../server/services/library.ts";
 import { tagPatch } from "../../shared/patch.ts";
+
+const pct = (v: number | null): number | null =>
+	v === null ? null : Math.round(v * 100);
 
 const edit = tagPatch.extend({ id: z.string() });
 
@@ -61,7 +69,30 @@ export const tracks = {
 				.get();
 			if (!row) throw new ApiError("NOT_FOUND");
 			// `peaks`: the waveform is drawn (`/media/<id>/peaks` answers).
-			return { ...row, peaks: hasPeaks(row.id) };
+			const analysis = db()
+				.select()
+				.from(analysisResults)
+				.where(eq(analysisResults.trackId, row.id))
+				.get();
+			return {
+				...row,
+				peaks: hasPeaks(row.id),
+				// What the audio analysis measured, with how sure it is (percent).
+				analysis: analysis
+					? {
+							bpm: analysis.bpm,
+							bpmConfidence: pct(analysis.bpmConfidence),
+							key: analysis.key,
+							keyConfidence: pct(analysis.keyConfidence),
+							energy: analysis.energy,
+							energyConfidence: pct(analysis.energyConfidence),
+							lufs: analysis.lufs,
+							loudnessRange: analysis.loudnessRange,
+							note: analysis.note,
+							analysedAt: analysis.analysedAt,
+						}
+					: null,
+			};
 		}),
 
 	// Edits tags in the library and queues the file write. The database is the

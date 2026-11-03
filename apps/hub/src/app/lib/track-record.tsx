@@ -1,6 +1,7 @@
 import { useMutation, useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Card } from "@fcalell/plugin-react-ui/components/card";
 import { Form } from "@fcalell/plugin-react-ui/components/form";
+import { Image } from "@fcalell/plugin-react-ui/components/image";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Picker } from "@fcalell/plugin-react-ui/components/picker";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
@@ -98,6 +99,11 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 	const everyTag = orpc.tags.list.read();
 	const assign = useMutation(orpc.tags.assign.mutationOptions());
 	const better = useMutation(orpc.wishlist.addFromTrack.mutationOptions());
+	const autotag = useMutation(orpc.bulk.autotag.mutationOptions());
+	const fetchArt = useMutation(orpc.bulk.art.mutationOptions());
+	const analyse = useMutation(orpc.bulk.analyse.mutationOptions());
+	const addToSet = useMutation(orpc.sets.append.mutationOptions());
+	const hasArt = useRead(track)?.hasArt;
 	return (
 		<Pane
 			title={track.at((each) => each.title ?? "Untitled")}
@@ -127,6 +133,36 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					},
 				},
 				{
+					icon: "ListPlus",
+					label: "Add to the set",
+					onAct: () => addToSet.mutateAsync({ trackIds: [id] }),
+					done: "Added to the set",
+					to: "/sets",
+				},
+				{
+					icon: "Sparkles",
+					label: "Auto-tag",
+					onAct: () => autotag.mutateAsync({ tracks: { ids: [id] } }),
+					done: "Looking the track up; the results wait in Review",
+					to: "/review",
+				},
+				{
+					icon: "Image",
+					label: "Fetch art",
+					onAct: () =>
+						fetchArt.mutateAsync({ tracks: { ids: [id] }, force: true }),
+					done: "Looking for a cover",
+					to: "/jobs",
+				},
+				{
+					icon: "AudioWaveform",
+					label: "Analyse",
+					onAct: () =>
+						analyse.mutateAsync({ tracks: { ids: [id] }, force: true }),
+					done: "Analysing",
+					to: "/jobs",
+				},
+				{
 					icon: "Search",
 					label: "Find a better version",
 					onAct: () => better.mutateAsync({ trackId: id }),
@@ -140,6 +176,79 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 					<RecordWaveform id={id} />
 				</Card>
 			</Section>
+			<Section title="Cover" read={track}>
+				<Card>
+					{hasArt ? (
+						<Image
+							src={`/media/${encodeURIComponent(id)}/art?size=640`}
+							alt="Cover art"
+							aspect={1}
+						/>
+					) : (
+						<Text kind="meta">
+							No cover is embedded. Fetch art looks one up.
+						</Text>
+					)}
+				</Card>
+			</Section>
+			<Section
+				title="Analysis"
+				items={track.at((each) =>
+					each.analysis
+						? [
+								{
+									key: "bpm",
+									label: "Tempo",
+									title: each.analysis.bpm
+										? `${each.analysis.bpm} BPM`
+										: "Not measured",
+									meta:
+										each.analysis.bpmConfidence === null
+											? []
+											: [`${each.analysis.bpmConfidence}% sure`],
+								},
+								{
+									key: "key",
+									label: "Key",
+									title: each.analysis.key ?? "Not measured",
+									meta:
+										each.analysis.keyConfidence === null
+											? []
+											: [`${each.analysis.keyConfidence}% sure`],
+								},
+								{
+									key: "energy",
+									label: "Energy",
+									title: each.analysis.energy
+										? String(each.analysis.energy)
+										: "Not measured",
+									meta:
+										each.analysis.energyConfidence === null
+											? []
+											: [`${each.analysis.energyConfidence}% sure`],
+								},
+								{
+									key: "lufs",
+									label: "Loudness",
+									title:
+										each.analysis.lufs === null
+											? "Not measured"
+											: `${Math.round(each.analysis.lufs * 10) / 10} LUFS`,
+									meta:
+										each.analysis.loudnessRange === null
+											? []
+											: [
+													`range ${Math.round(each.analysis.loudnessRange * 10) / 10} LU`,
+												],
+								},
+							]
+						: [],
+				)}
+				empty={{
+					sentence:
+						"Not analysed yet. Analyse measures tempo, key, energy and loudness.",
+				}}
+			/>
 			<Section
 				title="Issues"
 				items={track.at((each) =>

@@ -635,6 +635,9 @@ const track = (at: number) => ({
 	bitrate: at % 7 === 0 ? 192 : 320,
 	addedAt: new Date(Date.now() - at * 3_600_000),
 	issues: at % 7 === 0 ? 1 : 0,
+	energy: 1 + (at % 10),
+	loudness: -9 - (at % 5) * 0.7,
+	hasArt: at % 4 !== 0,
 });
 
 const record = (at: number) => ({
@@ -666,7 +669,97 @@ const record = (at: number) => ({
 	updatedAt: new Date(),
 	version: 12,
 	peaks: false,
+	analysis: {
+		bpm: 126,
+		bpmConfidence: 88,
+		key: "8A",
+		keyConfidence: 64,
+		energy: 7,
+		energyConfidence: 55,
+		lufs: -8.6,
+		loudnessRange: 5.2,
+		note: null,
+		analysedAt: new Date(),
+	},
 });
+
+const PROPOSALS = [
+	{
+		id: "1",
+		trackId: "track-1",
+		label: "Kalomi - Midnight Echo (Extended Mix)",
+		field: "genre",
+		before: null,
+		after: "Tech House",
+		source: "beatport",
+		sourceUrl: "https://www.beatport.com/track/1",
+		confidence: 93,
+		state: "pending" as const,
+		alternatives: "House (discogs)",
+	},
+	{
+		id: "2",
+		trackId: "track-1",
+		label: "Kalomi - Midnight Echo (Extended Mix)",
+		field: "label",
+		before: "Cipher",
+		after: "Cipher Records",
+		source: "musicbrainz",
+		sourceUrl: "https://musicbrainz.org/recording/1",
+		confidence: 78,
+		state: "pending" as const,
+		alternatives: "",
+	},
+	{
+		id: "3",
+		trackId: "track-2",
+		label: "Rendor - Velvet Signal (Original Mix)",
+		field: "year",
+		before: null,
+		after: "2022",
+		source: "deezer",
+		sourceUrl: "https://www.deezer.com/track/2",
+		confidence: 71,
+		state: "pending" as const,
+		alternatives: "",
+	},
+];
+
+const SET_TRACK = (at: number, score: number | null) => ({
+	id: `track-${at}`,
+	title: TITLES[at % TITLES.length] ?? null,
+	artist: ARTISTS[at % ARTISTS.length] ?? null,
+	bpm: 124 + at,
+	key: KEYS[at % KEYS.length] ?? null,
+	energy: 5 + at,
+	genre: GENRES[at % GENRES.length] ?? null,
+	hasArt: true,
+	score,
+	weak: score !== null && score < 50,
+	why: score !== null && score < 50 ? "8A to 3B: clash" : null,
+});
+
+const SET_TRACKS = [SET_TRACK(1, null), SET_TRACK(2, 86), SET_TRACK(3, 41)];
+
+const AUTOTAG_SETTINGS = {
+	autotagMusicbrainz: true,
+	autotagMusicbrainzAgent: "TrackVault/1.0 (me@example.com)",
+	autotagAcoustid: true,
+	autotagAcoustidKey: "••••••••abcd",
+	autotagDiscogs: true,
+	autotagDiscogsToken: null,
+	autotagBeatport: false,
+	autotagBeatportToken: null,
+	autotagDeezer: true,
+	autotagPolicy: "fill-empty" as const,
+	autotagMinConfidence: 70,
+	autotagCacheDays: 30,
+	autotagInbox: false,
+	artMinSide: 500,
+	analyseAuto: true,
+	analyseFillConfidence: 70,
+	ready: ["MusicBrainz", "AcoustID", "Deezer"],
+};
 
 export default defineFixtures<
 	AppRouter,
@@ -681,6 +774,15 @@ export default defineFixtures<
 			organization: {
 				list: () => [ORGANIZATION],
 				create: () => ({ ...ORGANIZATION, members: [] }),
+				setActive: () => ({ redirect: true as const, url: "/connect/consent" }),
+			},
+			oauth: {
+				client: () => ({
+					client_id: "client",
+					client_name: "Claude",
+					client_uri: "https://claude.ai",
+				}),
+				consent: () => ({ redirect: true as const, url: "/" }),
 			},
 		},
 		settings: {
@@ -708,6 +810,10 @@ export default defineFixtures<
 				})),
 				keys: KEYS.map((value, at) => ({ value, count: 4000 - at * 300 })),
 				formats: [{ value: "mp3", count: TOTAL }],
+				energies: [5, 6, 7, 8].map((value) => ({
+					value,
+					count: 9000 - value * 500,
+				})),
 				issues: [
 					{ value: "lowBitrate" as const, count: 6200 },
 					{ value: "noKey" as const, count: 1900 },
@@ -722,7 +828,109 @@ export default defineFixtures<
 			get: ({ id }) => record(Number(id.replace("track-", "")) || 0),
 			update: ({ id }) => record(Number(id.replace("track-", "")) || 0),
 		},
+		autotag: {
+			settings: () => AUTOTAG_SETTINGS,
+			updateSettings: () => AUTOTAG_SETTINGS,
+			summary: () => ({ pending: 3, applied: 40, rejected: 2, stale: 1 }),
+			list: ({ offset = 0, limit = 200 }) => ({
+				data: PROPOSALS.slice(offset, offset + limit),
+				total: PROPOSALS.length,
+				offset,
+			}),
+			accept: () => JOBS[0] as (typeof JOBS)[number],
+			acceptAbove: () => JOBS[0] as (typeof JOBS)[number],
+			reject: () => ({ rejected: 1 }),
+		},
+		sets: {
+			draft: () => ({
+				tracks: SET_TRACKS,
+				average: 64,
+				weak: 1,
+				curve: SET_TRACKS.map((row) => ({
+					id: row.id,
+					bpm: row.bpm,
+					camelot: row.key,
+					energy: row.energy,
+				})),
+			}),
+			suggest: () =>
+				[4, 5, 6].map((at, i) => ({
+					...SET_TRACK(at, null),
+					score: 92 - i * 9,
+					why: "8A to 9A: adjacent; 126 to 127 bpm, +0.8% pitch; energy 6 to 7; never played",
+					lastPlayedAt: null,
+				})),
+			find: () =>
+				SET_TRACKS.map(({ score: _s, weak: _w, why: _y, ...row }) => row),
+			append: () => ({ added: 1 }),
+			appendSelection: () => ({ added: 3 }),
+			fromPlaylist: () => ({ added: 12 }),
+			remove: () => undefined,
+			move: () => undefined,
+			clear: () => undefined,
+			save: () => ({ id: "pl-new" }),
+		},
+		stats: {
+			totals: () => ({
+				tracks: 50_000,
+				durationMs: 50_000 * 330_000,
+				size: 50_000 * 11_000_000,
+				artists: 8200,
+				neverPlayed: 31_000,
+			}),
+			formats: () => [
+				{ format: "mp3", codec: "mp3", count: 41_000 },
+				{ format: "flac", codec: "flac", count: 6000 },
+				{ format: "m4a", codec: "aac", count: 3000 },
+			],
+			genres: () => ({
+				top: GENRES.map((genre, at) => ({ genre, count: 9000 - at * 1200 })),
+				untagged: 420,
+			}),
+			bpm: () =>
+				[100, 105, 110, 115, 120, 125, 130, 135, 140].map((bin, at) => ({
+					bin,
+					count: 1500 + ((at * 2600) % 7000),
+				})),
+			keys: () =>
+				Array.from({ length: 24 }, (_, at) => ({
+					key: `${Math.floor(at / 2) + 1}${at % 2 === 0 ? "A" : "B"}`,
+					count: 900 + ((at * 377) % 1800),
+				})),
+			added: () =>
+				Array.from({ length: 12 }, (_, at) => ({
+					month: `2025-${String(at + 1).padStart(2, "0")}`,
+					count: 300 + ((at * 211) % 900),
+				})),
+			played: () => ({
+				most: [1, 2, 3].map((at) => ({
+					id: `track-${at}`,
+					title: TITLES[at % TITLES.length] ?? null,
+					artist: ARTISTS[at % ARTISTS.length] ?? null,
+					playCount: 60 - at * 9,
+					lastPlayedAt: Date.now() - at * 86_400_000,
+				})),
+				least: [4, 5].map((at) => ({
+					id: `track-${at}`,
+					title: TITLES[at % TITLES.length] ?? null,
+					artist: ARTISTS[at % ARTISTS.length] ?? null,
+					playCount: 1,
+					lastPlayedAt: Date.now() - at * 40 * 86_400_000,
+				})),
+			}),
+			freshness: () => [
+				{ bucket: "Last month", count: 1200 },
+				{ bucket: "1 to 3 months", count: 2100 },
+				{ bucket: "3 to 6 months", count: 3000 },
+				{ bucket: "6 to 12 months", count: 5200 },
+				{ bucket: "Over a year", count: 7500 },
+				{ bucket: "Never", count: 31_000 },
+			],
+		},
 		bulk: {
+			autotag: () => JOBS[0] as (typeof JOBS)[number],
+			art: () => JOBS[0] as (typeof JOBS)[number],
+			analyse: () => JOBS[0] as (typeof JOBS)[number],
 			preview: () => ({
 				total: 3,
 				sampled: 3,

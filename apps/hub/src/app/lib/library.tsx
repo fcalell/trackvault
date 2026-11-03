@@ -72,6 +72,22 @@ export const LIBRARY_COLUMNS: TableColumn<ListRow>[] = [
 		cell: (row) => quality(row.format, row.bitrate),
 	},
 	{
+		key: "energy",
+		label: "Energy",
+		kind: "number",
+		sortable: true,
+		cell: (row) => row.energy,
+	},
+	{
+		key: "loudness",
+		label: "LUFS",
+		kind: "number",
+		sortable: true,
+		hidden: true,
+		cell: (row) =>
+			row.loudness === null ? null : Math.round(row.loudness * 10) / 10,
+	},
+	{
 		key: "addedAt",
 		label: "Added",
 		kind: "age",
@@ -109,6 +125,7 @@ export function LibraryPane({
 		issue?: (typeof ISSUE_FILTERS)[number] | undefined;
 		tag?: number | undefined;
 		genre?: string | undefined;
+		neverPlayed?: boolean | undefined;
 	};
 }) {
 	const [text, setText] = useState("");
@@ -120,6 +137,8 @@ export function LibraryPane({
 	>(initial.issue);
 	const [tag, setTag] = useState<number | undefined>(initial.tag);
 	const [bpm, setBpm] = useState<string>();
+	const [energy, setEnergy] = useState<number>();
+	const [never, setNever] = useState<boolean | undefined>(initial.neverPlayed);
 	const range = BPM_RANGES.find((each) => each.value === bpm);
 
 	const query = useMemo<LibraryQuery>(
@@ -131,9 +150,11 @@ export function LibraryPane({
 			tag,
 			bpmMin: range?.min,
 			bpmMax: range?.max,
+			energy,
+			neverPlayed: never,
 			recent: recent || undefined,
 		}),
-		[q, genre, key, issue, tag, range, recent],
+		[q, genre, key, issue, tag, range, recent, energy, never],
 	);
 	const tracks = orpc.tracks.list.window(query);
 	const facets = orpc.tracks.facets.read();
@@ -148,6 +169,9 @@ export function LibraryPane({
 	const organise = useMutation(orpc.bulk.organise.mutationOptions());
 	const dedupe = useMutation(orpc.bulk.dedupe.mutationOptions());
 	const quarantine = useMutation(orpc.bulk.quarantine.mutationOptions());
+	const autotag = useMutation(orpc.bulk.autotag.mutationOptions());
+	const fetchArt = useMutation(orpc.bulk.art.mutationOptions());
+	const analyse = useMutation(orpc.bulk.analyse.mutationOptions());
 	const nothing =
 		"ids" in picked && picked.ids.length === 0
 			? "Choose tracks first."
@@ -215,6 +239,26 @@ export function LibraryPane({
 						options: BPM_RANGES.map(({ value, label }) => ({ value, label })),
 						value: bpm,
 						onChange: (value) => setBpm(value ?? undefined),
+					},
+					{
+						label: "Energy",
+						placeholder: "Any energy",
+						options: facets.at((each) =>
+							each.energies.map((row) => ({
+								value: String(row.value),
+								label: String(row.value),
+								description: count.format(row.count),
+							})),
+						),
+						value: energy === undefined ? undefined : String(energy),
+						onChange: (value) => setEnergy(value ? Number(value) : undefined),
+					},
+					{
+						label: "Played",
+						placeholder: "Any",
+						options: [{ value: "never", label: "Never played" }],
+						value: never ? "never" : undefined,
+						onChange: (value) => setNever(value ? true : undefined),
 					},
 					{
 						label: "Tag",
@@ -301,6 +345,27 @@ export function LibraryPane({
 									submit: { label: "Add", done: "Added to the playlist" },
 								},
 							}),
+						},
+						{
+							label: "Auto-tag",
+							blocked: nothing,
+							onAct: () => autotag.mutateAsync({ tracks: picked }),
+							done: "Looking the tracks up; the results wait in Review",
+							to: "/jobs",
+						},
+						{
+							label: "Fetch art",
+							blocked: nothing,
+							onAct: () => fetchArt.mutateAsync({ tracks: picked }),
+							done: "Looking for covers",
+							to: "/jobs",
+						},
+						{
+							label: "Analyse",
+							blocked: nothing,
+							onAct: () => analyse.mutateAsync({ tracks: picked }),
+							done: "Analysing in the background",
+							to: "/jobs",
 						},
 						{
 							label: "Quarantine",
