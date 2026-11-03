@@ -47,6 +47,10 @@ export function describe(
 		return titles?.get(member.trackId) ?? member.trackId;
 	}
 	if (field === "rule") return "Rule";
+	if (field === "alias") {
+		const alias = value as { alias: string; canonical: string };
+		return `${alias.alias} is ${alias.canonical}`;
+	}
 	if (field === "cues")
 		return Array.isArray(value) ? `${value.length} cues` : null;
 	if (field === "file") {
@@ -55,6 +59,19 @@ export function describe(
 	}
 	if (Array.isArray(value)) return value.join(", ") || null;
 	return String(value);
+}
+
+// What a change is on: a track's title, a playlist's name, or the taxonomy's own words.
+function titleOf(row: {
+	entity: string;
+	entityId: string;
+	title: string | null;
+	playlist: string | null;
+}): string | null {
+	if (row.entity === "playlist") return row.playlist ?? "Deleted playlist";
+	if (row.entity === "alias") return `${row.entityId} alias`;
+	if (row.entity === "genre") return row.entityId;
+	return row.title;
 }
 
 const asView = (row: typeof batches.$inferSelect) => ({
@@ -179,13 +196,9 @@ export const history = {
 				id: String(row.seq),
 				entity: row.entity,
 				entityId: row.entityId,
-				// A playlist's change is titled by the playlist.
-				title:
-					row.entity === "playlist"
-						? (row.playlist ?? "Deleted playlist")
-						: row.title,
-				mixName: row.entity === "playlist" ? null : row.mixName,
-				artist: row.entity === "playlist" ? null : row.artist,
+				title: titleOf(row),
+				mixName: row.entity === "track" ? row.mixName : null,
+				artist: row.entity === "track" ? row.artist : null,
 				field: row.field,
 				before: describe(row.field, row.before, titles),
 				after: describe(row.field, row.after, titles),

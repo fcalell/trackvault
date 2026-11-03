@@ -4,7 +4,7 @@ import { ApiError } from "@fcalell/plugin-api/error";
 import { z } from "@fcalell/plugin-api/schema";
 import { count, eq, sql } from "@fcalell/plugin-db/orm";
 import { tags as tagsTable, trackTags } from "../../schema/index.ts";
-import { ensureBatch } from "../../server/lib/changes.ts";
+import { CHUNK, ensureBatch } from "../../server/lib/changes.ts";
 import { db } from "../../server/lib/db.ts";
 import { applyTagSets } from "../../server/lib/track-tags.ts";
 import { bumpVersion, notifyChanged } from "../../server/services/library.ts";
@@ -54,10 +54,50 @@ export const tags = {
 			}
 		}),
 
-	remove: procedure({ auth: true, writes: ["tags", "trackTags"] })
+	// Deletes a tag; each track it was on is logged, so the history undoes it.
+	remove: procedure({
+		auth: true,
+		writes: ["tags", "trackTags", "tracks", "changes", "batches"],
+	})
 		.input(z.object({ id: z.number().int() }))
 		.mutation(({ input }) => {
-			db().delete(tagsTable).where(eq(tagsTable.id, input.id)).run();
+			let version = 0;
+			let touched: string[] = [];
+			db().transaction((tx) => {
+				const tag = tx
+					.select()
+					.from(tagsTable)
+					.where(eq(tagsTable.id, input.id))
+					.get();
+				if (!tag) return;
+				version = bumpVersion(tx);
+				const now = new Date();
+				const info = {
+					batchId: randomUUID(),
+					origin: "ui" as const,
+					label: `Delete tag ${tag.name}`,
+				};
+				const carriers = tx
+					.select({ trackId: trackTags.trackId })
+					.from(trackTags)
+					.where(eq(trackTags.tagId, tag.id))
+					.all()
+					.map((row) => row.trackId);
+				for (let i = 0; i < carriers.length; i += CHUNK) {
+					const done = applyTagSets(
+						tx,
+						carriers.slice(i, i + CHUNK),
+						[],
+						[tag.id],
+						info,
+						now,
+					);
+					if (done.logged > 0) ensureBatch(tx, info, done.logged, now);
+					touched = touched.concat(done.touched);
+				}
+				tx.delete(tagsTable).where(eq(tagsTable.id, tag.id)).run();
+			});
+			notifyChanged(touched, version);
 		}),
 
 	// The tags of one track.

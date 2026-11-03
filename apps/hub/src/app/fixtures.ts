@@ -1156,15 +1156,15 @@ export default defineFixtures<
 					name: "Tech House",
 					tracks: 5200,
 					aliases: [
-						{ id: 1, alias: "Tech-House" },
-						{ id: 2, alias: "Techhouse" },
+						{ id: 1, alias: "Tech-House", tracks: 240 },
+						{ id: 2, alias: "Techhouse", tracks: 31 },
 					],
 				},
 				{
 					id: 2,
 					name: "Drum & Bass",
 					tracks: 1900,
-					aliases: [{ id: 3, alias: "DnB" }],
+					aliases: [{ id: 3, alias: "DnB", tracks: 88 }],
 				},
 			],
 			unknown: () => [
@@ -1184,7 +1184,12 @@ export default defineFixtures<
 		},
 		aliases: {
 			list: () => [
-				{ id: 1, alias: "Sha and Tormar", canonical: "Sha & Tormar" },
+				{
+					id: 1,
+					alias: "Sha and Tormar",
+					canonical: "Sha & Tormar",
+					tracks: 7,
+				},
 			],
 			suggest: () => [
 				{

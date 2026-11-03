@@ -55,10 +55,14 @@ function Aliases() {
 			key: `${kind}-alias-${row.id}`,
 			leading: { icon: "ArrowRight" },
 			title: row.alias,
-			facts: [`is ${row.canonical}`],
+			facts: [`is ${row.canonical}`, `${count(row.tracks)} tracks`],
 			act: {
 				icon: "X",
 				label: `Remove ${row.alias}`,
+				confirm: {
+					title: `Remove the alias ${row.alias}?`,
+					sentence: `${count(row.tracks)} tracks carry this spelling. They keep it, and tidying the spellings stops rewriting it to ${row.canonical}. Undo the batch in History.`,
+				},
 				onAct: () => remove.mutateAsync({ kind, id: row.id }),
 			},
 		});

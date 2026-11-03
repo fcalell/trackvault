@@ -50,17 +50,21 @@ function Genres() {
 				onAct: () => remove.mutateAsync({ id: genre.id }),
 				confirm: {
 					title: `Delete ${genre.name}?`,
-					sentence: "The genre and its aliases are removed. No track changes.",
+					sentence: `The genre and its ${genre.aliases.length === 1 ? "1 alias" : `${count(genre.aliases.length)} aliases`} are removed. The ${count(genre.tracks)} tracks keep their genre. Undo the batch in History.`,
 				},
 			},
 		],
 		children: genre.aliases.map((alias) => ({
 			key: `alias-${alias.id}`,
 			title: alias.alias,
-			facts: ["Alias"],
+			facts: [`Alias, ${count(alias.tracks)} tracks`],
 			act: {
 				icon: "X" as const,
 				label: `Remove ${alias.alias}`,
+				confirm: {
+					title: `Remove the alias ${alias.alias}?`,
+					sentence: `${count(alias.tracks)} tracks carry this spelling. They keep it, and tidying the genres stops rewriting it to ${genre.name}. Undo the batch in History.`,
+				},
 				onAct: () => removeAlias.mutateAsync({ id: alias.id }),
 			},
 		})),

@@ -47,7 +47,7 @@ function Tags() {
 				onAct: () => remove.mutateAsync({ id: tag.id }),
 				confirm: {
 					title: `Delete ${tag.name}?`,
-					sentence: "It comes off every track that carries it.",
+					sentence: `It comes off ${tag.tracks === 1 ? "1 track" : `${count(tag.tracks)} tracks`}. Undo the batch in History.`,
 				},
 			},
 		],

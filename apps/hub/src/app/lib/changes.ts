@@ -10,6 +10,7 @@ export const FIELD_LABELS: Record<string, string> = {
 	remixer: "Remixer",
 	label: "Label",
 	genre: "Genre",
+	alias: "Alias",
 	isrc: "ISRC",
 	key: "Key",
 	comment: "Comment",
@@ -95,5 +96,7 @@ export const STORED_CHANGE_ROW = {
 	href: (row: StoredChange) =>
 		row.entity === "playlist"
 			? `/playlists/${row.entityId}`
-			: `/library/${row.entityId}`,
+			: row.entity === "track"
+				? `/library/${row.entityId}`
+				: undefined,
 };
