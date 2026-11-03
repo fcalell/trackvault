@@ -382,6 +382,13 @@ Gaps found building R5 (phone):
 - `tsc` on the phone needs `allowImportingTsExtensions` because the hub's declaration references `@trackvault/core` sources by `.ts` path.
 - The phone screens were type-checked and linted only: no emulator is available here (`phone-render.md`, `phone-capture.md` need one), so nothing has been drawn or run.
 
+Gaps found building R5:
+- A `Section`'s `empty.sentence` is a plain string, not a selection: `empty={{ sentence: remote.at(...) }}` fails type-check (`Type 'Selection<string>' is not assignable to type 'string'`), so the Backups place draws "not set up" and "bucket unreadable" as rows of the list instead of the empty state.
+- `Form` still has no `secret` control hint (R3): the S3 access key and secret are plain text lines, shown masked (last four characters) by the settings read.
+- `stack db apply` now reads `DB_FILE` (the R2 note is stale): `DB_FILE=<scratch> stack db apply` migrated the scratch database, not the config's.
+- A deployed hub needs the stack checkout on the box: the app's `link:../../../stack/...` dependencies resolve inside it at install and at run time, so the Docker image is built from a context holding both checkouts. Fine for a personal homelab; a package registry would remove it.
+- The node server has no `PORT` env var (`node({ port })` is config), so a container cannot change its port without rebuilding.
+
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
 ## 11. Decisions

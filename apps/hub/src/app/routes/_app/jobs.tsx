@@ -34,6 +34,9 @@ const KINDS: Record<string, { title: string; icon: IconName }> = {
 	search: { title: "Soulseek search", icon: "Search" },
 	wishlist: { title: "Wishlist search", icon: "Star" },
 	"playlist-import": { title: "Playlist import", icon: "ListMusic" },
+	backup: { title: "Database backup", icon: "DatabaseBackup" },
+	"backup-verify": { title: "Check a backup", icon: "ShieldCheck" },
+	offsite: { title: "Offsite upload", icon: "CloudUpload" },
 };
 
 const TONES: Record<JobView["state"], Tone> = {

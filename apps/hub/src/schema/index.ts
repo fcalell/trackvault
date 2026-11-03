@@ -388,6 +388,59 @@ export const settings = sqliteTable(
 		analyseFillConfidence: integer("analyse_fill_confidence")
 			.notNull()
 			.default(70),
+		// -- R5 backups --
+		// Where database backups go (null: `backups/` beside the database file), the
+		// hour of the day (hub's local time) the daily one is taken, and how many to
+		// keep: the newest of each of the last N days, M weeks and K months.
+		backupEnabled: integer("backup_enabled", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		backupDir: text("backup_dir"),
+		backupHour: integer("backup_hour").notNull().default(3),
+		backupKeepDaily: integer("backup_keep_daily").notNull().default(7),
+		backupKeepWeekly: integer("backup_keep_weekly").notNull().default(4),
+		backupKeepMonthly: integer("backup_keep_monthly").notNull().default(6),
+		backupCompression: text("backup_compression", {
+			enum: ["zstd", "gzip", "none"],
+		})
+			.notNull()
+			.default("zstd"),
+		// Offsite storage: any S3-compatible bucket (AWS S3, Cloudflare R2, Backblaze
+		// B2, MinIO). Off until the endpoint, bucket and keys are set and it is switched on.
+		offsiteEnabled: integer("offsite_enabled", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		// Empty is AWS S3 in the region.
+		offsiteEndpoint: text("offsite_endpoint"),
+		offsiteBucket: text("offsite_bucket"),
+		offsiteRegion: text("offsite_region").notNull().default("us-east-1"),
+		offsiteAccessKey: text("offsite_access_key"),
+		offsiteSecretKey: text("offsite_secret_key"),
+		// A folder inside the bucket (no slashes at the ends); empty is the root.
+		offsitePrefix: text("offsite_prefix"),
+		offsiteVirtualHosted: integer("offsite_virtual_hosted", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		// What goes offsite: every database backup, and the audio files.
+		offsiteDatabases: integer("offsite_databases", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		offsiteLibrary: integer("offsite_library", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		// Remote database backups follow the same keep policy as the local ones.
+		offsitePrune: integer("offsite_prune", { mode: "boolean" })
+			.notNull()
+			.default(true),
+		// AES-256-GCM before upload with `offsiteKey` (64 hex characters, made by the hub).
+		offsiteEncrypt: integer("offsite_encrypt", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		offsiteKey: text("offsite_key"),
+		// Upload speed limit in kilobytes per second (0 is unlimited).
+		offsiteBandwidthKbps: integer("offsite_bandwidth_kbps")
+			.notNull()
+			.default(0),
 		updatedAt: at("updated_at").notNull(),
 	},
 	(t) => [check("settings_single_row", sql`${t.id} = 1`)],
@@ -1227,5 +1280,29 @@ export const setDrafts = sqliteTable("set_drafts", {
 	id: text("id").primaryKey(),
 	name: text("name").notNull(),
 	trackIds: text("track_ids", { mode: "json" }).notNull(),
+	updatedAt: at("updated_at").notNull(),
+});
+
+// -- R5 offsite -----------------------------------------------------------
+
+// The audio files the offsite bucket holds, so a sync passes over them without a
+// request: `audio/<audio hash>.<ext>` with the whole-file hash it was sent with (a
+// tag edit changes the file, not the key, so it is sent again).
+export const offsiteObjects = sqliteTable("offsite_objects", {
+	key: text("key").primaryKey(),
+	fileHash: text("file_hash").notNull(),
+	size: integer("size").notNull(),
+	encrypted: integer("encrypted", { mode: "boolean" }).notNull(),
+	uploadedAt: at("uploaded_at").notNull(),
+});
+
+// A multipart upload in flight, so a stopped sync continues it.
+export const offsiteUploads = sqliteTable("offsite_uploads", {
+	key: text("key").primaryKey(),
+	uploadId: text("upload_id").notNull(),
+	partSize: integer("part_size").notNull(),
+	size: integer("size").notNull(),
+	version: text("version").notNull(),
+	salt: text("salt"),
 	updatedAt: at("updated_at").notNull(),
 });

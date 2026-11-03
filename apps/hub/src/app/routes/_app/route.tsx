@@ -93,6 +93,12 @@ const PLACES: PlaceSpec[] = [
 		group: "System",
 	},
 	{ label: "History", icon: "History", route: "/history", group: "System" },
+	{
+		label: "Backups",
+		icon: "DatabaseBackup",
+		route: "/backups",
+		group: "System",
+	},
 	{ label: "Jobs", icon: "ListChecks", route: "/jobs", group: "System" },
 	{ label: "Settings", icon: "Settings", route: "/settings", group: "System" },
 ];

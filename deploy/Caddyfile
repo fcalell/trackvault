@@ -1,0 +1,14 @@
+# /etc/caddy/Caddyfile: TLS in front of the hub (certificates are automatic).
+# For a name on a tailnet use `tailscale cert` or `tailscale serve` instead (docs/deploy.md).
+trackvault.example.com {
+	encode zstd gzip
+	# The web app, the API, /sync for the agents and the /ws socket all go to the hub;
+	# Caddy upgrades WebSockets by itself.
+	reverse_proxy 127.0.0.1:8788 {
+		# Audio streams and agent uploads are long requests.
+		transport http {
+			read_timeout 1h
+			write_timeout 1h
+		}
+	}
+}

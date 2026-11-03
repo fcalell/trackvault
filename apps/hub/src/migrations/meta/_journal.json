@@ -57,6 +57,13 @@
       "when": 1793677192106,
       "tag": "0007_good_glorian",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793678904040,
+      "tag": "0008_certain_galactus",
+      "breakpoints": true
     }
   ]
 }

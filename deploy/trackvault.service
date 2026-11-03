@@ -1,0 +1,30 @@
+# /etc/systemd/system/trackvault.service
+# The hub as a systemd service, running as its own user from the checkout.
+# See docs/deploy.md.
+[Unit]
+Description=TrackVault hub
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=trackvault
+Group=trackvault
+WorkingDirectory=/opt/trackvault/trackvault/apps/hub
+EnvironmentFile=/etc/trackvault/hub.env
+# Migrations first (they read DB_FILE), then the server. Node strips the types on
+# load: there is no compile step beyond `pnpm build` once per update.
+ExecStartPre=/opt/trackvault/trackvault/apps/hub/node_modules/.bin/stack db apply
+ExecStart=/usr/bin/node .stack/server.ts
+Restart=on-failure
+RestartSec=5
+# SIGTERM stops the services (a running job stays `running` and resumes on the next start).
+TimeoutStopSec=30
+# The hub writes the database, its caches and the music library; nothing else.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/trackvault /srv/music /srv/trackvault-backups
+
+[Install]
+WantedBy=multi-user.target

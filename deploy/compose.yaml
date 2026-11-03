@@ -1,0 +1,31 @@
+# docker compose -f trackvault/deploy/compose.yaml up -d   (run from the folder that holds
+# both checkouts). Set AUTH_SECRET and APP_URL in a .env file beside this one.
+services:
+  hub:
+    build:
+      context: ../..
+      dockerfile: trackvault/deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET}
+      APP_URL: ${APP_URL:?set APP_URL}
+    ports:
+      - "127.0.0.1:8788:8788"
+    volumes:
+      - /var/lib/trackvault:/data          # database, peaks, art cache
+      - /srv/music:/srv/music              # the library (set this path as the library folder)
+      - /srv/trackvault-backups:/backups   # set this as the backup folder, ideally another disk
+      - /srv/slskd/downloads:/srv/slskd/downloads
+    stop_grace_period: 30s
+
+  slskd:
+    image: slskd/slskd:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5030:5030"
+      - "50300:50300"
+    environment:
+      SLSKD_REMOTE_CONFIGURATION: "true"
+    volumes:
+      - /var/lib/slskd:/app
+      - /srv/slskd/downloads:/srv/slskd/downloads
