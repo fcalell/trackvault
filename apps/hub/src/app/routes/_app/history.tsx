@@ -101,6 +101,25 @@ function History() {
 						href: (batch) => `/history/${batch.id}`,
 					}}
 					selected={open}
+					empty={
+						q || origin || state
+							? {
+									sentence: "No batch matches these filters.",
+									act: {
+										label: "Clear filters",
+										onAct: () => {
+											setText("");
+											setOrigin(undefined);
+											setState(undefined);
+										},
+									},
+								}
+							: {
+									sentence:
+										"No batch yet. Every change to the library is recorded here, and you can undo it.",
+									act: { label: "Open the library", href: "/library" },
+								}
+					}
 				/>
 			</Pane>
 			<Outlet />

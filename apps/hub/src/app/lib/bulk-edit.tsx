@@ -72,6 +72,9 @@ export function EditPreview({
 				items={preview.at((each) => each.changes)}
 				columns={STORED_CHANGE_COLUMNS}
 				row={STORED_CHANGE_ROW}
+				empty={{
+					sentence: "The edit changes none of the first tracks chosen.",
+				}}
 			/>
 		</Section>
 	);

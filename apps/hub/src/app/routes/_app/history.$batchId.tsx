@@ -68,6 +68,7 @@ function Batch() {
 				items={orpc.history.changes.window({ batchId })}
 				columns={STORED_CHANGE_COLUMNS}
 				row={STORED_CHANGE_ROW}
+				empty={{ sentence: "This batch changed no field." }}
 			/>
 		</Pane>
 	);

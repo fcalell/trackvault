@@ -1652,25 +1652,6 @@ export default defineFixtures<
 			retry: () => undefined,
 			clear: () => undefined,
 		},
-		connectedApps: {
-			list: () => [
-				{
-					id: "grant-1",
-					name: "Claude",
-					uri: "https://claude.ai",
-					scopes: ["mcp", "offline_access"],
-					connectedAt: new Date(Date.now() - 12 * 86_400_000),
-				},
-				{
-					id: "grant-2",
-					name: "Inspector",
-					uri: null,
-					scopes: ["mcp"],
-					connectedAt: null,
-				},
-			],
-			revoke: () => undefined,
-		},
 		wishlist: {
 			list: ({ offset = 0, limit = 200 }) => ({
 				data: WANTS.slice(offset, offset + limit),
