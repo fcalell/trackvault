@@ -18,7 +18,11 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 |---|---|
 | List width | The app sets `wide` on a list Pane. `stack screens test` flags a `Table` inside a measured (not `wide`) Pane. No automatic rule. |
 | Table form | 2a + 2b. The grid draws at any desktop width (list rows only on touch or below `tablet`), and a `wide` Pane takes the spare room while the record beside it holds the list width. |
-| Selection bar | Redesign it. Three prototypes stand on stack's local `741f4493` for the owner to choose from (`mobbin.md`). The bar is an `ActionBar` with `chosen` in the Pane's `foot`, given by the route. |
+| Selection bar | Form a, the docked foot (`mobbin.md`): count, Select all and clear at the start, the more menu then the filled primary at the end. It is an `ActionBar` with `chosen` in the Pane's `foot`, given by the route. |
+| Pane widths | `list`, `region-min` and `reading` are in `ch`, so they follow the `size` knob. `dialog`, `popover` and `toast` are a separate decision; breakpoints stay. |
+| Failure forms | Each read fails and retries in its own frame, as `rules.md` says. A place draws no single form over its Sections. |
+| Field rows | Voice 3 changes: in a field-commit row the control stands at its own measure. |
+| Native player | K4.9 is built; K4.12 is deferred. |
 | Player | Composition, not a plugin. The Shell gets a generic `foot` region; the app writes `<Shell foot={<Dock />}>`. Dock, Waveform, `createPlayer` and the queue become neutral roster parts that nothing mounts by default. The `Output` seam exists; the engine is passed in from outside the Shell: the browser's audio element on the web; on native an adapter at `@fcalell/plugin-native-ui/audio/expo`, with `expo-audio` an optional peer. native-ui drops the `expo-audio` dependency and its config plugin. |
 | Player words | Stay in `Words`, worded neutrally (`playFailed` and the rest). No plugin-owned words. |
 | Player fields | Delete `Track.headers` and `Track.markers`/`Marker` now; re-add neutral marks when cues land. Rename `artwork` to `image`. `meta` is already `line`, which stays. |
@@ -49,7 +53,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K1.3 (2b)** Built on stack's local `3f4e2b9f`, unpushed. In the Place's row, a `wide` Pane takes all the spare room and the record beside it holds the list width (`w-list`, floor 340). Today the pane before the last holds the list width. The order is fixed by role (the list stays first and wide), and narrow viewports still `cover`.
 - **K1.4** *Mobbin, changed.* The frozen ground exists. The last frozen cell gets a hairline edge by CSS, and the title's sticky offset is the tick column's width (`left-target`), so scrolled text stops leaking through 4 px. An acts cell rises to body ink on row hover and focus-within.
 - **K1.5** *Default:* the `age` figure width fits the longest relative word the density's `Words` produce ("5 seconds ago", "11 months ago"), measured once from the words, not per app. *Mobbin:* text columns share by content class, so a short-value column stops taking Genre's width.
-- **K1.6** *Mobbin, changed.* Selection bar redesign, the owner's pick of the prototypes. Whatever the form, these hold:
+- **K1.6** *Mobbin, changed.* The selection bar is form a, the docked foot. It holds:
   - the count keeps its width;
   - no bar over an empty table;
   - counts are formatted ("48,210 of 48,210");
@@ -63,6 +67,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K1.12** *Mobbin.* The frozen title's floor is `measure-short`.
 - **K1.14** *Mobbin.* The sort hint keeps its slot (`invisible`, not `hidden`), so a label never reflows. The first press sorts text ascending, figures and ages descending.
 - **K1.15** *Mobbin.* The columns bar states the read's total, formatted, in meta ink.
+- **K1.17** `WIDTH_VALUE`'s `list`, `region-min` and `reading` are in `ch`, as `measure-short` is, so they follow the `size` knob. Voice 17 states them that way. Every screen is shot again.
 - **K1.16** *Mobbin.* The columns menu ends in one Reset row (`words.reset`), enabled when the choice differs from the defaults.
 
 ### K2 Frames, forms, text, charts
@@ -73,7 +78,6 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K2.6** *Mobbin, changed.* Failure forms follow the frame:
   - the not-found form offers no Back where `back={false}` (`useBackAct` falls back to the place's route today);
   - a Section's missing form is the sentence alone: Back is the Pane's;
-  - *open:* one failure form for a place's reads contradicts `rules.md` ("a repeated line is accepted, and a read is never lifted into a frame around its siblings"). The owner decides.
 - **K2.7** Loading shape: a Section paints as many rows as it last loaded, or `PAINT_ROWS` when it has never loaded. The screens test's shift check covers loading → data.
 - **K2.8** In a submit form, an untouched saved `secret` is left out of the input, not sent as `null`.
 - **K2.9** Form `onChange` fires once when `values` land.
@@ -81,7 +85,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K2.11** Drop `read` from a Section with `items`, together with its frame code, roster entry, the showcase `crates.tsx:44-60` use (a real second read, which moves to an enclosing frame) and the docs (`rules.md` frame paragraph, `content.md`).
 - **K2.12** A row's leading tone mark draws its word beside the dot. Re-measure the list band against a one-line row, and a Section heading's description beside an icon act, before changing either. The Section count already counts items.
 - **K2.13** A blocked submit over an invalid value names the field, from its label. The generic "Type a value" goes; an empty field already names itself.
-- **K2.14** *Mobbin, needs the owner's word on voice 3.* A field-commit row is its label over its description beside the control at its own measure: 56 px against 80 today.
+- **K2.14** *Mobbin.* A field-commit row is its label over its description, beside the control at its own measure, so the row is as tall as those two lines and a short value stops filling the row. Voice 3 says so.
 - **K2.15** *Mobbin.* When a sheet's form has `after`, the form's bar stands after it in the sheet's foot, pinned, so Apply never ends above the preview.
 - **K2.16** *Mobbin.* A saved secret says "Saved, ends in …" in meta ink, with a Replace act and a quiet Remove that confirms. The form does this itself.
 - **K2.17** *Mobbin.* An empty row pick's trigger draws a generic word from `words`, its value once chosen; its label stays the accessible name.
@@ -115,7 +119,7 @@ IDs: **K** is stack, **T** is TrackVault. The goal for stack is that it stays a 
 - **K4.9** *Mobbin.* The native dock is one bar with a hairline progress along its top. Pressing it opens a `Sheet` with the full player.
 - **K4.10** *Mobbin.* The dock's cover draws through the thumbnail tile states (`image/base.tsx`), so the name holds one x and a broken cover has a form.
 - **K4.11** *Mobbin.* The Waveform holds the pointer as its playhead during a drag and seeks once on release, through `useHeldDraft`. Keys and a plain press commit at once.
-- **K4.12** *Mobbin, deferrable.* A native Waveform of the same columns, committing on release.
+- **K4.12** *Mobbin, deferred.* A native Waveform of the same columns, committing on release.
 
 ### K5 A client of another app's server
 - **K5.1** `server` moves from `nativeUi` to `api({ server })` and works for web and native client-only apps.
@@ -289,11 +293,11 @@ Every phase is done by Sonnet agents in parallel worktrees; the orchestrator mer
 ### Phase 1: stack
 | Workstream | Items | Files (main) | Order |
 |---|---|---|---|
-| S-table | K1.1, K1.4, K1.5, K1.7–K1.12, K1.14–K1.16 | `react-ui/src/ui/table/`, `pane/`, `columns/`, `lib/list-state.ts`, `plugin-screens` test | first: owns `pane/` |
+| S-table | K1.1, K1.4–K1.12, K1.14–K1.17 | `react-ui/src/ui/table/`, `pane/`, `columns/`, `lib/list-state.ts`, `plugin-screens` test | first: owns `pane/` |
 | S-frames | K2.1–K2.3, K2.6–K2.17 | `form/`, `section/`, `banner/`, `gate/`, `lib/lift`, `pane/` (after S-table) | parallel; its `pane/` edits after S-table merges |
 | S-blocks | K2.5, K2.20 | `bar-chart/`, `stats/`, `structure.md` | parallel |
 | S-sidebar | K3.1–K3.7, K3.9 | `shell/sidebar*`, `lib/drag.ts` | parallel; before S-player in `shell/` |
-| S-player | K4.1–K4.12 | `shell/index.tsx` (web, native), `dock/`, `waveform/`, `lib/player.ts`, ui-core `player.ts`, `tokens.ts` words, native-ui `index.ts`/`package.json`, `audio.md`, decisions | after S-sidebar merges |
+| S-player | K4.1–K4.11 | `shell/index.tsx` (web, native), `dock/`, `waveform/`, `lib/player.ts`, ui-core `player.ts`, `tokens.ts` words, native-ui `index.ts`/`package.json`, `audio.md`, decisions | after S-sidebar merges |
 | S-server | K5.1–K5.3, K5.4's guide line | plugin-api, plugin-auth, native-ui `index.ts`/`types.ts`, slot catalog | after S-player (native-ui `index.ts`) |
 | S-words | K6.1 | `rules.md`, `docs/decisions/`, showcase, JSDoc | last |
 
@@ -302,8 +306,8 @@ Each workstream:
 - updates `slot-catalog.md` if a slot changes;
 - keeps the showcase green (`pnpm stories`, the showcase's `test-screens`).
 
-### Phase 1b: selection bar
-The owner picks a prototype (`mobbin.md`). K1.6 goes to S-table, the `wip` commit is dropped, and K1.2 and K1.3 land on stack's master with it.
+### Phase 1b: after phase 1
+A read-only check of the hand-written `useSyncExternalStore` sites, web and native. A helper of about 15 lines in ui-core is proposed only if at least 5 share a shape.
 
 ### Phase 2: TrackVault, once phase 1 is on stack's master (linked, no pins)
 1. **T-adopt** (one agent, first): T7.1–T7.3, T7.5, T1.1, T1.2, T1.3. Everything else builds on the shared row and figures.
