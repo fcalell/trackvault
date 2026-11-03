@@ -356,6 +356,15 @@ Gaps found building R2:
 - plugin-auth supplies no screens fixtures for `auth.devices.*`; the app wrote its own.
 - `stack db apply` ignores `DB_FILE` (it migrates the config's database), so a scratch copy is made by copying a migrated file.
 
+Gaps found building R3:
+- `Form` has no `secret` control hint: `FieldSpec.control` (ui-core `form.ts`, `type Hint`) lists prose, source, code, date, file, lines and json, while `Input` has `kind="secret"` (plugin-react-ui `input/index.tsx`). The slskd API key and the Spotify client secret are plain text lines (shown masked, last four characters, as the settings read gives them).
+- A Pane `actions` entry cannot take `blocked` as a selection (`blocked: item.at(...)` fails type-check: `Selection<...>` is not `string`); the whole act is the selection (`item.at((each) => ({ ..., blocked }))`). Works, but the guide's "acts paint by their own datum" does not say the reason cannot be one.
+- A Toolbar filter's `options` cannot carry a selection inside an option (`description: counts.at(...)`); the options themselves are the selection.
+- The jobs service enqueued by a service that starts before it (file-name order: `housekeeping`, now `inbox`) had its job failed as an unknown kind, since `pump` ran in a microtask before `loadKinds`. Fixed in the hub (`loaded` flag in `services/jobs.ts`), but the ordering rule (services start in file-name order, one after another) is a trap worth a line in plugin-node's `services.md`.
+- `stack db generate` rebuilds a table to drop a column default (`__new_tracks`, with `INSERT ... SELECT` naming columns the old table lacks); the rebuild drops the FTS triggers. `tracks.format` keeps its `default("mp3")` for that reason.
+
+- The nested sidebar (`PlaceSpec.children`) fails the screens floor `inset` when a folder is open: `stack screens test --screen /_app/playlists/\$playlistId --mode light` reports `at 1280px, inset: div[treeitem].gap-gap.min-h-control < div[tree] < div < div "Peak time" x2 measured padding-left 28px, expected ... (nearest: section, 24px)` (also at 1920). The indent is the Shell's own, so the hub cannot fix it.
+
 Hosting files (unit/compose) are app work, not a gap: `stack deploy` ships nothing on the node target.
 
 ## 11. Decisions

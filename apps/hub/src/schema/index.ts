@@ -76,9 +76,15 @@ export const tracks = sqliteTable(
 		// playlist can test it. Not a library change: the version does not move.
 		playCount: integer("play_count").notNull().default(0),
 		lastPlayedAt: integer("last_played_at", { mode: "timestamp_ms" }),
+		// The container (mp3, flac, m4a, aiff, wav) and what is coded inside it (mp3,
+		// flac, aac, alac, pcm...): lossless is a codec, not an extension. (The column
+		// keeps its old "mp3" default: dropping it makes SQLite rebuild the table, which
+		// drops the FTS triggers. Every writer sets the format.)
 		format: text("format").notNull().default("mp3"),
+		codec: text("codec"),
 		bitrate: integer("bitrate"),
 		sampleRate: integer("sample_rate"),
+		bitDepth: integer("bit_depth"),
 		durationMs: integer("duration_ms"),
 		size: integer("size"),
 		hasArt: integer("has_art", { mode: "boolean" }).notNull().default(false),
@@ -278,6 +284,52 @@ export const settings = sqliteTable(
 		organiseTemplate: text("organise_template")
 			.notNull()
 			.default("{genre|Unknown}/{artist|Unknown} - {title}"),
+		// -- R3 acquisition --
+		// The slskd sidecar: its base URL, its API key and the folder it saves
+		// downloads to (null asks slskd for it).
+		slskdUrl: text("slskd_url"),
+		slskdApiKey: text("slskd_api_key"),
+		slskdDownloadsDir: text("slskd_downloads_dir"),
+		// Spotify playlist import (client credentials of the owner's own app).
+		spotifyClientId: text("spotify_client_id"),
+		spotifyClientSecret: text("spotify_client_secret"),
+		// What the inbox approves by itself: new tracks, better copies that replace
+		// a library track, and exact or same-song duplicates rejected.
+		inboxAutoApprove: integer("inbox_auto_approve", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		inboxAutoReplace: integer("inbox_auto_replace", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		inboxAutoRejectDuplicates: integer("inbox_auto_reject_duplicates", {
+			mode: "boolean",
+		})
+			.notNull()
+			.default(false),
+		// core/inbox decision thresholds: a lossy copy must beat the library's by
+		// this many kbps; fuzzy and acoustic matches under their percent need a person.
+		inboxBitrateMarginKbps: integer("inbox_bitrate_margin_kbps")
+			.notNull()
+			.default(64),
+		inboxFuzzyPercent: integer("inbox_fuzzy_percent").notNull().default(90),
+		inboxAcousticPercent: integer("inbox_acoustic_percent")
+			.notNull()
+			.default(85),
+		// The wishlist downloads the best accepted candidate by itself above this
+		// score (0 to 100) when switched on; otherwise it marks the want found.
+		wishlistAutoDownload: integer("wishlist_auto_download", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		wishlistMinScore: integer("wishlist_min_score").notNull().default(75),
+		// The least format a candidate may have: any, good (256+), high (320 or
+		// lossless), lossless.
+		wantedQuality: text("wanted_quality", {
+			enum: ["any", "good", "high", "lossless"],
+		})
+			.notNull()
+			.default("good"),
+		// Peers with a longer queue are passed over (0 keeps all).
+		slskdMaxQueue: integer("slskd_max_queue").notNull().default(200),
 		updatedAt: at("updated_at").notNull(),
 	},
 	(t) => [check("settings_single_row", sql`${t.id} = 1`)],
@@ -748,4 +800,270 @@ export const trackTombstones = sqliteTable(
 		at: at("at").notNull(),
 	},
 	(t) => [index("track_tombstones_version_idx").on(t.version, t.trackId)],
+);
+
+// -- R3 acquisition ----------------------------------------------------------
+
+export const INBOX_STATES = [
+	"queued",
+	"processing",
+	"awaiting-approval",
+	"duplicate",
+	"needs-review",
+	"approved",
+	"rejected",
+	"failed",
+] as const;
+
+// A file in `<library>/Inbox/` and where it stands in core's INBOX_PIPELINE. It is no
+// track until approved: the scanner leaves the folder alone. `steps` is the pipeline's
+// per-step state (core/inbox `StepResult`), `decision` the `inboxDecision` verdict.
+export const inboxItems = sqliteTable(
+	"inbox_items",
+	{
+		id: text("id").primaryKey(),
+		// Relative to the library root, "/" separated, under `Inbox/`.
+		path: text("path").notNull(),
+		source: text("source", {
+			enum: ["upload", "soulseek", "watch", "agent"],
+		}).notNull(),
+		sourceRef: text("source_ref"),
+		state: text("state", { enum: INBOX_STATES }).notNull().default("queued"),
+		steps: text("steps", { mode: "json" }).notNull(),
+		size: integer("size").notNull().default(0),
+		mtimeMs: integer("mtime_ms").notNull().default(0),
+		audioHash: text("audio_hash"),
+		fileHash: text("file_hash"),
+		format: text("format"),
+		codec: text("codec"),
+		bitrate: integer("bitrate"),
+		sampleRate: integer("sample_rate"),
+		bitDepth: integer("bit_depth"),
+		durationMs: integer("duration_ms"),
+		hasArt: integer("has_art", { mode: "boolean" }).notNull().default(false),
+		corrupt: integer("corrupt", { mode: "boolean" }).notNull().default(false),
+		// The tags as read from the file, and the tags the pipeline would write
+		// (rules, then the taxonomy): a TagValues patch against the first.
+		tags: text("tags", { mode: "json" }),
+		proposed: text("proposed", { mode: "json" }),
+		fingerprint: blob("fingerprint", { mode: "buffer" }),
+		// core/inbox InboxDecision, with the matches it was made from.
+		decision: text("decision", { mode: "json" }),
+		decisionKind: text("decision_kind", {
+			enum: ["accept", "duplicate-of", "better-than-existing", "needs-review"],
+		}),
+		matches: text("matches", { mode: "json" }),
+		// A decision the owner made (keep it, replace this track) over the pipeline's.
+		override: text("override", { mode: "json" }),
+		// Where approval files it, relative to the library root.
+		target: text("target"),
+		// The spectral cutoff check the ranking asked for, and whether it ran.
+		needsCutoffCheck: integer("needs_cutoff_check", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		cutoff: text("cutoff", { mode: "json" }),
+		wantId: integer("want_id"),
+		downloadId: text("download_id"),
+		// The track an approved item became.
+		trackId: text("track_id"),
+		error: text("error"),
+		createdAt: at("created_at").notNull(),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [
+		uniqueIndex("inbox_items_path_idx").on(t.path),
+		index("inbox_items_state_idx").on(t.state, t.createdAt, t.id),
+		index("inbox_items_hash_idx").on(t.audioHash),
+	],
+);
+
+export const DOWNLOAD_STATES = [
+	"requested",
+	"queued",
+	"downloading",
+	"completed",
+	"imported",
+	"failed",
+	"cancelled",
+] as const;
+
+// A file asked of a Soulseek peer through slskd. The poller keeps `state` and the
+// progress in step with slskd's transfers and, once the file is whole, moves it into
+// the inbox.
+export const downloads = sqliteTable(
+	"downloads",
+	{
+		id: text("id").primaryKey(),
+		username: text("username").notNull(),
+		// The peer's path (backslashes as the peer reports it).
+		filename: text("filename").notNull(),
+		size: integer("size").notNull().default(0),
+		artist: text("artist"),
+		title: text("title"),
+		format: text("format"),
+		bitrate: integer("bitrate"),
+		state: text("state", { enum: DOWNLOAD_STATES })
+			.notNull()
+			.default("requested"),
+		// slskd's own state string, and its transfer id once the poller sees it.
+		rawState: text("raw_state"),
+		slskdId: text("slskd_id"),
+		bytes: integer("bytes").notNull().default(0),
+		speed: real("speed").notNull().default(0),
+		score: real("score"),
+		needsCutoffCheck: integer("needs_cutoff_check", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		wantId: integer("want_id"),
+		inboxItemId: text("inbox_item_id"),
+		error: text("error"),
+		createdAt: at("created_at").notNull(),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [
+		uniqueIndex("downloads_file_idx").on(t.username, t.filename),
+		index("downloads_state_idx").on(t.state, t.createdAt),
+	],
+);
+
+export const WANT_STATUSES = [
+	"wanted",
+	"searching",
+	"found",
+	"downloading",
+	"downloaded",
+	"in-library",
+	"gave-up",
+	"ignored",
+] as const;
+
+// What the owner wants and the library lacks (core/wishlist `Want` plus the retry
+// state). `key` is the folded artist, title and mix: a want is added once.
+export const wishlist = sqliteTable(
+	"wishlist",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		key: text("key").notNull(),
+		artist: text("artist").notNull(),
+		title: text("title").notNull(),
+		mix: text("mix"),
+		source: text("source").notNull(),
+		sourceRef: text("source_ref").notNull(),
+		status: text("status", { enum: WANT_STATUSES }).notNull().default("wanted"),
+		durationSec: real("duration_sec"),
+		isrc: text("isrc"),
+		label: text("label"),
+		attempts: integer("attempts").notNull().default(0),
+		lastAttemptAt: at("last_attempt_at"),
+		// When the next search is due; null searches as soon as the runner looks.
+		nextSearchAt: at("next_search_at"),
+		// A want for a better copy of this track: the library's own copy is not
+		// "already in the library", and a candidate must beat its format score.
+		betterThanTrackId: text("better_than_track_id"),
+		minFormatScore: real("min_format_score"),
+		// The best candidate of the last search and its score, for review.
+		bestScore: real("best_score"),
+		note: text("note"),
+		createdAt: at("created_at").notNull(),
+		updatedAt: at("updated_at").notNull(),
+	},
+	(t) => [
+		uniqueIndex("wishlist_key_idx").on(t.key),
+		index("wishlist_status_idx").on(t.status, t.nextSearchAt, t.id),
+		index("wishlist_created_idx").on(t.createdAt, t.id),
+	],
+);
+
+// Ranked candidates of a search (core/ranking), one row each, read in windows.
+// `searchId` is a search job's id or `want-<id>`; a new search of the same id
+// replaces the old rows.
+export const searchResults = sqliteTable(
+	"search_results",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		searchId: text("search_id").notNull(),
+		pos: integer("pos").notNull(),
+		username: text("username").notNull(),
+		filename: text("filename").notNull(),
+		size: integer("size").notNull(),
+		format: text("format").notNull(),
+		bitrate: integer("bitrate"),
+		sampleRate: integer("sample_rate"),
+		bitDepth: integer("bit_depth"),
+		lengthSec: real("length_sec"),
+		queueLength: integer("queue_length").notNull().default(0),
+		freeSlot: integer("free_slot", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		artist: text("artist"),
+		title: text("title"),
+		mix: text("mix"),
+		score: real("score").notNull(),
+		rejected: integer("rejected", { mode: "boolean" }).notNull().default(false),
+		reasons: text("reasons", { mode: "json" }).notNull(),
+		needsCutoffCheck: integer("needs_cutoff_check", { mode: "boolean" })
+			.notNull()
+			.default(false),
+		// "Already in the library": core/ranking HaveStatus and the best track.
+		have: text("have").notNull().default("none"),
+		haveTrackId: text("have_track_id"),
+		createdAt: at("created_at").notNull(),
+	},
+	(t) => [
+		index("search_results_search_idx").on(t.searchId, t.pos),
+		index("search_results_created_idx").on(t.createdAt),
+	],
+);
+
+// A playlist import: what was parsed, and how it matched the library.
+export const imports = sqliteTable(
+	"imports",
+	{
+		id: text("id").primaryKey(),
+		name: text("name").notNull(),
+		source: text("source").notNull(),
+		ref: text("ref").notNull(),
+		state: text("state", { enum: ["parsing", "ready", "failed"] })
+			.notNull()
+			.default("parsing"),
+		// The pasted text or file, until the job has read it.
+		input: text("input"),
+		warnings: text("warnings", { mode: "json" }).notNull(),
+		error: text("error"),
+		// The playlist made from the matched tracks.
+		playlistId: text("playlist_id"),
+		createdAt: at("created_at").notNull(),
+	},
+	(t) => [index("imports_created_idx").on(t.createdAt)],
+);
+
+export const importItems = sqliteTable(
+	"import_items",
+	{
+		id: integer("id").primaryKey({ autoIncrement: true }),
+		importId: text("import_id")
+			.notNull()
+			.references(() => imports.id, { onDelete: "cascade" }),
+		pos: integer("pos").notNull(),
+		artist: text("artist").notNull(),
+		title: text("title").notNull(),
+		mix: text("mix"),
+		durationSec: real("duration_sec"),
+		isrc: text("isrc"),
+		label: text("label"),
+		source: text("source").notNull(),
+		sourceRef: text("source_ref").notNull(),
+		// matched | missing | uncertain | other-version, as core/matchWants sorted it.
+		status: text("status", {
+			enum: ["matched", "missing", "uncertain", "other-version"],
+		}).notNull(),
+		// The library tracks that matched (best first) and the confidence.
+		trackIds: text("track_ids", { mode: "json" }).notNull(),
+		confidence: real("confidence").notNull().default(0),
+		// What the owner did: wishlist | playlist | kept (confirmed or ignored).
+		resolution: text("resolution", {
+			enum: ["wishlist", "confirmed", "ignored"],
+		}),
+	},
+	(t) => [index("import_items_import_idx").on(t.importId, t.status, t.pos)],
 );

@@ -31,8 +31,7 @@ export const Route = createFileRoute("/_app")({
 	component: App,
 });
 
-// Only the places that are built stand here; the rest of the plan's sidebar
-// (Inbox, Playlists, Discover, Devices) join as they land.
+// The plan's sidebar, group by group (the Playlists group joins from the data).
 const PLACES: PlaceSpec[] = [
 	{ label: "All tracks", icon: "Library", route: "/library", group: "Library" },
 	{
@@ -41,6 +40,7 @@ const PLACES: PlaceSpec[] = [
 		route: "/recent",
 		group: "Library",
 	},
+	{ label: "Inbox", icon: "Inbox", route: "/inbox", group: "Library" },
 	// The Playlists group stands here: `usePlaylistPlaces`.
 	{ label: "Issues", icon: "TriangleAlert", route: "/issues", group: "Curate" },
 	{ label: "Duplicates", icon: "Copy", route: "/duplicates", group: "Curate" },
@@ -65,6 +65,14 @@ const PLACES: PlaceSpec[] = [
 	{ label: "Genres", icon: "Music", route: "/genres", group: "Tags" },
 	{ label: "Custom tags", icon: "Tags", route: "/tags", group: "Tags" },
 	{ label: "Aliases", icon: "Replace", route: "/aliases", group: "Tags" },
+	{ label: "Search", icon: "Search", route: "/search", group: "Discover" },
+	{ label: "Wishlist", icon: "Star", route: "/wishlist", group: "Discover" },
+	{
+		label: "Downloads",
+		icon: "Download",
+		route: "/downloads",
+		group: "Discover",
+	},
 	{
 		label: "Devices",
 		icon: "MonitorSmartphone",

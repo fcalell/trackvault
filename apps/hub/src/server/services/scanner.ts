@@ -3,7 +3,9 @@ import { sep } from "node:path";
 import { defineService } from "@fcalell/plugin-node/server";
 import { AUDIO_EXTENSIONS } from "@trackvault/core/tags";
 import scan, { type ScanPayload } from "../jobs/scan.ts";
+import { isInboxPath } from "../lib/inbox/paths.ts";
 import { readSettings } from "../lib/settings.ts";
+import { requestInboxSoon } from "./inbox.ts";
 import { enqueue } from "./jobs.ts";
 
 // Events settle this long before the scan they cause starts.
@@ -47,6 +49,11 @@ function onEvent(filename: string | null): void {
 	// A folder has no extension; a file counts only when it is audio. Hidden
 	// entries (our own temporary copies included) never do.
 	if (path.split("/").some((part) => part.startsWith("."))) return;
+	// The inbox has its own pipeline; the scan never reads it.
+	if (isInboxPath(path)) {
+		requestInboxSoon();
+		return;
+	}
 	const dot = path.lastIndexOf(".");
 	const ext = dot > path.lastIndexOf("/") ? path.slice(dot).toLowerCase() : "";
 	if (ext !== "" && !AUDIO_EXTENSIONS.has(ext)) return;

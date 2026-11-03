@@ -19,31 +19,38 @@ no test suite, the gate is `pnpm check`.
 apps/hub/            the stack app (node target, sqlite, auth, api, vite, react, react-ui, screens)
   src/schema/        Drizzle tables: tracks, files, jobs, changes, batches, settings, genres + aliases, tags,
                      rules, previews, dupeGroups, fingerprints, healthChecks, playlists + playlistTracks,
-                     devices, deviceFiles, rekordboxLinks, conflicts, analysisBlobs, cues, plays, uploads (+ auth's,
-                     devices keys included)
+                     devices, deviceFiles, rekordboxLinks, conflicts, analysisBlobs, cues, plays, uploads, inboxItems,
+                     downloads, wishlist, searchResults, imports + importItems (+ auth's, devices keys included)
   src/worker/routes/ procedures: settings, jobs, scan, tracks (list = window read, facets, get, update), fs,
                      bulk (acts on a selection), history, genres/aliases/unifyTags, tags, cleanup, previews,
                      organiser, quarantine, health, dupes, playlists (tree, window over a playlist, add/remove/
-                     reorder, smart rules), devices (list, conflicts, resolve)
+                     reorder, smart rules), devices (list, conflicts, resolve), inbox (items, acts, thresholds),
+                     soulseek (settings, search, candidates, downloads), wishlist, imports (playlist import)
   src/server/jobs/   one file per job kind (defineJob): scan, tag-write, peaks, edit, rules, unify, organise,
                      quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate,
-                     playlist-add, playlist-remove, tag-flush
+                     playlist-add, playlist-remove, tag-flush, inbox, inbox-approve, search, wishlist, playlist-import
   src/server/services/  jobs (durable runner + `jobs` channel), library (version + `library` channel),
                      scanner (watcher + reconcile), media (/media/<trackId>, /peaks, Range),
                      housekeeping (seeds genres and built-in rules, purges the quarantine),
+                     inbox (reconcile + `requestInbox`), slskd (polls transfers, moves finished files into the inbox,
+                     `transfers` channel), wishlist (queues due searches),
                      sync (the `/sync` mount for the agent: protocol v1 of core/sync, and the `devices` channel)
-  src/server/lib/    db handle and pragmas, scan pipeline (walk, worker pool, batched apply), track fields,
+  src/server/lib/inbox/  the inbox pipeline: discover (Inbox/ folder to items), steps (core INBOX_PIPELINE handlers),
+                     run (advance, auto-approve), approve (file into the library, replace, reject)
+  src/server/lib/    db handle and pragmas, slskd client/search/downloads/wishlist/playlist-import, scan pipeline (walk, worker pool, batched apply), track fields,
                      library-query (the one `where`, list, facets), peaks (ffmpeg), changes (every library
                      write: chunked, logged, undoable), file-ops (recorded file moves), fs-lock (scan and
                      file-moving jobs do not overlap), previews, taxonomy, rules, health, playlists (tree, members,
                      fractional positions, smart rules, undo), playlist-query (windows), conflicts,
                      sync/ (manifest, files, uploads, anlz, rb-import = the 3-way merge, rb-export, devices, wake)
-  src/shared/        channels (jobs, library, devices), playlists + smart-lines (the smart-rule editor's language)
+  src/shared/        channels (jobs, library, devices, transfers), acquire (quality and view labels), playlists + smart-lines (the smart-rule editor's language)
   src/app/           the web UI, from stack's roster only
+  scripts/fake-slskd.ts   a tiny slskd stand-in (search, transfers, downloads) to run the Soulseek flow without slskd
   scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export
 apps/agent/          the device agent (plain Node, run from source): replica, folder upload, Rekordbox bridge; speaks /sync;
                      its `HubRouter` type is the hub's emitted declaration (`.stack/types`), so hub checks first
-packages/core/       pure Node 24 TypeScript, no stack imports: ID3 tag IO, audio hash, normalize, paths, issues
+packages/core/       pure Node 24 TypeScript, no stack imports: tag IO (MP3, FLAC, M4A, AIFF, WAV), audio hash, normalize, paths,
+                     issues, dedupe, rules, taxonomy, organize, inbox pipeline, slskd client, ranking, wishlist, playlist-import
 ```
 
 ## Commands

@@ -25,6 +25,14 @@ const AFTER_JOB: EntityName[] = [
 	"settings",
 	"rules",
 	"jobs",
+	"inboxItems",
+	"downloads",
+	"wishlist",
+	"searchResults",
+	"imports",
+	"importItems",
+	"playlists",
+	"playlistTracks",
 ];
 
 // A job that finishes refreshes the reads that show what it produced (a preview, the

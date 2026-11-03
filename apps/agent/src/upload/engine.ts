@@ -283,7 +283,7 @@ export class UploadEngine {
 			}
 			const id = await hashFile(row.path);
 			if (!id.framesFound)
-				throw new Error("no audio frames found (not a decodable MP3)");
+				throw new Error("no audio found (not a decodable audio file)");
 			state.putUpload({
 				...row,
 				audioHash: id.audioHash,

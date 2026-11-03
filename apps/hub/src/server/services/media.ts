@@ -12,6 +12,13 @@ import { readSettings } from "../lib/settings.ts";
 
 const TYPES: Record<string, string> = {
 	".mp3": "audio/mpeg",
+	".flac": "audio/flac",
+	".m4a": "audio/mp4",
+	".aiff": "audio/aiff",
+	".aif": "audio/aiff",
+	".aifc": "audio/aiff",
+	".wav": "audio/wav",
+	".wave": "audio/wav",
 };
 
 const plain = (status: number, text: string): Response =>

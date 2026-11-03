@@ -29,6 +29,11 @@ const KINDS: Record<string, { title: string; icon: IconName }> = {
 	fingerprint: { title: "Fingerprints", icon: "Fingerprint" },
 	integrity: { title: "Integrity check", icon: "ShieldCheck" },
 	bitrate: { title: "Bitrate check", icon: "Gauge" },
+	inbox: { title: "Inbox pipeline", icon: "Inbox" },
+	"inbox-approve": { title: "File inbox items", icon: "CheckCheck" },
+	search: { title: "Soulseek search", icon: "Search" },
+	wishlist: { title: "Wishlist search", icon: "Star" },
+	"playlist-import": { title: "Playlist import", icon: "ListMusic" },
 };
 
 const TONES: Record<JobView["state"], Tone> = {

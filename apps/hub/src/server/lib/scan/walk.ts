@@ -1,6 +1,7 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { AUDIO_EXTENSIONS } from "@trackvault/core/tags";
+import { INBOX_DIR, isInboxPath } from "../inbox/paths.ts";
 
 export interface FoundFile {
 	// Relative to the library root, "/" separated.
@@ -63,6 +64,8 @@ export async function walk(
 		const tasks: Array<Promise<void>> = [];
 		for (const entry of entries) {
 			if (entry.name.startsWith(".")) continue;
+			// The inbox is not the library: its files wait for approval.
+			if (directory === "" && entry.name === INBOX_DIR) continue;
 			const path = directory === "" ? entry.name : `${directory}/${entry.name}`;
 			if (entry.isDirectory()) tasks.push(visit(path));
 			else if (
@@ -75,6 +78,7 @@ export async function walk(
 		await Promise.all(tasks);
 	}
 
+	if (isInboxPath(scope)) return;
 	if (scope === "") return visit("");
 	const info = await limit(() => stat(join(root, scope))).catch(() => null);
 	if (!info) return;

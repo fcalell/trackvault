@@ -61,3 +61,45 @@ export const devicesChannel = defineChannel("devices", {
 	},
 	client: {},
 });
+
+export const transferStates = [
+	"requested",
+	"queued",
+	"downloading",
+	"completed",
+	"imported",
+	"failed",
+	"cancelled",
+] as const;
+
+export const transferViewSchema = z.object({
+	id: z.string(),
+	username: z.string(),
+	// The peer's file name without its folders.
+	name: z.string(),
+	artist: z.string().nullable(),
+	title: z.string().nullable(),
+	format: z.string().nullable(),
+	bitrate: z.number().nullable(),
+	state: z.enum(transferStates),
+	rawState: z.string().nullable(),
+	size: z.number(),
+	bytes: z.number(),
+	speed: z.number(),
+	error: z.string().nullable(),
+	wantId: z.number().nullable(),
+	inboxItemId: z.string().nullable(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+export type TransferView = z.infer<typeof transferViewSchema>;
+
+// Soulseek downloads, live: the recent ones on subscribe, then each as slskd moves it.
+export const transfersChannel = defineChannel("transfers", {
+	server: {
+		snapshot: z.object({ transfers: z.array(transferViewSchema) }),
+		upsert: transferViewSchema,
+		remove: z.object({ id: z.string() }),
+	},
+	client: {},
+});

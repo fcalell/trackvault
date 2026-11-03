@@ -1,4 +1,3 @@
-import { isLossless } from "@trackvault/core/dedupe";
 import { ISSUE } from "@trackvault/core/issues";
 import { safeJoin } from "@trackvault/core/paths";
 import { checkBitrate, ffmpegAvailable } from "@trackvault/core/quality";
@@ -8,6 +7,7 @@ import {
 	writeHealth,
 } from "../lib/health.ts";
 import { defineJob } from "../lib/job.ts";
+import { losslessOf } from "../lib/lossless.ts";
 import { readSettings } from "../lib/settings.ts";
 
 export interface BitratePayload {
@@ -49,7 +49,7 @@ export default defineJob<BitratePayload, BitrateResult>({
 				try {
 					const verdict = await checkBitrate(safeJoin(root, item.path), {
 						claimedKbps: item.bitrate ?? 0,
-						lossless: isLossless(item.format),
+						lossless: losslessOf(item.format, item.codec),
 						sampleRate: item.sampleRate ?? undefined,
 						durationSec: item.durationMs ? item.durationMs / 1000 : undefined,
 					});

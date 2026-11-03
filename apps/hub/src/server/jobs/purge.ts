@@ -2,6 +2,7 @@ import { and, eq, inArray, lt } from "@fcalell/plugin-db/orm";
 import { files, tracks, trackTombstones } from "../../schema/index.ts";
 import { db } from "../lib/db.ts";
 import { acquireFs } from "../lib/fs-lock.ts";
+import { purgeRejected } from "../lib/inbox/files.ts";
 import { defineJob } from "../lib/job.ts";
 import { removeFile } from "../lib/quarantine.ts";
 import { readSettings } from "../lib/settings.ts";
@@ -100,6 +101,9 @@ export default defineJob<PurgePayload, PurgeResult>({
 				root,
 				rows.map((row) => row.path),
 			);
+			// Inbox files the owner rejected age out with the rest.
+			if (!payload.fileIds)
+				result.deleted += await purgeRejected(root, payload.olderThanDays);
 			progress(rows.length, rows.length, `${result.deleted} deleted`);
 			return result;
 		} finally {

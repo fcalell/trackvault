@@ -24,7 +24,8 @@ import type {
 	UploadInitResponse,
 	UploadStatus,
 } from "@trackvault/core/sync";
-import { requestScan } from "../../services/scanner.ts";
+import { requestInbox } from "../../services/inbox.ts";
+import { INBOX_DIR } from "../inbox/paths.ts";
 import { freeName } from "../quarantine.ts";
 import { statement } from "../raw.ts";
 import { readSettings } from "../settings.ts";
@@ -34,11 +35,9 @@ import { uploadPath } from "./paths.ts";
 
 // The inbox upload: an agent sends a file it found in a watched folder. The file is
 // received in resumable chunks into a part file beside the database, hashed when
-// complete, and then lands in `<library>/Inbox/<device>/…`, where the scan finds it.
-// (The inbox pipeline of R3 takes over from there; until then an inbox file is a library
-// file in a folder.)
+// complete, and then lands in `<library>/Inbox/<device>/…`, where the inbox job finds it
+// (the scanner leaves that folder alone) and runs it through the pipeline.
 
-export const INBOX_DIR = "Inbox";
 const MAX_SIZE = 4 * 1024 ** 3;
 
 interface UploadRow {
@@ -60,17 +59,21 @@ const SELECT = `SELECT id, device_id, audio_hash, file_hash AS fileHash, size, n
 
 const busy = new Set<string>();
 
+// Audio the hub has (a track) or already holds in its inbox, rejected files included:
+// an agent does not send what the owner turned away.
 const has = (audioHash: string): boolean =>
-	statement("SELECT 1 AS x FROM tracks WHERE audio_hash = @h LIMIT 1").get({
-		h: audioHash,
-	}) !== undefined;
+	statement(
+		`SELECT 1 AS x FROM tracks WHERE audio_hash = @h
+		 UNION ALL SELECT 1 FROM inbox_items WHERE audio_hash = @h AND state != 'failed' LIMIT 1`,
+	).get({ h: audioHash }) !== undefined;
 
 export function inboxCheck(
 	items: Array<{ audioHash: string }>,
 ): InboxCheckResponse {
 	const found = statement(
 		`SELECT audio_hash AS h FROM tracks WHERE audio_hash IN (SELECT value FROM json_each(@h))
-		 UNION SELECT audio_hash FROM uploads WHERE state = 'complete' AND audio_hash IN (SELECT value FROM json_each(@h))`,
+		 UNION SELECT audio_hash FROM uploads WHERE state = 'complete' AND audio_hash IN (SELECT value FROM json_each(@h))
+		 UNION SELECT audio_hash FROM inbox_items WHERE state != 'failed' AND audio_hash IN (SELECT value FROM json_each(@h))`,
 	).all({ h: JSON.stringify(items.map((item) => item.audioHash)) }) as {
 		h: string;
 	}[];
@@ -331,8 +334,8 @@ export async function completeUpload(
 		statement(
 			"UPDATE uploads SET state = 'complete', landed_path = @p, updated_at = @now WHERE id = @id",
 		).run({ id: uploadId, p: landed, now: Date.now() });
-		// The scan reads the file into the library; the part file is gone.
-		requestScan([landed]);
+		// The inbox pipeline takes the file from here; the part file is gone.
+		requestInbox();
 		return { status: "accepted", inboxId: row.id, trackId: null };
 	} finally {
 		busy.delete(uploadId);

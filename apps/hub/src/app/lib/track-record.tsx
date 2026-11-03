@@ -97,6 +97,7 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 	const assigned = orpc.tags.forTrack.read({ trackId: id });
 	const everyTag = orpc.tags.list.read();
 	const assign = useMutation(orpc.tags.assign.mutationOptions());
+	const better = useMutation(orpc.wishlist.addFromTrack.mutationOptions());
 	return (
 		<Pane
 			title={track.at((each) => each.title ?? "Untitled")}
@@ -124,6 +125,13 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 						const peaks = row.peaks ? await fetchPeaks(id) : undefined;
 						playTrack(row, peaks);
 					},
+				},
+				{
+					icon: "Search",
+					label: "Find a better version",
+					onAct: () => better.mutateAsync({ trackId: id }),
+					done: "Added to the wishlist",
+					to: "/wishlist",
 				},
 			]}
 		>

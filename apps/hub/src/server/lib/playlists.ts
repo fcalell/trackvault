@@ -425,6 +425,47 @@ export function removeMembers(
 	return removed;
 }
 
+// Puts `newId` where `oldId` stands in every manual playlist that holds it (the
+// replacement of a track by a better copy), and takes `oldId` out. Logged as member
+// changes, so one undo puts the old track back.
+export function replaceMember(
+	tx: Tx,
+	info: BatchInfo,
+	oldId: string,
+	newId: string,
+	now: Date,
+): number {
+	const holding = statement(
+		`SELECT pt.playlist_id AS playlistId, pt.position, pt.added_at AS addedAt
+		 FROM playlist_tracks pt JOIN playlists p ON p.id = pt.playlist_id
+		 WHERE pt.track_id = @old AND p.kind = 'manual'`,
+	).all({ old: oldId }) as Array<{
+		playlistId: string;
+		position: number;
+		addedAt: number;
+	}>;
+	const insert = statement(
+		`INSERT OR IGNORE INTO playlist_tracks (playlist_id, track_id, position, added_at)
+		 VALUES (@playlist, @track, @position, @addedAt)`,
+	);
+	for (const held of holding) {
+		const r = insert.run({
+			playlist: held.playlistId,
+			track: newId,
+			position: held.position,
+			addedAt: held.addedAt,
+		});
+		if (r.changes > 0)
+			log(info, now, held.playlistId, "member", null, {
+				trackId: newId,
+				position: held.position,
+			});
+		removeMembers(tx, info, held.playlistId, [oldId], now);
+	}
+	if (holding.length > 0) ensureBatch(tx, info, holding.length, now);
+	return holding.length;
+}
+
 function renumberMembers(playlistId: string): void {
 	const rows = statement(
 		"SELECT track_id FROM playlist_tracks WHERE playlist_id = @id ORDER BY position, track_id",

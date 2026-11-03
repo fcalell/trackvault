@@ -4,19 +4,32 @@ import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import {
+	WANTED_QUALITY,
+	WANTED_QUALITY_LABELS,
+} from "../../../shared/acquire.ts";
 import { orpc } from "../../lib/api.ts";
 import { authClient } from "../../lib/auth.ts";
 import { FolderBrowser } from "../../lib/folder-browser.tsx";
 
 export const Route = createFileRoute("/_app/settings")({
 	loader: ({ context }) =>
-		preload(context.queryClient, orpc.settings.read.read()),
+		Promise.all([
+			preload(context.queryClient, orpc.settings.read.read()),
+			preload(context.queryClient, orpc.soulseek.settings.read()),
+			preload(context.queryClient, orpc.inbox.settings.read()),
+			preload(context.queryClient, orpc.imports.spotify.read()),
+		]),
 	component: Settings,
 });
 
 function Settings() {
 	const settings = orpc.settings.read.read();
 	const update = useMutation(orpc.settings.update.mutationOptions());
+	const soulseek = orpc.soulseek.settings.read();
+	const inbox = orpc.inbox.settings.read();
+	const spotify = orpc.imports.spotify.read();
+	const test = useMutation(orpc.soulseek.test.mutationOptions());
 	// The folder the browser has requested, and the one it shows (the choice).
 	const [browsing, setBrowsing] = useState<string>();
 	const [listed, setListed] = useState<string>();
@@ -90,6 +103,140 @@ function Settings() {
 					},
 				]}
 			/>
+			<Section
+				title="Soulseek"
+				description="Searches and downloads go through slskd running beside the hub."
+			>
+				<Form
+					act={orpc.soulseek.updateSettings}
+					commit="field"
+					values={soulseek.at((each) => ({
+						slskdUrl: each.slskdUrl ?? "",
+						slskdApiKey: each.slskdApiKey ?? "",
+						slskdDownloadsDir: each.slskdDownloadsDir ?? "",
+						wantedQuality: each.wantedQuality,
+						slskdMaxQueue: each.slskdMaxQueue,
+						wishlistAutoDownload: each.wishlistAutoDownload,
+						wishlistMinScore: each.wishlistMinScore,
+					}))}
+					submit={{ done: "Saved" }}
+					fields={{
+						slskdUrl: {
+							label: "slskd address",
+							description: "For example http://localhost:5030.",
+						},
+						slskdApiKey: {
+							label: "slskd API key",
+							description:
+								"Made in slskd's options (web.authentication.api_keys). Type a new one to replace it; empty removes it.",
+						},
+						slskdDownloadsDir: {
+							label: "slskd downloads folder",
+							description:
+								"Where slskd saves files, as the hub sees it. Empty asks slskd.",
+						},
+						wantedQuality: {
+							label: "Quality wanted",
+							options: WANTED_QUALITY.map((value) => ({
+								value,
+								label: WANTED_QUALITY_LABELS[value],
+							})),
+						},
+						slskdMaxQueue: {
+							label: "Longest peer queue",
+							description:
+								"Peers with a longer queue are passed over. 0 keeps all.",
+						},
+						wishlistAutoDownload: {
+							label: "Download for the wishlist",
+							description:
+								"The best candidate above the score below is downloaded without asking. Off marks the want found for you to look at.",
+						},
+						wishlistMinScore: {
+							label: "Lowest score to download",
+							description: "From 0 to 100.",
+						},
+					}}
+				/>
+				<Section
+					items={[
+						{
+							key: "test",
+							leading: { icon: "PlugZap" },
+							title: "Test the connection",
+							meta: ["Asks slskd who it is and whether it is online"],
+							act: {
+								icon: "Play",
+								label: "Test the connection",
+								onAct: () => test.mutateAsync(),
+								done: "Connected to slskd",
+							},
+						},
+					]}
+				/>
+			</Section>
+			<Section
+				title="Inbox"
+				description="New files are checked against the library before they are filed."
+			>
+				<Form
+					act={orpc.inbox.updateSettings}
+					commit="field"
+					values={inbox.at((each) => ({ ...each }))}
+					submit={{ done: "Saved" }}
+					fields={{
+						inboxAutoApprove: {
+							label: "Approve new tracks",
+							description:
+								"A file the library does not have is filed without asking.",
+						},
+						inboxAutoReplace: {
+							label: "Replace with better copies",
+							description:
+								"A copy that beats the library's (lossless over lossy, or 64 kbps more) takes its place.",
+						},
+						inboxAutoRejectDuplicates: {
+							label: "Reject duplicates",
+							description: "A file the library already has is set aside.",
+						},
+						inboxBitrateMarginKbps: {
+							label: "Bitrate margin",
+							description:
+								"A lossy copy must beat the library's by this many kbps to count as better.",
+						},
+						inboxFuzzyPercent: {
+							label: "Same song threshold",
+							description:
+								"Matches by artist and title under this percent need you.",
+						},
+						inboxAcousticPercent: {
+							label: "Same recording threshold",
+							description: "Matches by sound under this percent need you.",
+						},
+					}}
+				/>
+			</Section>
+			<Section
+				title="Playlist import"
+				description="Spotify playlists need your own app's client id and secret (developer.spotify.com/dashboard)."
+			>
+				<Form
+					act={orpc.imports.updateSpotify}
+					commit="field"
+					values={spotify.at((each) => ({
+						spotifyClientId: each.spotifyClientId ?? "",
+						spotifyClientSecret: each.spotifyClientSecret ?? "",
+					}))}
+					submit={{ done: "Saved" }}
+					fields={{
+						spotifyClientId: { label: "Spotify client id" },
+						spotifyClientSecret: {
+							label: "Spotify client secret",
+							description: "Type a new one to replace it; empty removes it.",
+						},
+					}}
+				/>
+			</Section>
 			<Section
 				title="Account"
 				items={[

@@ -6,6 +6,7 @@ import { statement } from "./raw.ts";
 export interface HealthCandidate {
 	id: string;
 	format: string;
+	codec: string | null;
 	bitrate: number | null;
 	sampleRate: number | null;
 	durationMs: number | null;
@@ -22,7 +23,7 @@ export function healthCandidates(
 	trackIds?: readonly string[],
 ): HealthCandidate[] {
 	const rows = statement(
-		`SELECT t.id AS id, t.format AS format, t.bitrate AS bitrate, t.sample_rate AS sampleRate,
+		`SELECT t.id AS id, t.format AS format, t.codec AS codec, t.bitrate AS bitrate, t.sample_rate AS sampleRate,
 			t.duration_ms AS durationMs, f.path AS path, f.file_hash AS fileHash,
 			h.file_hash AS checkedHash, (h.${column} IS NOT NULL) AS done
 		FROM tracks t
