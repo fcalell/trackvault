@@ -27,7 +27,7 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
                      organiser, quarantine, health, dupes, playlists (tree, window over a playlist, add/remove/
                      reorder, smart rules), devices (list, conflicts, resolve), inbox (items, acts, thresholds),
                      attention (the counts the sidebar badges and the library Banner read), soulseek (settings, search, candidates, downloads), wishlist, imports (playlist import),
-                     autotag (provider settings, Auto-tag review proposals), sets (set builder), stats, backups (settings, list, remote, status, backup now, verify, test), agent (the MCP tools; listed in
+                     autotag (provider settings, Auto-tag review proposals), sets (set builder), stats, backups (settings, list, remote, status, backup now, verify, test), connected apps (Settings, Account: stack's `auth.oauth.grants` list and revoke), agent (the MCP tools; listed in
                      src/worker/mcp.ts)
   src/server/jobs/   one file per job kind (defineJob, default export; the runner finds them with `loadModules`): scan, tag-write, peaks, edit, rules, unify, organise,
                      quarantine, restore, purge, undo, merge, dedupe, fingerprint, integrity, bitrate,
@@ -51,9 +51,9 @@ apps/hub/            the stack app (node target, sqlite, auth, api, vite, react,
                      write: chunked, logged, undoable), file-ops (recorded file moves), fs-lock (scan and
                      file-moving jobs do not overlap), previews, taxonomy, rules, health, playlists (tree, members,
                      fractional positions, smart rules, undo), playlist-query (windows), conflicts,
-                     sync/ (manifest, files, uploads, anlz, rb-import = the 3-way merge, rb-export, devices, wake)
+                     sync/ (manifest, files, uploads, anlz, rb-import = the 3-way merge, rb-export, devices, wake), attention (the counts behind the sidebar badges and the Banner)
   src/shared/        channels (jobs, library, devices, transfers), acquire (quality and view labels), playlists + smart-lines (the smart-rule editor's language)
-  src/app/           the web UI, from stack's roster only
+  src/app/           the web UI, from stack's roster only: routes/, lib/ (screen helpers), ui/ (row and figure vocabulary per place: batch toasts, attention badges, track rows), fixtures.ts (the screens' data), seed.ts (the seeded hub for `stack screens serve`)
   scripts/fake-slskd.ts   a tiny slskd stand-in (search, transfers, downloads) to run the Soulseek flow without slskd
   src/bin/restore.ts, src/bin/restore-offsite.ts   (every src/bin/*.ts is a tool `stack build` bundles to dist/server/bin/<name>.mjs) restore the database from a local backup, or rebuild database and library from the bucket (hub stopped; see docs/deploy.md; built to dist/server/bin/restore*.mjs)
   scripts/seed-bench.ts   50k synthetic tracks; scripts/bench-queries.ts times the library queries (DB_FILE=... node scripts/bench-queries.ts [--plan]); scripts/bench-jobs.ts times the R1 jobs; scripts/bench-sync.ts times the manifest, a 50k Rekordbox import and the export; scripts/bench-r4.ts times the stats panels and set suggestions; scripts/verify-r4.ts runs auto-tag, art, analysis and the set builder end to end with mocked providers (DB_FILE=<migrated scratch copy>)
@@ -65,7 +65,7 @@ apps/agent/          the device agent (plain Node, run from source): local copy,
                      its `HubRouter` type is the hub's emitted declaration (`.stack/types`), so hub checks first
 docs/deploy.md, deploy/   running the hub on the homelab from the built bundle (node 24 only on the box): systemd unit, Caddyfile, Dockerfile + compose, env, backups and restore
 packages/core/       pure Node 24 TypeScript, no stack imports: backup (retention, AES-GCM chunks, manifest), s3 (SigV4, client,
-                     multipart upload), tag IO (MP3, FLAC, M4A, AIFF, WAV), audio hash, normalize, paths,
+                     multipart upload), tag IO (MP3, FLAC, M4A, AIFF, WAV), audio hash, analysis (BPM and key through essentia.js, loudness and energy; the window is a setting), normalize, paths,
                      issues, dedupe, rules, taxonomy, organize, inbox pipeline, slskd client, ranking, wishlist, playlist-import
 ```
 
@@ -83,7 +83,7 @@ pnpm --filter hub exec stack db generate   # the migration for a schema change (
 
 ## Verify
 
-`pnpm check` is the gate. A change that can move a look runs, from `apps/hub`, `pnpm exec stack screens test --screen <a,b> --mode dark --width 320,1920 --state data,empty --shots shots/<round>` (`--open <control text>` for an open layer), on changed routes only and never `--all`. A critic that did not build the screen judges the shots with stack's critique page and `.project_management/review/critique/CHECKLIST.md`; it returns `shot, finding, rule, severity`; blocking holds a screen, minor goes on the owner's list. A round is shoot, look, fix, at most two rounds. Nothing is measured by hand. Native is judged from source and said so.
+`pnpm check` is the gate. What the real server makes of a state is checked on the seeded hub: `pnpm exec stack screens serve` (seeds from `src/app/seed.ts`, prints a URL), then `node scripts/verify-phase3.ts <url>` from `apps/hub` (a line per behaviour) and `stack screens shoot --url <url> --sign-in <url>/fixture/link`. A change that can move a look runs, from `apps/hub`, `pnpm exec stack screens test --screen <a,b> --mode dark --width 320,1920 --state data,empty --shots shots/<round>` (`--open <control text>` for an open layer), on changed routes only and never `--all`. A critic that did not build the screen judges the shots with stack's critique page and `.project_management/review/critique/CHECKLIST.md`; it returns `shot, finding, rule, severity`; blocking holds a screen, minor goes on the owner's list. A round is shoot, look, fix, at most two rounds. Nothing is measured by hand. Native is judged from source and said so.
 
 ## Rules
 
