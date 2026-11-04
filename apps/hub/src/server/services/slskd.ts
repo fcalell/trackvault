@@ -236,7 +236,12 @@ export async function pollTransfers(): Promise<number> {
 					.run();
 		}
 		if (state === "completed" && row.state !== "imported")
-			await importDownload(client, { ...row, state, slskdId: t.id });
+			await importDownload(client, {
+				...row,
+				state,
+				slskdId: t.id,
+				size: t.size || row.size,
+			});
 	}
 	return rows.length;
 }
