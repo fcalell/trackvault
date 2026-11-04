@@ -1,4 +1,8 @@
-import { preload, useMutation } from "@fcalell/plugin-api/tanstack-query";
+import {
+	preload,
+	useMutation,
+	useRead,
+} from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { createFileRoute } from "@tanstack/react-router";
@@ -20,6 +24,7 @@ function Batch() {
 	const { batchId } = Route.useParams();
 	const batch = orpc.history.get.read({ id: batchId });
 	const undo = useMutation(orpc.history.undo.mutationOptions());
+	const loaded = useRead(batch);
 	return (
 		<Pane
 			title={batch.at((each) => each.label)}
@@ -32,7 +37,10 @@ function Batch() {
 				within: "History",
 				facts: [
 					batch.at((each) => originLabel(each.origin)),
-					batch.at((each) => `${count(each.count)} changes`),
+					batch.at(
+						(each) =>
+							`${count(each.count)} ${each.count === 1 ? "change" : "changes"}`,
+					),
 					batch.at((each) => ({
 						tone: each.undone ? ("idle" as const) : ("done" as const),
 						label: each.undone ? "Undone" : "Applied",
@@ -40,28 +48,35 @@ function Batch() {
 					batch.at((each) => date(each.at)),
 				],
 			}}
-			acts={[
-				{
-					icon: "Undo2",
-					label: "Undo batch",
-					blocked: batch.at((each) =>
-						each.undoable
-							? undefined
-							: each.undone
-								? "This batch was already undone"
-								: each.origin === "scan"
-									? "A scan only reads the disk; there is nothing to undo"
-									: "Nothing changed, so there is nothing to undo",
-					),
-					confirm: {
-						title: "Undo this batch?",
-						sentence:
-							"Each field goes back to what it was, unless it has changed since; files are tagged and moved back to match.",
-					},
-					onAct: () =>
-						queuedBatch(undo.mutateAsync({ id: batchId }), "Undoing the batch"),
-				},
-			]}
+			acts={
+				loaded && loaded.count > 0
+					? [
+							{
+								icon: "Undo2",
+								label: "Undo batch",
+								blocked: batch.at((each) =>
+									each.undoable
+										? undefined
+										: each.undone
+											? "This batch was already undone"
+											: each.origin === "scan"
+												? "A scan only reads the disk; there is nothing to undo"
+												: "Nothing changed, so there is nothing to undo",
+								),
+								confirm: {
+									title: "Undo this batch?",
+									sentence:
+										"Each field goes back to what it was, unless it has changed since; files are tagged and moved back to match.",
+								},
+								onAct: () =>
+									queuedBatch(
+										undo.mutateAsync({ id: batchId }),
+										"Undoing the batch",
+									),
+							},
+						]
+					: []
+			}
 		>
 			<Table
 				label="Changes"

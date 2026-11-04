@@ -50,6 +50,8 @@ const COLUMNS: TableColumn<Track>[] = [
 	{
 		key: "change",
 		label: "Change",
+		width: "1/4",
+		wrap: true,
 		kind: "change",
 		cell: (row) => ({
 			before: fieldsOf(row, "before"),
@@ -59,6 +61,8 @@ const COLUMNS: TableColumn<Track>[] = [
 	{
 		key: "source",
 		label: "Source",
+		width: "measure-short",
+		wrap: true,
 		kind: "chip",
 		family: "neutral",
 		cell: (row) =>

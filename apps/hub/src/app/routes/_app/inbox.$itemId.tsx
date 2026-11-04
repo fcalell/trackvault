@@ -5,9 +5,8 @@ import {
 } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
-import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { player } from "@fcalell/plugin-react-ui/lib/player";
-import type { ChipMark, TableColumn } from "@fcalell/ui-core/descriptors";
+import type { ChipMark } from "@fcalell/ui-core/descriptors";
 import { createFileRoute } from "@tanstack/react-router";
 import type { AppRouter } from "../../../../.stack/worker";
 import { orpc } from "../../lib/api.ts";
@@ -117,22 +116,6 @@ function compare(item: Loaded): Fact[] {
 		},
 	];
 }
-
-const COMPARE: TableColumn<Fact>[] = [
-	{ key: "fact", label: "Fact", cell: (row) => row.fact },
-	{
-		key: "incoming",
-		label: "This file",
-		wrap: true,
-		cell: (row) => row.incoming,
-	},
-	{
-		key: "library",
-		label: "In the library",
-		wrap: true,
-		cell: (row) => row.library,
-	},
-];
 
 // One inbox item: where it stands in the pipeline, the verdict and why, the file
 // beside the library copy it matched, what the rules would do to its tags, and
@@ -248,14 +231,16 @@ function Item() {
 			<Section
 				title="Compare"
 				description="This file beside the library copy it matched."
-			>
-				<Table
-					label="Compare"
-					items={item.at(compare)}
-					columns={COMPARE}
-					row={{ id: (row) => row.key }}
-				/>
-			</Section>
+				items={item.at((each) =>
+					compare(each).map((row) => ({
+						key: row.key,
+						label: row.fact,
+						title: [{ strong: "This file" }, `  ${row.incoming ?? "none"}`],
+						wrap: true,
+						line: [{ strong: "In the library" }, `  ${row.library ?? "none"}`],
+					})),
+				)}
+			/>
 			<Section
 				title="Verdict"
 				items={item.at((each) =>
