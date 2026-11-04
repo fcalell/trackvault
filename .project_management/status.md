@@ -115,9 +115,23 @@ Settings: each secret field's masked server value is in `values` with `control: 
 
 Proven: the bundle built, copied outside the repository and started with a scratch database (migrations on an empty database, all services, `/`, RPC, email-code sign-in, scan through the worker thread, backup through the check worker, device key, signed media with Range, the phone's `trackvault://` origin trusted and another refused, SIGTERM, missing env refused). Left unverified: the phone on a device or emulator (type-checked and linted only; the email-code and key sign-in, the dock, the lock screen, background audio and covers have not run), systemd, Docker and Caddy.
 
+## The design fix plan
+
+`fix-plan.md` is built apart from Essentia. Stack's gaps from the critique are closed: Table's grid and `empty`, Form `after`, Gate `acts`, `RowItem.progress`, a Pane record's `image`, `auth.oauth.grants`, widths as counts of the space base.
+
+Verified by `scripts/verify-phase3.ts` against the seeded hub (`stack screens serve`, `src/app/seed.ts`): preview rerun and `previews.latest`, the `PreviewWriter` delete, `autotag.list` over no proposals, `quarantine.size`, toast links, job retry, alias, genre and tag undo, `tracks.duplicates`, `tracks.history`, playlist totals and positions, Use analysis, the analyse window setting, the Soulseek flow through `fake-slskd.ts`, `imports.searchItem`, the bucket failure path, attention counts, the empty batch link, and revoke of an unknown grant.
+
+The second design pass is `review/critique/second-pass.md`: twenty-five screens, no blocking finding open, its improvements listed for the owner, the screens it did not reach named.
+
+Open:
+
+- Essentia windows (A3, A4): the bar is BPM at 90% and exact key at 70%, measured by the owner's yardstick run: `trackvault-agent yardstick --out yardstick.json`, then from `apps/hub` `DB_FILE=<hub sqlite> node scripts/bench-yardstick.ts yardstick.json --window 60|120|0`.
+- Revoke of a real grant needs an MCP client to finish consent in a browser.
+- Auto-tag proposals ran with no provider, so `autotag.list` proved its SQL and not what it returns.
+
 ## Where things stand
 
-Built and proven in the sandbox: the library, jobs, tagging, playlists, sets, inbox, sync, backups and the hub bundle (`pnpm check`, `stack screens test --all`, `stack db check` with every migration applied to a scratch database, and the bundle started from a copy with a scratch database, a scan through the analyze worker thread and a backup through the check worker thread). The last stack workarounds are gone: job kinds through `loadModules`, workers by `new Worker(new URL(...))`, settings secrets with the Form's own Remove, the Backups Offsite and import Banner sentences, the phone's async track signing and async headers. No stack gap remains open.
+Built and proven in the sandbox: the library, jobs, tagging, playlists, sets, inbox, sync, backups and the hub bundle (`pnpm check`, `stack screens test`, `stack db check` with every migration applied to a scratch database, and the bundle started from a copy with a scratch database, a scan through the analyze worker thread and a backup through the check worker thread). The last stack workarounds are gone: job kinds through `loadModules`, workers by `new Worker(new URL(...))`, settings secrets with the Form's own Remove, the Backups Offsite and import Banner sentences, the phone's async track signing and async headers. No stack gap remains open.
 
 Needs real-world verification (nothing below ran against the real thing):
 
