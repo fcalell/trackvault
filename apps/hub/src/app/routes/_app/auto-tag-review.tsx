@@ -45,12 +45,16 @@ const fieldsOf = (row: Track, side: "before" | "after"): string =>
 		.join(", ");
 
 const COLUMNS: TableColumn<Track>[] = [
-	{ key: "title", label: "Title", cell: trackTitle },
-	{ key: "artist", label: "Artist", cell: (row) => row.artist },
+	{ key: "title", label: "Title", width: "1/4", cell: trackTitle },
+	{
+		key: "artist",
+		label: "Artist",
+		width: "measure-short",
+		cell: (row) => row.artist,
+	},
 	{
 		key: "change",
 		label: "Change",
-		width: "1/4",
 		wrap: true,
 		kind: "change",
 		cell: (row) => ({
@@ -63,8 +67,6 @@ const COLUMNS: TableColumn<Track>[] = [
 		label: "Source",
 		width: "measure-short",
 		wrap: true,
-		kind: "chip",
-		family: "neutral",
 		cell: (row) =>
 			[...new Set(row.proposals.map((each) => each.source))]
 				.map((source) => SOURCE_LABELS[source] ?? source)
