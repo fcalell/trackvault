@@ -2,19 +2,14 @@
 // procedures and jobs. A few ffmpeg-made files in a scratch library root, a scan, tags,
 // a playlist, a duplicate pair, a low-bitrate file, a stored preview and an applied edit.
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { defineServeSeed } from "@fcalell/plugin-screens/serve";
 import type { AppRouter } from "../../.stack/worker";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-export default defineServeSeed<AppRouter>(async ({ client }) => {
-	// TODO: STACK_SERVE_DIR is not in the seed's environment (the run's own folder is
-	// only the server's); the library root is a folder of its own until it is.
-	const dir =
-		process.env.STACK_SERVE_DIR ?? mkdtempSync(join(tmpdir(), "tv-seed-"));
+export default defineServeSeed<AppRouter>(async ({ client, dir }) => {
 	const root = join(dir, "library");
 	mkdirSync(root, { recursive: true });
 
