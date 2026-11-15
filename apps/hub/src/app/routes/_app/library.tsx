@@ -35,7 +35,6 @@ function Library() {
 	return (
 		<LibraryPane
 			key={`${search.issue}|${search.tag}|${search.genre}|${search.neverPlayed}`}
-			title="All tracks"
 			initial={search}
 		>
 			<Outlet />

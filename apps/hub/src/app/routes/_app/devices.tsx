@@ -130,9 +130,6 @@ function Devices() {
 	return (
 		<>
 			<Pane
-				title="Devices"
-				back={false}
-				wide
 				acts={[
 					pair,
 					{

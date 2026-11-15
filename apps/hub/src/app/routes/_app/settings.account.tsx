@@ -16,10 +16,7 @@ function AccountSettings() {
 	return (
 		<Pane
 			title="Account"
-			back="/settings"
-			cover
 			record={{
-				within: "Settings",
 				description:
 					"How you sign in to this hub, and the apps you have let into it.",
 			}}

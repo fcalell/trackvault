@@ -5,6 +5,7 @@ import {
 } from "@fcalell/plugin-api/tanstack-query";
 import { ActionBar } from "@fcalell/plugin-react-ui/components/action-bar";
 import { Pane } from "@fcalell/plugin-react-ui/components/pane";
+import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import type { Picked, TableColumn } from "@fcalell/ui-core/descriptors";
@@ -18,7 +19,7 @@ import { ListSource, useListPlay } from "../../lib/queue.ts";
 import { namedBatch } from "../../ui/batch.ts";
 import { count, span } from "../../ui/figures.ts";
 import { TRACK_COLUMNS } from "../../ui/track.ts";
-import { SMART_FIELDS } from "./playlists.tsx";
+import { SMART_FIELDS } from "./playlists.index.tsx";
 
 export const Route = createFileRoute("/_app/playlists/$playlistId")({
 	loader: ({ context, params }) =>
@@ -116,26 +117,8 @@ function Playlist() {
 	return (
 		<ListSource value={tracks}>
 			<Pane
-				title={playlist.at((each) => each.name)}
 				noun="playlist"
 				read={playlist}
-				back="/playlists"
-				cover
-				wide
-				record={{
-					within: "Playlists",
-					overline: [
-						playlist.at((each) =>
-							each.kind === "smart" ? "Smart playlist" : "Playlist",
-						),
-					],
-					facts: [
-						playlist.at((each) =>
-							each.tracks === 1 ? "1 track" : `${count(each.tracks)} tracks`,
-						),
-						playlist.at((each) => span(each.durationMs)),
-					],
-				}}
 				acts={[
 					...(manual ? [{ icon: "Plus" as const, ...addTracks }] : []),
 					{
@@ -197,6 +180,22 @@ function Playlist() {
 					) : undefined
 				}
 			>
+				<Section
+					items={playlist.at((each) => [
+						{
+							key: "kind",
+							label: "Kind",
+							title: each.kind === "smart" ? "Smart playlist" : "Playlist",
+						},
+						{
+							key: "tracks",
+							label: "Tracks",
+							title:
+								each.tracks === 1 ? "1 track" : `${count(each.tracks)} tracks`,
+							line: span(each.durationMs),
+						},
+					])}
+				/>
 				{manual ? (
 					<Table
 						{...shared}

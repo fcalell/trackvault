@@ -114,7 +114,7 @@ function Wishlist() {
 			submit: { label: "Import" },
 			onDone: (made) =>
 				navigate({
-					to: "/import/$importId",
+					to: "/wishlist/import/$importId",
 					params: { importId: made.id },
 				}),
 		},
@@ -142,9 +142,6 @@ function Wishlist() {
 	return (
 		<>
 			<Pane
-				title="Wishlist"
-				back={false}
-				wide
 				acts={[
 					{ icon: "Plus", ...addTrack },
 					{
@@ -163,7 +160,7 @@ function Wishlist() {
 							key: each.id,
 							leading: { icon: "ListMusic" as const },
 							title: each.name,
-							href: `/import/${each.id}`,
+							href: `/wishlist/import/${each.id}`,
 							facts:
 								each.state === "ready"
 									? [

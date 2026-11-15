@@ -19,7 +19,7 @@ export default function Next() {
 	const suggestions = orpc.sets.suggest.read({ from, direction, limit: 20 });
 	const append = useMutation(orpc.sets.append.mutationOptions());
 	return (
-		<Pane title="Next track" back={false}>
+		<Pane>
 			<Toolbar
 				search={{
 					value: q,

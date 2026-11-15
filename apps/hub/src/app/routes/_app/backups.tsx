@@ -97,10 +97,7 @@ function Backups() {
 	return (
 		<>
 			<Pane
-				title="Backups"
 				read={jobsLive}
-				back={false}
-				wide
 				acts={[
 					{
 						icon: "DatabaseBackup",

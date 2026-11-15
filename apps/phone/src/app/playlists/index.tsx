@@ -1,8 +1,8 @@
 import { Pane } from "@fcalell/plugin-native-ui/components/pane";
 import type { RowItem } from "@fcalell/plugin-native-ui/components/section";
 import { Section } from "@fcalell/plugin-native-ui/components/section";
-import { orpc } from "../lib/api";
-import type { TreeRow } from "../lib/types";
+import { orpc } from "../../lib/api";
+import type { TreeRow } from "../../lib/types";
 
 // The hub answers the tree flat; the phone nests it by `parentId`.
 function nest(rows: readonly TreeRow[], parent: string | null): RowItem[] {
@@ -19,7 +19,7 @@ function nest(rows: readonly TreeRow[], parent: string | null): RowItem[] {
 				},
 				trailing: r.kind === "folder" ? undefined : { count: r.tracks },
 				facts: r.kind === "smart" ? ["Smart"] : undefined,
-				href: r.kind === "folder" ? undefined : (`/playlist/${r.id}` as const),
+				href: r.kind === "folder" ? undefined : (`/playlists/${r.id}` as const),
 				children,
 			};
 		});
@@ -28,7 +28,7 @@ function nest(rows: readonly TreeRow[], parent: string | null): RowItem[] {
 export default function Playlists() {
 	const tree = orpc.playlists.tree.read();
 	return (
-		<Pane title="Playlists" back={false}>
+		<Pane>
 			<Section
 				items={tree.at((rows) => nest(rows, null))}
 				empty={{ sentence: "No playlist yet. Make one in the hub." }}

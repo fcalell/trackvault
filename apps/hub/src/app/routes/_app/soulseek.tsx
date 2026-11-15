@@ -37,9 +37,6 @@ function Soulseek() {
 	const settings = orpc.soulseek.settings.read();
 	return (
 		<Pane
-			title="Soulseek"
-			back={false}
-			wide
 			acts={[
 				{ icon: "Download", label: "Downloads", href: "/downloads" },
 				{ icon: "ListPlus", label: "Wishlist", href: "/wishlist" },

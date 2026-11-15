@@ -68,9 +68,6 @@ function SetBuilder() {
 	const add = (id: string) => append.mutateAsync({ trackIds: [id] });
 	return (
 		<Pane
-			title="Set builder"
-			back={false}
-			wide
 			acts={[
 				{
 					icon: "Save",

@@ -85,7 +85,7 @@ function Issues() {
 			};
 		});
 	return (
-		<Pane title="Issues" back={false} wide>
+		<Pane>
 			<Banner
 				tone="attention"
 				sentence={summary.at((each) =>

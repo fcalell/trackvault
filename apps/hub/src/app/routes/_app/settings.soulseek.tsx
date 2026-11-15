@@ -21,10 +21,7 @@ function SoulseekSettings() {
 	return (
 		<Pane
 			title="Soulseek"
-			back="/settings"
-			cover
 			record={{
-				within: "Settings",
 				description:
 					"Searches and downloads go through slskd running beside the hub.",
 			}}

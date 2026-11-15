@@ -2,8 +2,8 @@ import { useMutation } from "@fcalell/plugin-api/tanstack-query";
 import { Pane } from "@fcalell/plugin-native-ui/components/pane";
 import { Section } from "@fcalell/plugin-native-ui/components/section";
 import type { StatusMark } from "@fcalell/ui-core/descriptors";
-import { orpc } from "../lib/api";
-import type { JobRow } from "../lib/types";
+import { orpc } from "../../lib/api";
+import type { JobRow } from "../../lib/types";
 
 const STATUS: Record<JobRow["state"], StatusMark> = {
 	queued: { tone: "waiting", label: "Queued" },
@@ -17,7 +17,7 @@ export default function Jobs() {
 	const jobs = orpc.jobs.list.read({ limit: 50 });
 	const cancel = useMutation(orpc.jobs.cancel.mutationOptions());
 	return (
-		<Pane title="Jobs" back="/more">
+		<Pane title="Jobs" record={{}}>
 			<Section
 				items={jobs.at((rows) =>
 					rows.map((j) => ({

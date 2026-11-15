@@ -1,5 +1,4 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
-import { Button } from "@fcalell/plugin-react-ui/components/button";
 import { Gate } from "@fcalell/plugin-react-ui/components/gate";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { Text } from "@fcalell/plugin-react-ui/components/text";
@@ -29,12 +28,10 @@ function ConnectConsent() {
 	return (
 		<Gate
 			title="Connect a client"
-			acts={
-				<>
-					<Button label="Allow" onAct={() => answer(true)} />
-					<Button act="secondary" label="Deny" onAct={() => answer(false)} />
-				</>
-			}
+			acts={[
+				{ label: "Deny", quiet: true, onAct: () => answer(false) },
+				{ label: "Allow", onAct: () => answer(true) },
+			]}
 		>
 			<Section
 				items={client.at((each) => [

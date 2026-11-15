@@ -65,7 +65,7 @@ function Tags() {
 		}),
 	};
 	return (
-		<Pane title="Tags" back={false} wide acts={[newTag]}>
+		<Pane acts={[newTag]}>
 			<Section
 				items={tags.at((rows) => rows.map(toRow))}
 				empty={{

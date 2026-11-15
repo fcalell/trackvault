@@ -21,7 +21,13 @@ function BackupSettings() {
 	// The encryption key, shown on request and until it is hidden again.
 	const [key, setKey] = useState<string | null>(null);
 	return (
-		<Pane title="Backup settings" back="/backups" cover>
+		<Pane
+			title="Backup settings"
+			record={{
+				description:
+					"When the database is backed up, what is kept, and where it goes offsite.",
+			}}
+		>
 			<Section
 				title="Daily backup"
 				description="The database is copied while the hub runs, checked, packed and kept by the policy below. Music files are not in it: they stay on disk and go offsite."

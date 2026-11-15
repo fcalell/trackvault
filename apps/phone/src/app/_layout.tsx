@@ -28,14 +28,17 @@ export default function Layout() {
 					options={{ animation: "slide_from_right" }}
 				/>
 				<Stack.Screen
-					name="playlist/[id]"
+					name="playlists/[id]"
 					options={{ animation: "slide_from_right" }}
 				/>
 				<Stack.Screen
-					name="wishlist"
+					name="more/wishlist"
 					options={{ animation: "slide_from_right" }}
 				/>
-				<Stack.Screen name="jobs" options={{ animation: "slide_from_right" }} />
+				<Stack.Screen
+					name="more/jobs"
+					options={{ animation: "slide_from_right" }}
+				/>
 			</Stack>
 		</Shell>
 	);

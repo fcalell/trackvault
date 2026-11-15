@@ -19,10 +19,7 @@ function AnalysisSettings() {
 	return (
 		<Pane
 			title="Cover art and analysis"
-			back="/settings"
-			cover
 			record={{
-				within: "Settings",
 				description:
 					"Covers are embedded in the files. Analysis measures BPM, key, energy and loudness in the background.",
 			}}

@@ -28,11 +28,7 @@ function WantRecord() {
 			title={want.at(wantName)}
 			noun="wishlist item"
 			read={want}
-			back="/wishlist"
-			cover
-			wide
 			record={{
-				within: "Wishlist",
 				overline: [want.at((each) => WANT_SOURCES[each.source] ?? each.source)],
 				facts: [
 					want.at((each) => WANT_STATE[each.status]?.label ?? each.status),

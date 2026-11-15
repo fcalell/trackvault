@@ -77,9 +77,10 @@ function Conflicts() {
 	return (
 		<Pane
 			title="Conflicts"
-			back="/devices"
-			cover
-			wide
+			record={{
+				description:
+					"Fields changed in Rekordbox and in TrackVault since the last sync. The later change was kept; pick the side to settle on.",
+			}}
 			read={conflicts}
 			empty={{
 				sentence:

@@ -47,7 +47,7 @@ function LibraryStats() {
 	const played = orpc.stats.played.read();
 	const freshness = orpc.stats.freshness.read();
 	return (
-		<Pane title="Stats" back={false}>
+		<Pane>
 			<Stats
 				items={[
 					{ label: "Tracks", value: totals.at((each) => each.tracks) },

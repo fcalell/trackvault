@@ -21,9 +21,6 @@ function Organiser() {
 	const apply = useMutation(orpc.organiser.apply.mutationOptions());
 	return (
 		<Pane
-			title="Organiser"
-			back={false}
-			wide
 			acts={[
 				{
 					icon: "Eye",

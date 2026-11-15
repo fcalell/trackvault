@@ -15,9 +15,7 @@ export default function PlaylistRecord() {
 			read={playlist}
 			noun="playlist"
 			title={playlist.at((p) => p.name)}
-			back="/playlists"
 			record={{
-				within: "Playlists",
 				overline: [
 					playlist.at((p) =>
 						p.kind === "smart" ? "Smart playlist" : "Playlist",

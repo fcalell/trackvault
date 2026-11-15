@@ -12,7 +12,7 @@ import { orpc } from "../../lib/api.ts";
 import { IMPORT_MATCH, MATCH, WANT_SOURCES } from "../../ui/acquire.ts";
 import { trackTitle } from "../../ui/track.ts";
 
-export const Route = createFileRoute("/_app/import/$importId")({
+export const Route = createFileRoute("/_app/wishlist/import/$importId")({
 	loader: ({ context, params }) =>
 		preload(
 			context.queryClient,
@@ -66,10 +66,7 @@ function ImportResult() {
 			title={imported.at((each) => each.name)}
 			noun="import"
 			read={imported}
-			back="/wishlist"
-			wide
 			record={{
-				within: "Wishlist",
 				overline: [
 					imported.at((each) => WANT_SOURCES[each.source] ?? each.source),
 				],

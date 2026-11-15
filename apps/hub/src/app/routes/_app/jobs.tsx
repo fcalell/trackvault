@@ -124,7 +124,7 @@ function Jobs() {
 		};
 	};
 	return (
-		<Pane title="Jobs" read={jobsLive} back={false} wide>
+		<Pane read={jobsLive}>
 			<Section
 				items={jobsLive.at((jobs) => [...jobs].sort(byRank).map(toRow))}
 				empty={{

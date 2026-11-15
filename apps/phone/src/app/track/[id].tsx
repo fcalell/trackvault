@@ -23,9 +23,7 @@ export default function TrackRecord() {
 			read={track}
 			noun="track"
 			title={track.at((t) => t.title ?? "Untitled")}
-			back="/"
 			record={{
-				within: "Library",
 				overline: [track.at((t) => t.artist ?? "Unknown artist")],
 				facts: [
 					track.at((t) => (t.bpm ? `${Math.round(t.bpm)} BPM` : "")),
@@ -111,7 +109,7 @@ export default function TrackRecord() {
 					rows.map((p) => ({
 						key: p.id,
 						title: p.name,
-						href: `/playlist/${p.id}` as const,
+						href: `/playlists/${p.id}` as const,
 					})),
 				)}
 				empty={{ sentence: "Not in a playlist." }}

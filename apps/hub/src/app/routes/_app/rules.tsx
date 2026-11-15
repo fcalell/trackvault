@@ -123,9 +123,6 @@ function Rules() {
 	};
 	return (
 		<Pane
-			title="Rules"
-			back={false}
-			wide
 			acts={[
 				{
 					icon: "Eye",

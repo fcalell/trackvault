@@ -2,7 +2,6 @@ import {
 	useMutation,
 	useQueryClient,
 } from "@fcalell/plugin-api/tanstack-query";
-import { Button } from "@fcalell/plugin-react-ui/components/button";
 import { Gate } from "@fcalell/plugin-react-ui/components/gate";
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
@@ -47,23 +46,17 @@ function SignIn() {
 					given: { email: sentTo, oauthQuery: oauthQuery() },
 					fields: { otp: { label: "Code", control: "code" } },
 					// An MCP client's authorization resumes where the hub says; otherwise home.
+					acts: [
+						{ label: "Back", quiet: true, onAct: () => setSentTo(undefined) },
+						{
+							label: "Resend",
+							quiet: true,
+							onAct: () => sendOtp.mutateAsync({ email: sentTo }),
+						},
+					],
 					submit: { label: "Verify", ...(oauthQuery() ? {} : { to: "/" }) },
 					onDone: (answer) => followRedirect(answer),
 				}}
-				acts={
-					<>
-						<Button
-							act="quiet"
-							label="Back"
-							onAct={() => setSentTo(undefined)}
-						/>
-						<Button
-							act="quiet"
-							label="Resend"
-							onAct={() => sendOtp.mutateAsync({ email: sentTo })}
-						/>
-					</>
-				}
 			/>
 		);
 	}
@@ -71,10 +64,10 @@ function SignIn() {
 		<Gate
 			title="Sign in"
 			description="Enter your email. The hub writes a code to its log, where only you read it; no email is sent."
-			acts={<Button act="secondary" {...passkey} />}
 			form={{
 				act: orpc.auth.signIn.sendOtp,
 				fields: { email: { label: "Email" } },
+				acts: [{ ...passkey, quiet: true }],
 				submit: { label: "Get a code" },
 				onDone: (_sent, { email }) => setSentTo(email),
 			}}

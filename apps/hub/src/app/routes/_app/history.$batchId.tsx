@@ -30,11 +30,7 @@ function Batch() {
 			title={batch.at((each) => each.label)}
 			noun="batch"
 			read={batch}
-			back="/history"
-			cover
-			wide
 			record={{
-				within: "History",
 				facts: [
 					batch.at((each) => originLabel(each.origin)),
 					batch.at(

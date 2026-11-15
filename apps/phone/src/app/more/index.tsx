@@ -1,24 +1,24 @@
 import { Pane } from "@fcalell/plugin-native-ui/components/pane";
 import { Section } from "@fcalell/plugin-native-ui/components/section";
-import { forget, useHub } from "../lib/hub";
+import { forget, useHub } from "../../lib/hub";
 
 export default function More() {
 	const { url } = useHub();
 	return (
-		<Pane title="More" back={false}>
+		<Pane>
 			<Section
 				items={[
 					{
 						key: "wishlist",
 						title: "Wishlist",
 						leading: { icon: "Heart" },
-						href: "/wishlist",
+						href: "/more/wishlist",
 					},
 					{
 						key: "jobs",
 						title: "Jobs",
 						leading: { icon: "ListChecks" },
-						href: "/jobs",
+						href: "/more/jobs",
 					},
 				]}
 			/>

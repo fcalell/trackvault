@@ -1,9 +1,9 @@
 import { Pane } from "@fcalell/plugin-native-ui/components/pane";
 import { Section } from "@fcalell/plugin-native-ui/components/section";
 import type { StatusMark } from "@fcalell/ui-core/descriptors";
-import { orpc } from "../lib/api";
-import type { WantRow } from "../lib/types";
-import { wishAct } from "../lib/wish";
+import { orpc } from "../../lib/api";
+import type { WantRow } from "../../lib/types";
+import { wishAct } from "../../lib/wish";
 
 const STATUS: Record<WantRow["status"], StatusMark> = {
 	wanted: { tone: "waiting", label: "Wanted" },
@@ -19,7 +19,7 @@ const STATUS: Record<WantRow["status"], StatusMark> = {
 export default function Wishlist() {
 	const items = orpc.wishlist.list.window({ limit: 50 });
 	return (
-		<Pane title="Wishlist" back="/more" acts={[wishAct]}>
+		<Pane title="Wishlist" record={{}} acts={[wishAct]}>
 			<Section
 				items={items.at((rows) =>
 					rows.map((w) => ({

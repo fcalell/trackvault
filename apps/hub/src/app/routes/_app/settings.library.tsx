@@ -22,8 +22,6 @@ function LibrarySettings() {
 	return (
 		<Pane
 			title="Library"
-			back="/settings"
-			cover
 			acts={[
 				{
 					icon: "RefreshCw",
@@ -34,7 +32,6 @@ function LibrarySettings() {
 				},
 			]}
 			record={{
-				within: "Settings",
 				description: "Where the hub finds your music.",
 			}}
 		>

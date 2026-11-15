@@ -34,7 +34,7 @@ export default function Inbox() {
 	const reject = useMutation(orpc.inbox.reject.mutationOptions());
 	const keep = useMutation(orpc.inbox.keep.mutationOptions());
 	return (
-		<Pane title="Inbox" back={false}>
+		<Pane>
 			<Toolbar
 				filters={[
 					{

@@ -7,7 +7,7 @@ import { Table } from "@fcalell/plugin-react-ui/components/table";
 import { Toolbar } from "@fcalell/plugin-react-ui/components/toolbar";
 import { sheetOf } from "@fcalell/plugin-react-ui/lib/act";
 import type { Picked } from "@fcalell/ui-core/descriptors";
-import { useParams } from "@tanstack/react-router";
+import { useParams, useRouterState } from "@tanstack/react-router";
 import { type ReactNode, useMemo, useState } from "react";
 import type { LibraryQuery } from "../../server/lib/library-query.ts";
 import { type ISSUE_FILTERS, ISSUE_LABELS } from "../../shared/library.ts";
@@ -41,11 +41,9 @@ const BPM_OPTIONS: Array<{ value: string | null; label: string }> = [
 // window at a time (the hub searches, filters and sorts). `children` is the record
 // a row opens, beside the list.
 export function LibraryPane({
-	title,
 	initial = {},
 	children,
 }: {
-	title: string;
 	children: ReactNode;
 	// Filters the page was opened with (a link from the Issues screen).
 	initial?: {
@@ -66,6 +64,10 @@ export function LibraryPane({
 	const [bpm, setBpm] = useState<string>();
 	const [energy, setEnergy] = useState<number>();
 	const [never, setNever] = useState<boolean | undefined>(initial.neverPlayed);
+	// The address's filters travel into a record's address, so Close returns to the list as it stood.
+	const carried = useRouterState({
+		select: (state) => state.location.searchStr,
+	});
 	const range = BPM_RANGES.find((each) => each.value === bpm);
 
 	const query = useMemo<LibraryQuery>(
@@ -129,9 +131,6 @@ export function LibraryPane({
 	return (
 		<ListSource value={tracks}>
 			<Pane
-				title={title}
-				back={false}
-				wide
 				acts={[{ icon: "RefreshCw", ...scan }]}
 				foot={
 					<ActionBar
@@ -374,7 +373,7 @@ export function LibraryPane({
 					columns={TRACK_COLUMNS}
 					row={{
 						id: (row) => row.id,
-						href: (row) => `/library/${row.id}`,
+						href: (row) => `/library/${row.id}${carried}`,
 						// Shift+Enter on the active row plays it; Next and Previous follow the list.
 						act,
 					}}

@@ -252,7 +252,7 @@ A spike in R2 answers these on a throwaway install before anything is written to
   - `Pane` with a `Toolbar`: search and facet filters.
   - Windowed `Table`: title, artist, mix, BPM, key, genre, rating, time, format/bitrate, added.
   - Inline edit on text columns. Row selection (`choose`) with acts: edit tags, add to playlist, organise, auto-tag, delete.
-  - Opening a row shows the track record `Pane`: name, fact pills, waveform, cues, versions/duplicates, playlists, history.
+  - Opening a row shows the track record `Pane` beside the list: name, fact pills, waveform, cues, versions/duplicates, playlists, history.
 - **Bulk edit:** a `Sheet` with a `Form`. Before applying, a preview `Table` of `change` cells (before → after). The same preview is reused by cleanup rules, genre unify, auto-tag and the organiser.
 - **Duplicates:** groups as bands, with the keeper pre-picked and the reason shown. Merge moves cues, playlists and tags.
 - **Jobs and transfers:** live rows with progress (`Stats`/`Stages`).

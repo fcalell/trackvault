@@ -137,11 +137,7 @@ function Item() {
 			title={item.at(trackTitle)}
 			noun="file"
 			read={item}
-			back="/inbox"
-			cover
-			wide
 			record={{
-				within: "Inbox",
 				overline: [item.at((each) => SOURCE_LABELS[each.source])],
 				facts: [
 					item.at((each) => INBOX_STATE[each.state]?.label ?? each.state),

@@ -124,9 +124,6 @@ function AutoTagReview() {
 	});
 	return (
 		<Pane
-			title="Auto-tag review"
-			back={false}
-			wide
 			acts={[
 				{
 					icon: "CheckCheck",

@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_app/settings")({
 function Settings() {
 	return (
 		<>
-			<Pane title="Settings" back={false} wide>
+			<Pane>
 				<Section
 					items={[
 						{

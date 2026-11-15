@@ -92,9 +92,6 @@ function Aliases() {
 
 	return (
 		<Pane
-			title="Aliases"
-			back={false}
-			wide
 			acts={[
 				{
 					icon: "Replace",

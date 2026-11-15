@@ -19,10 +19,7 @@ function AutotagSettings() {
 	return (
 		<Pane
 			title="Auto-tag"
-			back="/settings"
-			cover
 			record={{
-				within: "Settings",
 				description:
 					"Providers are asked about a track and what they agree on waits in Auto-tag review. A provider with no key or user agent is not asked.",
 			}}

@@ -15,10 +15,7 @@ function InboxSettings() {
 	return (
 		<Pane
 			title="Inbox"
-			back="/settings"
-			cover
 			record={{
-				within: "Settings",
 				description:
 					"New files are checked against the library before they are filed.",
 			}}

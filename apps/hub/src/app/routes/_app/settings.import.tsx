@@ -15,10 +15,7 @@ function ImportSettings() {
 	return (
 		<Pane
 			title="Playlist import"
-			back="/settings"
-			cover
 			record={{
-				within: "Settings",
 				description:
 					"Spotify playlists need your own app's client id and secret (developer.spotify.com/dashboard).",
 			}}

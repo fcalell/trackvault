@@ -67,7 +67,7 @@ function History() {
 	const q = useDebounced(text.trim(), 120) || undefined;
 	return (
 		<>
-			<Pane title="History" back={false} wide>
+			<Pane>
 				<Toolbar
 					search={{
 						value: text,

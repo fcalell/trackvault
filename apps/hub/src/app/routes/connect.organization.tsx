@@ -1,5 +1,4 @@
 import { useMutation } from "@fcalell/plugin-api/tanstack-query";
-import { Button } from "@fcalell/plugin-react-ui/components/button";
 import { Gate } from "@fcalell/plugin-react-ui/components/gate";
 import { Section } from "@fcalell/plugin-react-ui/components/section";
 import { createFileRoute } from "@tanstack/react-router";
@@ -22,20 +21,19 @@ function ConnectOrganization() {
 		<Gate
 			title="Choose an organization"
 			description="The client will work in the library of the one you choose."
-			acts={
-				<Button
-					act="secondary"
-					label="Deny"
-					onAct={async () =>
+			acts={[
+				{
+					label: "Deny",
+					quiet: true,
+					onAct: async () =>
 						followRedirect(
 							await deny.mutateAsync({
 								accept: false,
 								oauthQuery: oauthQuery(),
 							}),
-						)
-					}
-				/>
-			}
+						),
+				},
+			]}
 		>
 			<Section
 				items={organizations.at((rows) =>

@@ -89,9 +89,6 @@ function Quarantine() {
 	});
 	return (
 		<Pane
-			title="Quarantine"
-			back={false}
-			wide
 			read={items}
 			empty={{
 				sentence:

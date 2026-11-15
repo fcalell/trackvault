@@ -91,7 +91,7 @@ const named = (field: string): string => {
 // as the field is left; the hub writes it to the file in the background), what the
 // analysis measured beside them, and where the track is: its playlists, duplicates and
 // history.
-export function TrackRecord({ id, within }: { id: string; within: string }) {
+export function TrackRecord({ id }: { id: string }) {
 	const track = orpc.tracks.get.read({ id });
 	const assigned = orpc.tags.forTrack.read({ trackId: id });
 	const everyTag = orpc.tags.list.read();
@@ -112,7 +112,6 @@ export function TrackRecord({ id, within }: { id: string; within: string }) {
 			noun="track"
 			read={track}
 			record={{
-				within,
 				overline: [track.at((each) => each.artist ?? "Unknown artist")],
 				image: {
 					src: track.at((each) =>

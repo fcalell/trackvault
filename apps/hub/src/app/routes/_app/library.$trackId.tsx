@@ -6,7 +6,5 @@ import { TrackRecord } from "../../lib/track-record.tsx";
 export const Route = createFileRoute("/_app/library/$trackId")({
 	loader: ({ context, params }) =>
 		preload(context.queryClient, orpc.tracks.get.read({ id: params.trackId })),
-	component: () => (
-		<TrackRecord id={Route.useParams().trackId} within="All tracks" />
-	),
+	component: () => <TrackRecord id={Route.useParams().trackId} />,
 });

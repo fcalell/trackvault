@@ -90,10 +90,7 @@ function Downloads() {
 	});
 	return (
 		<Pane
-			title="Downloads"
 			read={transfersLive}
-			back={false}
-			wide
 			acts={[
 				{ icon: "Search", label: "Search Soulseek", href: "/soulseek" },
 				{

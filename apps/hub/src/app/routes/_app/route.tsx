@@ -1,6 +1,9 @@
 import { useRead } from "@fcalell/plugin-api/tanstack-query";
 import { Dock } from "@fcalell/plugin-react-ui/components/dock";
-import { Shell } from "@fcalell/plugin-react-ui/components/shell";
+import {
+	Shell,
+	type ShellGroup,
+} from "@fcalell/plugin-react-ui/components/shell";
 import {
 	audioOutput,
 	connectOutput,
@@ -56,6 +59,15 @@ const place = (
 	...(waiting > 0 ? { count: waiting } : {}),
 });
 
+const GROUPS: ShellGroup[] = [
+	{ label: "Library", icon: "Library" },
+	{ label: "Playlists", icon: "ListMusic" },
+	{ label: "Get music", icon: "Download" },
+	{ label: "Clean up", icon: "Brush" },
+	{ label: "Tags", icon: "Tags" },
+	{ label: "System", icon: "Server" },
+];
+
 function App() {
 	useLibraryLive();
 	useJobEffects();
@@ -100,7 +112,7 @@ function App() {
 		place("Settings", "Settings", "/settings", "System"),
 	];
 	return (
-		<Shell places={places} foot={<Dock />}>
+		<Shell places={places} groups={GROUPS} foot={<Dock />}>
 			<Outlet />
 		</Shell>
 	);
